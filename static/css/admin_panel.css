@@ -1,0 +1,434 @@
+:root {
+    --primary-color: #6366f1;
+    --secondary-color: #64748b;
+    --sidebar-width: 260px;
+    --header-height: 70px;
+}
+
+/* Кастомные цвета для светлой темы */
+[data-bs-theme="light"] {
+    --bs-primary: #6366f1;
+    --bs-secondary: #64748b;
+    --sidebar-bg: #ffffff;
+    --sidebar-border: #e2e8f0;
+    --nav-link-color: #64748b;
+    --nav-link-hover: #f1f5f9;
+    --nav-link-active: #6366f1;
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --bs-body-bg: #f8fafc;
+    --bs-body-color: #0f172a;
+}
+
+/* Кастомные цвета для темной темы */
+[data-bs-theme="dark"] {
+    --bs-primary: #818cf8;
+    --bs-secondary: #94a3b8;
+    --sidebar-bg: #0f172a;
+    --sidebar-border: #1e293b;
+    --nav-link-color: #94a3b8;
+    --nav-link-hover: #1e293b;
+    --nav-link-active: #818cf8;
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --bs-body-bg: #0f172a;
+    --bs-body-color: #f1f5f9;
+}
+
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 0;
+    background-color: var(--bs-body-bg);
+    transition: background-color 0.2s ease;
+}
+
+/* Sidebar */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: var(--sidebar-width);
+    background-color: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    z-index: 1000;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-header {
+    height: var(--header-height);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.logo {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--bs-primary);
+    text-decoration: none;
+}
+
+.nav-section-title {
+    padding: 24px 24px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--bs-secondary);
+}
+
+.nav-item {
+    margin: 12px 4px;
+}
+
+.nav-link {
+    display: flex;
+    align-items: center;
+    padding: 10px 16px;
+    color: var(--nav-link-color);
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.nav-link:hover {
+    background-color: var(--nav-link-hover);
+    color: var(--nav-link-color);
+    transform: translateX(2px);
+}
+
+.nav-link.active {
+    background-color: var(--bs-primary);
+    color: white;
+}
+
+.nav-link i {
+    width: 20px;
+    margin-right: 12px;
+    font-size: 16px;
+}
+
+/* Main Content */
+.main-content {
+    margin-left: var(--sidebar-width);
+    min-height: 100vh;
+    background-color: var(--bs-body-bg);
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.main-header {
+    height: var(--header-height);
+    background-color: var(--bs-body-bg);
+    border-bottom: 1px solid var(--sidebar-border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.theme-toggle {
+    background: none;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--nav-link-color);
+}
+
+.theme-toggle:hover {
+    background-color: var(--nav-link-hover);
+}
+
+/* Cards */
+.card {
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    box-shadow: var(--card-shadow);
+    transition: all 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+/* Дополнительные стили для расширенной навигации */
+
+.nav-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 16px 20px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--sidebar-border);
+    margin-top: 8px;
+}
+
+.nav-section-title:first-of-type {
+    border-top: none;
+    margin-top: 0;
+}
+
+.nav-badge {
+    background: var(--primary);
+    color: white;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 500;
+    margin-left: auto;
+}
+
+.nav-badge.badge-danger {
+    background: var(--danger);
+}
+
+.nav-badge.badge-warning {
+    background: var(--warning);
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.header-title {
+    display: flex;
+    flex-direction: column;
+}
+
+.breadcrumb-nav {
+    margin-top: 4px;
+}
+
+.breadcrumb {
+    margin: 0;
+    font-size: 12px;
+}
+
+.breadcrumb a {
+    color: var(--text-muted);
+    text-decoration: none;
+}
+
+.user-info {
+    text-align: left;
+}
+
+.user-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1;
+}
+
+.user-role {
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1;
+}
+
+.messages-container {
+    margin-bottom: 20px;
+}
+
+.quick-actions .btn {
+    font-size: 13px;
+}
+
+.notifications-menu {
+    min-width: 300px;
+}
+
+/* Мобильная адаптация */
+@media (max-width: 991.98px) {
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+    
+    .nav-section-title {
+        font-size: 10px;
+    }
+    
+    .logo-text {
+        display: none;
+    }
+}
+
+
+/* ====================================
+   СКРОЛЛИРУЕМАЯ БОКОВАЯ ПАНЕЛЬ БЕЗ ВИДИМОГО СКРОЛЛБАРА
+   ==================================== */
+
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: var(--sidebar-width);
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--sidebar-border);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+    
+    /* ✅ ДЕЛАЕМ FLEX КОНТЕЙНЕР */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sidebar-header {
+    /* ✅ ФИКСИРОВАННАЯ ШАПКА */
+    flex-shrink: 0;
+    padding: 1.5rem 1.25rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+}
+
+.sidebar-nav {
+    /* ✅ СКРОЛЛИРУЕМАЯ ЧАСТЬ БЕЗ ВИДИМОГО СКРОЛЛБАРА */
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 1rem 0;
+    
+    /* ✅ СКРЫВАЕМ СКРОЛЛБАР ДЛЯ ВСЕХ БРАУЗЕРОВ */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE и Edge */
+}
+
+/* ✅ СКРЫВАЕМ СКРОЛЛБАР ДЛЯ WEBKIT БРАУЗЕРОВ (Chrome, Safari, Edge) */
+.sidebar-nav::-webkit-scrollbar {
+    display: none;
+}
+
+.sidebar-footer {
+    /* ✅ ФИКСИРОВАННЫЙ ФУТЕР */
+    flex-shrink: 0;
+    border-top: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+}
+
+/* ====================================
+   ПЛАВНЫЕ ПЕРЕХОДЫ ПРИ СКРОЛЛЕ
+   ==================================== */
+
+.sidebar-nav {
+    /* Плавная прокрутка */
+    scroll-behavior: smooth;
+}
+
+/* ====================================
+   АДАПТИВНОСТЬ
+   ==================================== */
+
+@media (max-width: 991.98px) {
+    .sidebar {
+        transform: translateX(-100%);
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .sidebar.show {
+        transform: translateX(0);
+    }
+}
+
+/* ====================================
+   ДОПОЛНИТЕЛЬНЫЕ УЛУЧШЕНИЯ
+   ==================================== */
+
+.nav-item {
+    transition: all 0.2s ease;
+}
+
+.nav-link {
+    transition: all 0.2s ease;
+}
+
+/* ✅ ТЕНИ ДЛЯ ПОКАЗА ЧТО КОНТЕНТ МОЖНО СКРОЛЛИТЬ (ОПЦИОНАЛЬНО) */
+.sidebar-nav::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: linear-gradient(to bottom, var(--sidebar-bg), transparent);
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-nav::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: linear-gradient(to top, var(--sidebar-bg), transparent);
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+/* Показываем тени только когда можно скроллить */
+.sidebar-nav.can-scroll-up::before {
+    opacity: 1;
+}
+
+.sidebar-nav.can-scroll-down::after {
+    opacity: 1;
+}
+
+/* ====================================
+   АНИМАЦИИ
+   ==================================== */
+
+.nav-item {
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Эффект при быстром скролле */
+.sidebar-nav.fast-scroll .nav-item {
+    opacity: 0.8;
+}
+
+.sidebar-nav:not(.fast-scroll) .nav-item {
+    opacity: 1;
+}

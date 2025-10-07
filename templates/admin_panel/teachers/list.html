@@ -1,0 +1,724 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Преподаватели - МПТ Журнал{% endblock %}
+{% block page_title %}Управление преподавателями{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tables.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Компактная панель поиска и фильтров -->
+<div class="search-filter-bar">
+    <form method="get" class="search-form">
+        <div class="search-container">
+            <div class="search-input-wrapper">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" name="search" value="{{ search }}" 
+                       placeholder="Найти преподавателя..." class="search-field">
+                {% if search %}
+                    <button type="button" class="clear-search" onclick="clearSearch()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                {% endif %}
+            </div>
+            
+            <div class="filter-dropdown">
+                <button type="button" class="filter-trigger" id="filterTrigger">
+                    <i class="bi bi-funnel"></i>
+                    <span>Фильтры</span>
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                
+                <div class="filter-menu" id="filterMenu">
+                    <div class="filter-section">
+                        <label class="filter-title">По предметам</label>
+                        <select name="subject" class="filter-select" onchange="this.form.submit()">
+                            <option value="">Все предметы</option>
+                            {% for subject in subjects %}
+                                <option value="{{ subject.id }}" {% if subject_filter == subject.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ subject.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <label class="filter-title">Статус</label>
+                        <div class="status-filters">
+                            <label class="status-option">
+                                <input type="radio" name="status" value="" {% if not status_filter %}checked{% endif %}>
+                                <span class="status-dot all"></span>
+                                <span>Все</span>
+                            </label>
+                            <label class="status-option">
+                                <input type="radio" name="status" value="active" {% if status_filter == 'active' %}checked{% endif %}>
+                                <span class="status-dot active"></span>
+                                <span>Активные</span>
+                            </label>
+                            <label class="status-option">
+                                <input type="radio" name="status" value="inactive" {% if status_filter == 'inactive' %}checked{% endif %}>
+                                <span class="status-dot inactive"></span>
+                                <span>Неактивные</span>
+                            </label>
+                            <label class="status-option">
+                                <input type="radio" name="status" value="curator" {% if status_filter == 'curator' %}checked{% endif %}>
+                                <span class="status-dot curator"></span>
+                                <span>Кураторы</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button type="submit" class="apply-filters">
+                            <i class="bi bi-check"></i>
+                            Применить
+                        </button>
+                        <a href="{% url 'admin_teachers' %}" class="reset-filters">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            Сбросить
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Основная панель преподавателей -->
+<div class="data-panel teachers-panel">
+    <div class="panel-top">
+        <div class="panel-info">
+            <div class="info-icon">
+                <i class="bi bi-person-workspace"></i>
+            </div>
+            <div class="info-content">
+                <h1 class="panel-title">Преподаватели</h1>
+                <div class="panel-stats">
+                    {% if page_obj.paginator.count %}
+                        <span class="stat-item">
+                            <i class="bi bi-person-workspace"></i>
+                            {{ page_obj.paginator.count }} преподавател{{ page_obj.paginator.count|pluralize:"ь,я,ей" }}
+                        </span>
+                        <span class="stat-separator">•</span>
+                        <span class="stat-item">
+                            <i class="bi bi-book"></i>
+                            {{ subjects.count }} предмет{{ subjects.count|pluralize:"а,ов,ов" }}
+                        </span>
+                    {% else %}
+                        <span class="stat-item empty">Преподаватели не найдены</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel-controls">
+            <div class="table-actions">
+                <div class="dropdown-action">
+                    <button class="action-btn export-btn" id="exportTrigger">
+                        <i class="bi bi-download"></i>
+                        <span>Экспорт</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-menu" id="exportMenu">
+                        <button class="dropdown-item" onclick="exportAllToExcel()">
+                            <i class="bi bi-file-earmark-spreadsheet text-success"></i>
+                            <span>Все в Excel</span>
+                        </button>
+                        <button class="dropdown-item" onclick="exportAllToPDF()">
+                            <i class="bi bi-file-earmark-pdf text-danger"></i>
+                            <span>Все в PDF</span>
+                        </button>
+                        
+                        <div class="dropdown-header" id="exportSelectedHeader" style="display: none;">
+                            Выбранные
+                        </div>
+                        <button class="dropdown-item" id="exportSelectedExcel" onclick="exportSelectedToExcel()" style="display: none;">
+                            <i class="bi bi-file-earmark-spreadsheet text-success"></i>
+                            <span>В Excel</span>
+                        </button>
+                        <button class="dropdown-item" id="exportSelectedPDF" onclick="exportSelectedToPDF()" style="display: none;">
+                            <i class="bi bi-file-earmark-pdf text-danger"></i>
+                            <span>В PDF</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <button class="action-btn add-teacher-btn" onclick="openAddTeacher()">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Добавить преподавателя</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    {% if page_obj %}
+        <div class="selection-bar">
+            <div class="selection-controls">
+                <label class="select-all-wrapper">
+                    <input type="checkbox" id="selectAllTeachers" class="select-checkbox">
+                    <span class="checkmark"></span>
+                    <span class="select-label">Выбрать все</span>
+                </label>
+                
+                <div class="bulk-actions" id="bulkActions" style="display: none;">
+                    <span class="selected-info" id="selectedInfo">Выбрано: 0</span>
+                    <div class="bulk-buttons">
+                        <button class="bulk-btn activate-btn" onclick="bulkActivateTeachers()">
+                            <i class="bi bi-check-circle"></i>
+                            Активировать
+                        </button>
+                        <button class="bulk-btn deactivate-btn" onclick="bulkDeactivateTeachers()">
+                            <i class="bi bi-x-circle"></i>
+                            Деактивировать
+                        </button>
+                        <button class="bulk-btn delete-btn" onclick="bulkDeleteTeachers()">
+                            <i class="bi bi-trash"></i>
+                            Удалить
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="table-settings">
+                <button class="settings-btn" title="Настройки таблицы">
+                    <i class="bi bi-gear"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="data-table teachers-table">
+            <div class="table-header">
+                <div class="header-col col-select"></div>
+                <div class="header-col col-teacher">
+                    <span class="col-title">
+                        <i class="bi bi-person-workspace"></i>
+                        Преподаватель
+                    </span>
+                </div>
+                <div class="header-col col-contact">
+                    <span class="col-title">
+                        <i class="bi bi-envelope"></i>
+                        Контакты
+                    </span>
+                </div>
+                <div class="header-col col-subjects">
+                    <span class="col-title">
+                        <i class="bi bi-book"></i>
+                        Предметы
+                    </span>
+                </div>
+                <div class="header-col col-curator">
+                    <span class="col-title">
+                        <i class="bi bi-people"></i>
+                        Кураторство
+                    </span>
+                </div>
+                <div class="header-col col-status">
+                    <span class="col-title">
+                        <i class="bi bi-shield-check"></i>
+                        Статус
+                    </span>
+                </div>
+                <div class="header-col col-actions">
+                    <span class="col-title">Действия</span>
+                </div>
+            </div>
+            
+            <div class="table-body">
+                {% for teacher in page_obj %}
+                    <div class="data-row teacher-row" data-id="{{ teacher.id }}">
+                        <div class="row-col col-select">
+                            <label class="row-select-wrapper">
+                                <input type="checkbox" class="select-checkbox teacher-checkbox" value="{{ teacher.id }}">
+                                <span class="checkmark"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="row-col col-teacher">
+                            <div class="user-card">
+                                <div class="user-photo">
+                                    <div class="photo-placeholder">
+                                        <span class="initials">{{ teacher.first_name|first }}{{ teacher.last_name|first }}</span>
+                                    </div>
+                                    <div class="online-indicator {% if teacher.is_active_account %}online{% else %}offline{% endif %}"></div>
+                                </div>
+                                <div class="user-details">
+                                    <div class="user-name">{{ teacher.get_full_name }}</div>
+                                    <div class="user-meta">
+                                        {% if teacher.position %}{{ teacher.position }}{% else %}Преподаватель{% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-contact">
+                            <div class="contact-info">
+                                {% if teacher.email %}
+                                    <div class="contact-row">
+                                        <i class="bi bi-envelope"></i>
+                                        <a href="mailto:{{ teacher.email }}">{{ teacher.email }}</a>
+                                    </div>
+                                {% endif %}
+                                {% if teacher.phone %}
+                                    <div class="contact-row">
+                                        <i class="bi bi-telephone"></i>
+                                        <a href="tel:{{ teacher.phone }}">{{ teacher.phone }}</a>
+                                    </div>
+                                {% endif %}
+                                {% if not teacher.email and not teacher.phone %}
+                                    <span class="no-data">—</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-subjects">
+                            <div class="subjects-list">
+                                {% if teacher.teaching_subjects.exists %}
+                                    {% for subject in teacher.teaching_subjects.all|slice:":2" %}
+                                        <div class="subject-pill pill">
+                                            <i class="bi bi-book"></i>
+                                            <span>{{ subject.short_name|default:subject.name }}</span>
+                                        </div>
+                                    {% endfor %}
+                                    {% if teacher.teaching_subjects.count > 2 %}
+                                        <div class="more-subjects">
+                                            +{{ teacher.teaching_subjects.count|add:"-2" }} еще
+                                        </div>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="no-data">Не назначены</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-curator">
+                            {% if teacher.curated_groups.exists %}
+                                <div class="curator-groups">
+                                    {% for group in teacher.curated_groups.all %}
+                                        <div class="curator-pill pill">
+                                            <i class="bi bi-people"></i>
+                                            <span>{{ group.name }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <span class="no-data">—</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row-col col-status">
+                            <div class="status-pill {% if teacher.is_active_account %}status-active{% else %}status-inactive{% endif %}">
+                                <div class="status-indicator"></div>
+                                <span>{% if teacher.is_active_account %}Активен{% else %}Неактивен{% endif %}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-actions">
+                            <div class="actions-menu">
+                                <button class="action-item view-action" onclick="viewTeacher({{ teacher.id }})" title="Просмотр профиля">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="action-item edit-action" onclick="editTeacher({{ teacher.id }})" title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="action-item delete-action" onclick="deleteTeacher({{ teacher.id }})" title="Удалить">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        {% if page_obj.has_other_pages %}
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    <span class="info-text">
+                        Показано <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> 
+                        из <strong>{{ page_obj.paginator.count }}</strong> преподавателей
+                    </span>
+                </div>
+                
+                <nav class="pagination-nav">
+                    <div class="pagination-buttons">
+                        {% if page_obj.has_previous %}
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if subject_filter %}subject={{ subject_filter }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page=1" 
+                               class="page-btn first-btn" title="Первая страница">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if subject_filter %}subject={{ subject_filter }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.previous_page_number }}" 
+                               class="page-btn prev-btn" title="Предыдущая">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <span class="page-btn current">{{ num }}</span>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <a href="?{% if search %}search={{ search }}&{% endif %}{% if subject_filter %}subject={{ subject_filter }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ num }}" 
+                                   class="page-btn">{{ num }}</a>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if subject_filter %}subject={{ subject_filter }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.next_page_number }}" 
+                               class="page-btn next-btn" title="Следующая">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if subject_filter %}subject={{ subject_filter }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.paginator.num_pages }}" 
+                               class="page-btn last-btn" title="Последняя страница">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </nav>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-illustration">
+                <i class="bi bi-person-workspace"></i>
+            </div>
+            <h2 class="empty-title">Преподаватели не найдены</h2>
+            <p class="empty-description">
+                {% if search %}
+                    Попробуйте изменить параметры поиска или очистить фильтры.
+                {% else %}
+                    Начните добавлять преподавателей в систему для управления учебным процессом.
+                {% endif %}
+            </p>
+            <div class="empty-actions">
+                {% if search %}
+                    <a href="{% url 'admin_teachers' %}" class="empty-btn secondary">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        Очистить фильтры
+                    </a>
+                {% endif %}
+                <button class="empty-btn primary" onclick="openAddTeacher()">
+                    <i class="bi bi-person-workspace"></i>
+                    Добавить преподавателя
+                </button>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Модальные окна для действий -->
+{% include 'admin_panel/teachers/modals.html' %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Глобальные переменные для преподавателей
+let allTeachersSelected = false;
+let teacherIdToDelete = null;
+let selectedTeachersIds = new Set();
+const csrftoken = getCookie('csrftoken');
+
+// CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Инициализация при загрузке
+document.addEventListener('DOMContentLoaded', function() {
+    initializeFilters();
+    initializeSelection();
+    initializeDropdowns();
+});
+
+// Инициализация фильтров
+function initializeFilters() {
+    const filterTrigger = document.getElementById('filterTrigger');
+    const filterMenu = document.getElementById('filterMenu');
+    
+    if (filterTrigger && filterMenu) {
+        filterTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            filterMenu.classList.toggle('active');
+        });
+        
+        document.addEventListener('click', function(e) {
+            if (!filterTrigger.contains(e.target) && !filterMenu.contains(e.target)) {
+                filterMenu.classList.remove('active');
+            }
+        });
+    }
+}
+
+// Инициализация выбора
+function initializeSelection() {
+    const selectAllCheckbox = document.getElementById('selectAllTeachers');
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                selectAllTeachers();
+            } else {
+                deselectAllTeachers();
+            }
+        });
+    }
+    
+    // Отслеживание индивидуальных чекбоксов
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('teacher-checkbox')) {
+            const teacherId = parseInt(e.target.value);
+            
+            if (e.target.checked) {
+                selectedTeachersIds.add(teacherId);
+            } else {
+                selectedTeachersIds.delete(teacherId);
+                allTeachersSelected = false;
+            }
+            
+            updateSelectionState();
+        }
+    });
+}
+
+// Инициализация выпадающих меню
+function initializeDropdowns() {
+    const exportTrigger = document.getElementById('exportTrigger');
+    const exportMenu = document.getElementById('exportMenu');
+    
+    if (exportTrigger && exportMenu) {
+        exportMenu.classList.remove('active');
+        exportMenu.style.display = 'none';
+        
+        exportTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const isCurrentlyVisible = exportMenu.style.display === 'block';
+            
+            if (isCurrentlyVisible) {
+                exportMenu.classList.remove('active');
+                exportMenu.style.display = 'none';
+            } else {
+                exportMenu.classList.add('active');
+                exportMenu.style.display = 'block';
+            }
+        });
+        
+        exportMenu.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+    
+    document.addEventListener('click', function(e) {
+        const isInsideDropdown = e.target.closest('.dropdown-action');
+        if (!isInsideDropdown) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.remove('active');
+                menu.style.display = 'none';
+            });
+        }
+    });
+}
+
+// Функции выбора
+function selectAllTeachers() {
+    allTeachersSelected = true;
+    selectedTeachersIds.clear();
+    
+    document.querySelectorAll('.teacher-checkbox').forEach(cb => {
+        cb.checked = true;
+        selectedTeachersIds.add(parseInt(cb.value));
+    });
+    
+    updateSelectionState();
+}
+
+function deselectAllTeachers() {
+    allTeachersSelected = false;
+    selectedTeachersIds.clear();
+    
+    document.querySelectorAll('.teacher-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    
+    updateSelectionState();
+}
+
+function updateSelectionState() {
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedInfo = document.getElementById('selectedInfo');
+    const selectAllCheckbox = document.getElementById('selectAllTeachers');
+    const totalSelected = selectedTeachersIds.size;
+    
+    if (totalSelected === 0 && !allTeachersSelected) {
+        bulkActions.style.display = 'none';
+        selectAllCheckbox.checked = false;
+    } else {
+        bulkActions.style.display = 'flex';
+        if (allTeachersSelected) {
+            selectedInfo.textContent = `Выбрано: ВСЕ преподаватели`;
+            selectAllCheckbox.checked = true;
+        } else {
+            selectedInfo.textContent = `Выбрано: ${totalSelected}`;
+            selectAllCheckbox.indeterminate = totalSelected > 0;
+        }
+    }
+    
+    updateExportMenu();
+}
+
+function updateExportMenu() {
+    const selectedCount = selectedTeachersIds.size;
+    const exportSelectedHeader = document.getElementById('exportSelectedHeader');
+    const exportSelectedExcel = document.getElementById('exportSelectedExcel');
+    const exportSelectedPDF = document.getElementById('exportSelectedPDF');
+    
+    if (selectedCount > 0) {
+        if (exportSelectedHeader) exportSelectedHeader.style.display = 'block';
+        if (exportSelectedExcel) {
+            exportSelectedExcel.style.display = 'block';
+            exportSelectedExcel.innerHTML = `<i class="bi bi-file-earmark-spreadsheet text-success"></i> ${selectedCount} в Excel`;
+        }
+        if (exportSelectedPDF) {
+            exportSelectedPDF.style.display = 'block';
+            exportSelectedPDF.innerHTML = `<i class="bi bi-file-earmark-pdf text-danger"></i> ${selectedCount} в PDF`;
+        }
+    } else {
+        if (exportSelectedHeader) exportSelectedHeader.style.display = 'none';
+        if (exportSelectedExcel) exportSelectedExcel.style.display = 'none';
+        if (exportSelectedPDF) exportSelectedPDF.style.display = 'none';
+    }
+}
+
+// Функции действий с преподавателями
+function openAddTeacher() {
+    window.location.href = "{% url 'admin_teacher_create' %}";
+}
+
+function viewTeacher(id) {
+    window.location.href = `/teachers/${id}/`;
+}
+
+function editTeacher(id) {
+    window.location.href = `/teachers/${id}/edit/`;
+}
+
+function deleteTeacher(id) {
+    teacherIdToDelete = id;
+    const row = document.querySelector(`[data-id="${id}"]`);
+    
+    if (!row) return;
+    
+    const teacherName = row.querySelector('.user-name');
+    const nameText = teacherName ? teacherName.textContent : 'Неизвестный преподаватель';
+    
+    const teacherNameElement = document.getElementById('teacherNameToDelete');
+    if (teacherNameElement) {
+        teacherNameElement.textContent = nameText;
+    }
+    
+    const deleteModal = document.getElementById('deleteTeacherModal');
+    if (deleteModal) {
+        const modal = new bootstrap.Modal(deleteModal);
+        modal.show();
+    }
+}
+
+// Подтверждение удаления
+function confirmDeleteTeacher() {
+    if (!teacherIdToDelete) return;
+    
+    const deleteBtn = document.getElementById('confirmDeleteTeacherBtn');
+    const originalText = deleteBtn.innerHTML;
+    deleteBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Удаляем...';
+    deleteBtn.disabled = true;
+    
+    fetch(`/teachers/${teacherIdToDelete}/delete/`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const row = document.querySelector(`[data-id="${teacherIdToDelete}"]`);
+            if (row) {
+                row.style.opacity = '0.5';
+                row.style.transform = 'scale(0.95)';
+                setTimeout(() => row.remove(), 300);
+            }
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteTeacherModal'));
+            if (modal) modal.hide();
+        } else {
+            alert('Ошибка при удалении: ' + data.error);
+        }
+        
+        deleteBtn.innerHTML = originalText;
+        deleteBtn.disabled = false;
+        teacherIdToDelete = null;
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Произошла ошибка при удалении');
+        deleteBtn.innerHTML = originalText;
+        deleteBtn.disabled = false;
+    });
+}
+
+// Массовые действия
+function bulkActivateTeachers() {
+    console.log('Активация преподавателей');
+}
+
+function bulkDeactivateTeachers() {
+    console.log('Деактивация преподавателей');
+}
+
+function bulkDeleteTeachers() {
+    console.log('Массовое удаление преподавателей');
+}
+
+// Функции экспорта
+function exportAllToExcel() {
+    console.log('Экспорт всех в Excel');
+}
+
+function exportAllToPDF() {
+    console.log('Экспорт всех в PDF');
+}
+
+function exportSelectedToExcel() {
+    console.log('Экспорт выбранных в Excel');
+}
+
+function exportSelectedToPDF() {
+    console.log('Экспорт выбранных в PDF');
+}
+
+function clearSearch() {
+    const searchField = document.querySelector('.search-field');
+    if (searchField) {
+        searchField.value = '';
+        searchField.form.submit();
+    }
+}
+
+console.log('✅ Teachers script loaded successfully!');
+</script>
+{% endblock %}

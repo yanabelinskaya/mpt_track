@@ -1,0 +1,407 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Импорт студентов - МПТ Журнал{% endblock %}
+{% block page_title %}Импорт студентов из Excel{% endblock %}
+{% block mobile_title %}Импорт{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tables.css' %}">
+<style>
+.import-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.import-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2rem;
+    box-shadow: var(--shadow);
+    margin-bottom: 2rem;
+}
+
+.upload-area {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    background: var(--surface-hover);
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.upload-area:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.upload-area.dragover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    color: var(--primary);
+    margin-bottom: 1rem;
+}
+
+.file-input {
+    display: none;
+}
+
+.requirements {
+    background: var(--accent-light);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-sm);
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.requirements h4 {
+    margin-top: 0;
+    color: var(--accent);
+}
+
+.requirements ul {
+    margin-bottom: 0;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-primary {
+    background: var(--primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--surface);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+}
+
+/* Стили для результатов импорта */
+.import-results {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+}
+
+.result-success {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.result-warning {
+    background: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.result-error {
+    background: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+.result-title {
+    font-weight: 600;
+    font-size: 1.2em;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.stat-item {
+    background: rgba(255, 255, 255, 0.7);
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    text-align: center;
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    display: block;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    opacity: 0.8;
+}
+
+.errors-list {
+    max-height: 300px;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    margin-top: 1rem;
+}
+
+.error-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.error-item:last-child {
+    border-bottom: none;
+}
+
+.error-row {
+    font-weight: 600;
+    color: #dc3545;
+}
+
+.duplicates-list {
+    max-height: 300px;
+    overflow-y: auto;
+    background: rgba(255, 255, 255, 0.5);
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    margin-top: 1rem;
+}
+
+.duplicate-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    display: flex;
+    justify-content: space-between;
+}
+
+.duplicate-item:last-child {
+    border-bottom: none;
+}
+
+.duplicate-email {
+    font-weight: 600;
+    color: #856404;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="import-container">
+    <!-- Результаты импорта -->
+    {% if import_result %}
+    <div class="import-results {% if import_result.success %}result-success{% elif import_result.errors %}result-error{% else %}result-warning{% endif %}">
+        <div class="result-title">
+            {% if import_result.success %}
+                <i class="bi bi-check-circle"></i>
+                Импорт завершен успешно
+            {% elif import_result.errors %}
+                <i class="bi bi-exclamation-triangle"></i>
+                Импорт завершен с ошибками
+            {% else %}
+                <i class="bi bi-info-circle"></i>
+                Импорт завершен частично
+            {% endif %}
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-item">
+                <span class="stat-number">{{ import_result.total_rows }}</span>
+                <span class="stat-label">Строк обработано</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ import_result.created_count }}</span>
+                <span class="stat-label">Студентов добавлено</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ import_result.duplicates_count }}</span>
+                <span class="stat-label">Дублей найдено</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-number">{{ import_result.errors_count }}</span>
+                <span class="stat-label">Ошибок</span>
+            </div>
+        </div>
+        
+        {% if import_result.duplicates %}
+        <div>
+            <h5><i class="bi bi-exclamation-circle"></i> Найдены дублирующиеся студенты:</h5>
+            <div class="duplicates-list">
+                {% for duplicate in import_result.duplicates %}
+                <div class="duplicate-item">
+                    <span>
+                        <strong>{{ duplicate.full_name }}</strong>
+                        (<span class="duplicate-email">{{ duplicate.email }}</span>)
+                    </span>
+                    <span class="text-muted">Строка {{ duplicate.row }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        {% if import_result.errors %}
+        <div>
+            <h5><i class="bi bi-x-circle"></i> Ошибки при обработке:</h5>
+            <div class="errors-list">
+                {% for error in import_result.errors %}
+                <div class="error-item">
+                    <div class="error-row">Строка {{ error.row }}:</div>
+                    <div>{{ error.message }}</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <div style="margin-top: 1.5rem;">
+            <a href="{% url 'admin_students' %}" class="btn btn-primary">
+                <i class="bi bi-arrow-left"></i>
+                Перейти к списку студентов
+            </a>
+            <a href="{% url 'admin_student_import' %}" class="btn btn-secondary" style="margin-left: 1rem;">
+                <i class="bi bi-arrow-clockwise"></i>
+                Импортировать еще
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Инструкция по импорту -->
+    <div class="import-card">
+        <h2><i class="bi bi-file-earmark-spreadsheet"></i> Импорт студентов из Excel</h2>
+        <p>Загрузите Excel файл (.xlsx или .xls) со списком студентов для массового добавления в систему.</p>
+        
+        <div class="requirements">
+            <h4>Требования к файлу:</h4>
+            <ul>
+                <li><strong>Обязательные колонки:</strong> surname, name, patronymic, email</li>
+                <li><strong>Формат файла:</strong> .xlsx или .xls</li>
+                <li><strong>Первая строка:</strong> заголовки колонок</li>
+                <li><strong>Email:</strong> должен быть уникальным и корректным</li>
+                <li><strong>Дубли:</strong> студенты с существующими email будут пропущены</li>
+                <li><strong>Кодировка:</strong> UTF-8</li>
+            </ul>
+        </div>
+        
+        <div style="margin: 1.5rem 0;">
+            <a href="{% url 'download_sample_excel' %}" class="btn btn-secondary">
+                <i class="bi bi-download"></i>
+                Скачать образец файла
+            </a>
+        </div>
+    </div>
+
+    <!-- Форма загрузки -->
+    <div class="import-card">
+        <form method="post" enctype="multipart/form-data" id="importForm">
+            {% csrf_token %}
+            
+            <div class="upload-area" id="uploadArea" onclick="document.getElementById('excelFile').click()">
+                <div class="upload-icon">
+                    <i class="bi bi-cloud-upload"></i>
+                </div>
+                <h3>Выберите или перетащите файл Excel</h3>
+                <p>Поддерживаются файлы .xlsx и .xls</p>
+                <input type="file" id="excelFile" name="excel_file" accept=".xlsx,.xls" class="file-input" required>
+            </div>
+            
+            <div id="fileInfo" style="display: none; margin-top: 1rem; padding: 1rem; background: var(--accent-light); border-radius: var(--radius-sm);">
+                <strong>Выбранный файл:</strong> <span id="fileName"></span>
+            </div>
+            
+            <div style="margin-top: 2rem; text-align: center;">
+                <button type="submit" class="btn btn-primary" id="submitBtn" disabled>
+                    <i class="bi bi-upload"></i>
+                    Импортировать студентов
+                </button>
+                <a href="{% url 'admin_students' %}" class="btn btn-secondary" style="margin-left: 1rem;">
+                    <i class="bi bi-arrow-left"></i>
+                    Назад к списку
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('excelFile');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // Обработка выбора файла
+    fileInput.addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            const file = this.files[0];
+            fileName.textContent = file.name;
+            fileInfo.style.display = 'block';
+            submitBtn.disabled = false;
+            uploadArea.style.borderColor = 'var(--accent)';
+        }
+    });
+    
+    // Drag & Drop
+    uploadArea.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.add('dragover');
+    });
+    
+    uploadArea.addEventListener('dragleave', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('dragover');
+    });
+    
+    uploadArea.addEventListener('drop', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        this.classList.remove('dragover');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            const file = files[0];
+            if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                fileInput.files = files;
+                fileName.textContent = file.name;
+                fileInfo.style.display = 'block';
+                submitBtn.disabled = false;
+                uploadArea.style.borderColor = 'var(--accent)';
+            } else {
+                alert('Поддерживаются только файлы .xlsx и .xls');
+            }
+        }
+    });
+    
+    // Обработка отправки формы
+    document.getElementById('importForm').addEventListener('submit', function() {
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Импортируем...';
+        submitBtn.disabled = true;
+    });
+});
+</script>
+{% endblock %}

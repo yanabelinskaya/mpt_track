@@ -1,0 +1,1558 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Студенты - МПТ Журнал{% endblock %}
+{% block page_title %}Управление студентами{% endblock %}
+{% block mobile_title %}Студенты{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tables.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Компактная панель поиска и фильтров -->
+<div class="search-filter-bar">
+    <form method="get" class="search-form">
+        <div class="search-container">
+            <div class="search-input-wrapper">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" name="search" value="{{ search }}" 
+                       placeholder="Найти студента..." class="search-field">
+                {% if search %}
+                    <button type="button" class="clear-search" onclick="clearSearch()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                {% endif %}
+            </div>
+            
+            <div class="filter-dropdown">
+                <button type="button" class="filter-trigger" id="filterTrigger">
+                    <i class="bi bi-funnel"></i>
+                    <span>Фильтры</span>
+                    {% if group_filter %}
+                        <span class="filter-badge">1</span>
+                    {% endif %}
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                
+                <div class="filter-menu" id="filterMenu">
+                    <div class="filter-section">
+                        <label class="filter-title">Группа</label>
+                        <select name="group" class="filter-select" onchange="this.form.submit()">
+                            <option value="">Все группы</option>
+                            {% for group in groups %}
+                                <option value="{{ group.id }}" {% if group_filter == group.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ group.name }} ({{ group.students_count }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <label class="filter-title">Статус</label>
+                        <div class="status-filters">
+                            <label class="status-option">
+                                <input type="radio" name="status" value="" {% if not status_filter %}checked{% endif %}>
+                                <span class="status-dot all"></span>
+                                <span>Все</span>
+                            </label>
+                            <label class="status-option">
+                                <input type="radio" name="status" value="active" {% if status_filter == 'active' %}checked{% endif %}>
+                                <span class="status-dot active"></span>
+                                <span>Активные</span>
+                            </label>
+                            <label class="status-option">
+                                <input type="radio" name="status" value="inactive" {% if status_filter == 'inactive' %}checked{% endif %}>
+                                <span class="status-dot inactive"></span>
+                                <span>Неактивные</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button type="submit" class="apply-filters">
+                            <i class="bi bi-check"></i>
+                            Применить
+                        </button>
+                        <a href="{% url 'admin_students' %}" class="reset-filters">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            Сбросить
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Основная панель студентов -->
+<div class="data-panel students-panel">
+    <div class="panel-top">
+        <div class="panel-info">
+            <div class="info-icon">
+                <i class="bi bi-people"></i>
+            </div>
+            <div class="info-content">
+                <h1 class="panel-title">Студенты</h1>
+                <div class="panel-stats">
+                    {% if page_obj.paginator.count %}
+                        <span class="stat-item">
+                            <i class="bi bi-person"></i>
+                            {{ page_obj.paginator.count }} студентов
+                        </span>
+                        <span class="stat-separator">•</span>
+                        <span class="stat-item">
+                            <i class="bi bi-collection"></i>
+                            {{ groups.count }} групп
+                        </span>
+                    {% else %}
+                        <span class="stat-item empty">Студенты не найдены</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel-controls">
+            <div class="table-actions">
+                <!-- Заменить существующий export dropdown -->
+                <div class="dropdown-action">
+                    <button class="action-btn secondary" id="exportTrigger" title="Экспорт">
+                        <i class="bi bi-download"></i>
+                        Экспорт
+                        <i class="bi bi-chevron-down ms-1"></i>
+                    </button>
+                    <div class="dropdown-menu" id="exportMenu">
+                        <div class="dropdown-header">
+                            <span>Экспорт всех студентов</span>
+                        </div>
+                        <a href="#" class="dropdown-item" onclick="exportAllToExcel(); return false;">
+                            <i class="bi bi-file-earmark-spreadsheet text-success"></i>
+                            Excel (.xlsx)
+                        </a>
+                        
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-header" id="exportSelectedHeader" style="display: none;">
+                            <span>Экспорт выбранных</span>
+                        </div>
+                        <a href="#" class="dropdown-item" id="exportSelectedExcel" style="display: none;" onclick="exportSelectedToExcel(); return false;">
+                            <i class="bi bi-file-earmark-spreadsheet text-success"></i>
+                            Выбранные в Excel
+                        </a>
+                    </div>
+                </div>
+
+                
+                <!-- ВЫПАДАЮЩЕЕ МЕНЮ ДЛЯ ДОБАВЛЕНИЯ СТУДЕНТОВ -->
+                <div class="dropdown-action">
+                    <button class="action-btn add-student-btn" id="addStudentTrigger">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>Добавить</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-menu" id="addStudentMenu">
+                        <button class="dropdown-item" onclick="addSingleStudent()">
+                            <i class="bi bi-person-plus"></i>
+                            <div>
+                                <span>Добавить одного студента</span>
+                                <small class="dropdown-desc">Форма с ФИО и контактами</small>
+                            </div>
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" onclick="bulkImportStudents()">
+                            <i class="bi bi-file-earmark-spreadsheet"></i>
+                            <div>
+                                <span>Массовое добавление</span>
+                                <small class="dropdown-desc">Импорт из Excel файла</small>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if page_obj %}
+        <div class="selection-bar">
+            <div class="selection-controls">
+                <label class="select-all-wrapper">
+                    <input type="checkbox" id="selectAllStudents" class="select-checkbox">
+                    <span class="checkmark"></span>
+                    <span class="select-label">Выбрать все</span>
+                </label>
+                
+                <div class="bulk-actions" id="bulkActions" style="display: none;">
+                    <span class="selected-info" id="selectedInfo">Выбрано: 0</span>
+                    <div class="bulk-buttons">
+                        <button class="bulk-btn" onclick="bulkCreateAccess()" style="background: #10b981; color: white;">
+                            <i class="bi bi-key"></i>
+                            Создать доступ
+                        </button>
+                        <button class="bulk-btn activate-btn" onclick="bulkActivateStudents()">
+                            <i class="bi bi-check-circle"></i>
+                            Активировать
+                        </button>
+                        <button class="bulk-btn deactivate-btn" onclick="bulkDeactivateStudents()">
+                            <i class="bi bi-x-circle"></i>
+                            Деактивировать
+                        </button>
+                        <button class="bulk-btn delete-btn" onclick="bulkDeleteStudents()">
+                            <i class="bi bi-trash"></i>
+                            Удалить
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Передаем общее количество студентов в скрипт -->
+        <script>
+            window.TOTAL_STUDENTS = {{ page_obj.paginator.count }};
+            window.CURRENT_FILTERS = {
+                search: "{{ search|default:'' }}",
+                group: "{{ group_filter|default:'' }}",
+                status: "{{ status_filter|default:'' }}"
+            };
+        </script>
+        
+        <div class="data-table students-table">
+            <div class="table-header">
+                <div class="header-col col-select"></div>
+                <div class="header-col col-student">
+                    <span class="col-title">
+                        <i class="bi bi-person"></i>
+                        Студент
+                    </span>
+                </div>
+                <div class="header-col col-group">
+                    <span class="col-title">
+                        <i class="bi bi-collection"></i>
+                        Группа
+                    </span>
+                </div>
+                <div class="header-col col-contact">
+                    <span class="col-title">
+                        <i class="bi bi-envelope"></i>
+                        Контакты
+                    </span>
+                </div>
+                <div class="header-col col-status">
+                    <span class="col-title">
+                        <i class="bi bi-shield-check"></i>
+                        Статус
+                    </span>
+                </div>
+                <div class="header-col col-actions">
+                    <span class="col-title">Действия</span>
+                </div>
+            </div>
+            
+            <div class="table-body">
+                {% for student in page_obj %}
+                    <div class="data-row" data-id="{{ student.id }}">
+                        <div class="row-col col-select">
+                            <label class="row-select-wrapper">
+                                <input type="checkbox" class="select-checkbox student-checkbox" value="{{ student.id }}">
+                                <span class="checkmark"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="row-col col-student">
+                            <div class="user-card">
+                                <div class="user-photo">
+                                    <div class="photo-placeholder">
+                                        <span class="initials">{{ student.first_name|first }}{{ student.last_name|first }}</span>
+                                    </div>
+                                    <div class="online-indicator {% if student.is_active_account %}online{% else %}offline{% endif %}"></div>
+                                </div>
+                                <div class="user-details">
+                                    <div class="user-name">{{ student.get_full_name }}</div>
+                                    <div class="user-meta">@{{ student.username }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-group">
+                            {% if student.group %}
+                                <div class="group-pill">
+                                    <i class="bi bi-collection"></i>
+                                    <span>{{ student.group.name }}</span>
+                                </div>
+                            {% else %}
+                                <span class="no-data">Не назначена</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row-col col-contact">
+                            <div class="contact-info">
+                                {% if student.email %}
+                                    <div class="contact-row">
+                                        <i class="bi bi-envelope"></i>
+                                        <a href="mailto:{{ student.email }}">{{ student.email }}</a>
+                                    </div>
+                                {% endif %}
+                                {% if student.phone %}
+                                    <div class="contact-row">
+                                        <i class="bi bi-telephone"></i>
+                                        <a href="tel:{{ student.phone }}">{{ student.phone }}</a>
+                                    </div>
+                                {% endif %}
+                                {% if not student.email and not student.phone %}
+                                    <span class="no-data">—</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-status">
+                            <div class="status-pill {% if student.is_active_account %}status-active{% else %}status-inactive{% endif %}" 
+                                 onclick="toggleStudentStatus({{ student.id }})" style="cursor: pointer;" 
+                                 title="Кликните для изменения статуса">
+                                <div class="status-indicator"></div>
+                                <span>{% if student.is_active_account %}Активен{% else %}Неактивен{% endif %}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-actions">
+                            <div class="actions-menu">
+                                <button class="action-item view-action" onclick="viewStudent({{ student.id }})" title="Просмотр профиля">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="action-item edit-action" onclick="editStudent({{ student.id }})" title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="action-item delete-action" onclick="deleteStudent({{ student.id }})" title="Удалить">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        {% if page_obj.has_other_pages %}
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    <span class="info-text">
+                        Показано <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> 
+                        из <strong>{{ page_obj.paginator.count }}</strong> студентов
+                    </span>
+                </div>
+                
+                <nav class="pagination-nav">
+                    <div class="pagination-buttons">
+                        {% if page_obj.has_previous %}
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if group_filter %}group={{ group_filter }}&{% endif %}page=1" 
+                               class="page-btn first-btn" title="Первая страница">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if group_filter %}group={{ group_filter }}&{% endif %}page={{ page_obj.previous_page_number }}" 
+                               class="page-btn prev-btn" title="Предыдущая">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <span class="page-btn current">{{ num }}</span>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <a href="?{% if search %}search={{ search }}&{% endif %}{% if group_filter %}group={{ group_filter }}&{% endif %}page={{ num }}" 
+                                   class="page-btn">{{ num }}</a>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if group_filter %}group={{ group_filter }}&{% endif %}page={{ page_obj.next_page_number }}" 
+                               class="page-btn next-btn" title="Следующая">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if group_filter %}group={{ group_filter }}&{% endif %}page={{ page_obj.paginator.num_pages }}" 
+                               class="page-btn last-btn" title="Последняя страница">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </nav>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-illustration">
+                <i class="bi bi-people"></i>
+            </div>
+            <h2 class="empty-title">Студенты не найдены</h2>
+            <p class="empty-description">
+                {% if search or group_filter %}
+                    Попробуйте изменить параметры поиска или очистить фильтры.
+                {% else %}
+                    Начните добавлять студентов в систему для управления учебным процессом.
+                {% endif %}
+            </p>
+            <div class="empty-actions">
+                {% if search or group_filter %}
+                    <a href="{% url 'admin_students' %}" class="empty-btn secondary">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        Очистить фильтры
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Улучшенное модальное окно для подтверждения удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div class="w-100 text-center">
+                    <div class="modal-icon-danger mb-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                    <h5 class="modal-title">Подтвердите удаление</h5>
+                </div>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-2">Вы действительно хотите удалить студента</p>
+                <strong id="studentNameToDelete" class="text-danger"></strong>?
+                <p class="text-muted mt-2 mb-0 small">Это действие нельзя отменить</p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash"></i> Удалить студента
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для массового удаления -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div class="w-100 text-center">
+                    <div class="modal-icon-danger mb-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                    <h5 class="modal-title">Массовое удаление</h5>
+                </div>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-2">Вы действительно хотите удалить</p>
+                <strong id="bulkDeleteCount" class="text-danger">0</strong>
+                <span id="bulkDeleteText">выбранных студентов</span>?
+                <p class="text-muted mt-2 mb-0 small">Это действие нельзя отменить</p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmBulkDeleteBtn">
+                    <i class="bi bi-trash"></i> Удалить студентов
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для создания доступа -->
+<div class="modal fade" id="createAccessModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div class="w-100 text-center">
+                    <div class="modal-icon-success mb-3">
+                        <i class="bi bi-key-fill"></i>
+                    </div>
+                    <h5 class="modal-title">Создание доступа</h5>
+                </div>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-2">Создать доступ к системе для</p>
+                <strong id="createAccessCount" class="text-primary">0</strong>
+                <span id="createAccessText">выбранных студентов</span>?
+                <p class="text-muted mt-2 mb-0 small">Будут созданы учетные записи и отправлены письма с данными для входа</p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-success" id="confirmCreateAccessBtn">
+                    <i class="bi bi-key-fill"></i> Создать доступ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<style>
+.modal-icon-danger {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #fee2e2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: #dc2626;
+    font-size: 1.5rem;
+}
+.modal-icon-success {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #dcfce7;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: #16a34a;
+    font-size: 1.5rem;
+}
+
+.modal-icon-success i {
+    font-size: 1.5rem;
+}
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/tables.js' %}"></script>
+<script>
+// Глобальные переменные
+let allStudentsSelected = false;
+let studentIdToDelete = null;
+let bulkDeleteSelection = null;
+let bulkCreateAccessSelection = null;
+let selectedStudentsIds = new Set();
+const csrftoken = getCookie('csrftoken');
+
+// Ключ для localStorage
+const SELECTED_STUDENTS_KEY = 'selectedStudents';
+
+// CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Функции для работы с localStorage
+function saveSelectedStudents() {
+    const selectedArray = Array.from(selectedStudentsIds);
+    localStorage.setItem(SELECTED_STUDENTS_KEY, JSON.stringify(selectedArray));
+    console.log('Saved selected students:', selectedArray);
+}
+
+function loadSelectedStudents() {
+    try {
+        const saved = localStorage.getItem(SELECTED_STUDENTS_KEY);
+        if (saved) {
+            const selectedArray = JSON.parse(saved);
+            selectedStudentsIds = new Set(selectedArray);
+            console.log('Loaded selected students:', selectedArray);
+            return selectedArray;
+        }
+    } catch (e) {
+        console.error('Error loading selected students:', e);
+    }
+    return [];
+}
+
+function clearSelectedStudents() {
+    selectedStudentsIds.clear();
+    localStorage.removeItem(SELECTED_STUDENTS_KEY);
+    console.log('Cleared selected students');
+}
+
+// Обновление URL с выбранными студентами
+function updateURLWithSelection() {
+    const url = new URL(window.location);
+    
+    if (selectedStudentsIds.size > 0 && !allStudentsSelected) {
+        const selectedArray = Array.from(selectedStudentsIds);
+        url.searchParams.set('selected', selectedArray.join(','));
+    } else {
+        url.searchParams.delete('selected');
+    }
+    
+    if (allStudentsSelected) {
+        url.searchParams.set('select_all', 'true');
+    } else {
+        url.searchParams.delete('select_all');
+    }
+    
+    window.history.replaceState({}, '', url);
+    updatePaginationLinks();
+}
+
+// ====================================
+// ФУНКЦИИ ОБНОВЛЕНИЯ СЧЕТЧИКОВ
+// ====================================
+
+function updateStudentCounters(deletedCount = 1) {
+    console.log('Updating counters, deleted:', deletedCount);
+    
+    if (window.TOTAL_STUDENTS) {
+        window.TOTAL_STUDENTS -= deletedCount;
+    }
+    
+    const statsElement = document.querySelector('.panel-stats .stat-item');
+    if (statsElement) {
+        if (window.TOTAL_STUDENTS <= 0) {
+            statsElement.innerHTML = '<i class="bi bi-person"></i> Студенты не найдены';
+            statsElement.classList.add('empty');
+        } else {
+            statsElement.innerHTML = `<i class="bi bi-person"></i> ${window.TOTAL_STUDENTS} студентов`;
+            statsElement.classList.remove('empty');
+        }
+    }
+    
+    const paginationInfo = document.querySelector('.pagination-info .info-text');
+    if (paginationInfo) {
+        const remainingRows = document.querySelectorAll('.data-row').length;
+        if (remainingRows > 0) {
+            const currentPageStart = Math.max(1, window.TOTAL_STUDENTS - remainingRows + 1);
+            const currentPageEnd = window.TOTAL_STUDENTS;
+            
+            paginationInfo.innerHTML = `
+                Показано <strong>${currentPageStart}–${currentPageEnd}</strong> 
+                из <strong>${window.TOTAL_STUDENTS}</strong> студентов
+            `;
+        }
+    }
+    
+    if (window.TOTAL_STUDENTS <= 0) {
+        setTimeout(() => {
+            showEmptyState();
+        }, 500);
+    }
+}
+
+function showEmptyState() {
+    const dataTable = document.querySelector('.data-table');
+    const paginationContainer = document.querySelector('.pagination-container');
+    const selectionBar = document.querySelector('.selection-bar');
+    
+    if (dataTable) dataTable.style.display = 'none';
+    if (paginationContainer) paginationContainer.style.display = 'none';
+    if (selectionBar) selectionBar.style.display = 'none';
+    
+    const dataPanel = document.querySelector('.data-panel');
+    if (dataPanel && !document.querySelector('.empty-state')) {
+        const emptyStateHtml = `
+            <div class="empty-state">
+                <div class="empty-illustration">
+                    <i class="bi bi-people"></i>
+                </div>
+                <h2 class="empty-title">Студенты не найдены</h2>
+                <p class="empty-description">
+                    Все студенты были удалены. Добавьте новых студентов для управления учебным процессом.
+                </p>
+                <div class="empty-actions">
+                    <button class="empty-btn primary" onclick="addSingleStudent()">
+                        <i class="bi bi-person-plus"></i>
+                        Добавить студента
+                    </button>
+                    <button class="empty-btn secondary" onclick="bulkImportStudents()">
+                        <i class="bi bi-file-earmark-spreadsheet"></i>
+                        Импорт из Excel
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        dataPanel.insertAdjacentHTML('beforeend', emptyStateHtml);
+    }
+}
+
+// ====================================
+// ИНИЦИАЛИЗАЦИЯ
+// ====================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 DOM loaded, initializing...');
+    
+    const savedSelected = loadSelectedStudents();
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('select_all') === 'true') {
+        allStudentsSelected = true;
+        selectAllStudents();
+    } else if (savedSelected.length > 0) {
+        restoreStudentSelection(savedSelected);
+    }
+    
+    const selectAllCheckbox = document.getElementById('selectAllStudents');
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                selectAllStudents();
+            } else {
+                deselectAllStudents();
+            }
+        });
+    }
+    
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('student-checkbox')) {
+            const studentId = parseInt(e.target.value);
+            
+            if (e.target.checked) {
+                selectedStudentsIds.add(studentId);
+            } else {
+                selectedStudentsIds.delete(studentId);
+                allStudentsSelected = false;
+            }
+            
+            saveSelectedStudents();
+            updateSelectionState();
+            updateURLWithSelection();
+        }
+    });
+    
+    initializeDropdowns();
+    initializeModals();
+});
+
+function restoreStudentSelection(selectedIds) {
+    selectedIds.forEach(id => {
+        const checkbox = document.querySelector(`.student-checkbox[value="${id}"]`);
+        if (checkbox) {
+            checkbox.checked = true;
+        }
+        selectedStudentsIds.add(id);
+    });
+    
+    updateSelectionState();
+}
+
+// ====================================
+// ПОЛНАЯ ФУНКЦИЯ ИНИЦИАЛИЗАЦИИ МОДАЛОВ
+// ====================================
+
+function initializeModals() {
+    console.log('🎬 Initializing modals...');
+    
+    // Обработчик для индивидуального удаления
+    const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+    if (confirmDeleteBtn) {
+        const newBtn = confirmDeleteBtn.cloneNode(true);
+        confirmDeleteBtn.parentNode.replaceChild(newBtn, confirmDeleteBtn);
+        
+        document.getElementById('confirmDeleteBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            if (!studentIdToDelete) {
+                console.log('No student ID to delete');
+                return;
+            }
+            
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="bi bi-hourglass-split"></i> Удаляем...';
+            this.disabled = true;
+            
+            const xhr = new XMLHttpRequest();
+            
+            xhr.open('DELETE', `/students/${studentIdToDelete}/delete/`, true);
+            xhr.setRequestHeader('X-CSRFToken', csrftoken);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === XMLHttpRequest.DONE) {
+                    console.log('Delete response:', xhr.status, xhr.responseText);
+                    
+                    if (xhr.status === 200) {
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            
+                            if (data.success) {
+                                console.log('Delete successful!');
+                                
+                                selectedStudentsIds.delete(studentIdToDelete);
+                                saveSelectedStudents();
+                                
+                                const row = document.querySelector(`[data-id="${studentIdToDelete}"]`);
+                                if (row) {
+                                    row.style.opacity = '0.5';
+                                    row.style.transform = 'scale(0.95)';
+                                    row.style.transition = 'all 0.3s ease';
+                                    setTimeout(() => {
+                                        row.remove();
+                                        updateStudentCounters(1);
+                                        updateSelectionState();
+                                    }, 300);
+                                }
+                                
+                                const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+                                if (modal) {
+                                    modal.hide();
+                                }
+                            }
+                        } catch (parseError) {
+                            console.error('JSON parse error:', parseError);
+                        }
+                    }
+                    
+                    this.innerHTML = originalText;
+                    this.disabled = false;
+                    studentIdToDelete = null;
+                }
+            };
+            
+            xhr.onerror = function() {
+                console.error('XHR error occurred');
+                this.innerHTML = originalText;
+                this.disabled = false;
+                studentIdToDelete = null;
+            };
+            
+            xhr.send();
+        });
+    }
+    
+    // Обработчик для массового удаления
+    const confirmBulkDeleteBtn = document.getElementById('confirmBulkDeleteBtn');
+    if (confirmBulkDeleteBtn) {
+        const newBulkBtn = confirmBulkDeleteBtn.cloneNode(true);
+        confirmBulkDeleteBtn.parentNode.replaceChild(newBulkBtn, confirmBulkDeleteBtn);
+        
+        document.getElementById('confirmBulkDeleteBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            if (!bulkDeleteSelection) {
+                console.log('No bulk selection to delete');
+                return;
+            }
+            
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="bi bi-hourglass-split"></i> Удаляем...';
+            this.disabled = true;
+            
+            fetch('/students/bulk-delete/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bulkDeleteSelection)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Bulk delete successful!');
+                    
+                    data.deleted_ids.forEach(id => {
+                        selectedStudentsIds.delete(id);
+                    });
+                    
+                    data.deleted_ids.forEach(studentId => {
+                        const row = document.querySelector(`[data-id="${studentId}"]`);
+                        if (row) {
+                            row.style.opacity = '0.5';
+                            row.style.transform = 'scale(0.95)';
+                            row.style.transition = 'all 0.3s ease';
+                            setTimeout(() => row.remove(), 300);
+                        }
+                    });
+                    
+                    setTimeout(() => {
+                        updateStudentCounters(data.deleted_count);
+                        saveSelectedStudents();
+                        updateSelectionState();
+                    }, 350);
+                    
+                    deselectAllStudents();
+                    
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                }
+                
+                this.innerHTML = originalText;
+                this.disabled = false;
+                bulkDeleteSelection = null;
+            })
+            .catch(error => {
+                console.error('Bulk delete error:', error);
+                
+                this.innerHTML = originalText;
+                this.disabled = false;
+                bulkDeleteSelection = null;
+            });
+        });
+    }
+
+    // Обработчик для создания доступа
+    const confirmCreateAccessBtn = document.getElementById('confirmCreateAccessBtn');
+    if (confirmCreateAccessBtn) {
+        const newCreateAccessBtn = confirmCreateAccessBtn.cloneNode(true);
+        confirmCreateAccessBtn.parentNode.replaceChild(newCreateAccessBtn, confirmCreateAccessBtn);
+        
+        document.getElementById('confirmCreateAccessBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            if (!bulkCreateAccessSelection) {
+                console.log('No selection for create access');
+                return;
+            }
+            
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="bi bi-hourglass-split"></i> Создаем доступ...';
+            this.disabled = true;
+            
+            fetch('/students/bulk-create-access/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(bulkCreateAccessSelection)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    console.log('Create access successful!');
+                    console.log(`Created: ${data.created_count}, Emails sent: ${data.emails_sent}`);
+                    
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('createAccessModal'));
+                    if (modal) {
+                        modal.hide();
+                    }
+                    
+                    deselectAllStudents();
+                    
+                    setTimeout(() => window.location.reload(), 500);
+                } else {
+                    console.error('Create access error:', data.error);
+                    alert('Ошибка: ' + (data.error || 'Не удалось создать доступ'));
+                }
+                
+                this.innerHTML = originalText;
+                this.disabled = false;
+                bulkCreateAccessSelection = null;
+            })
+            .catch(error => {
+                console.error('Create access error:', error);
+                alert('Произошла ошибка при создании доступа');
+                
+                this.innerHTML = originalText;
+                this.disabled = false;
+                bulkCreateAccessSelection = null;
+            });
+        });
+    }
+}
+
+// ====================================
+// ФУНКЦИИ ВЫБОРА СТУДЕНТОВ
+// ====================================
+
+function selectAllStudents() {
+    allStudentsSelected = true;
+    selectedStudentsIds.clear();
+    
+    document.querySelectorAll('.student-checkbox').forEach(cb => {
+        cb.checked = true;
+        selectedStudentsIds.add(parseInt(cb.value));
+    });
+    
+    const selectAllCheckbox = document.getElementById('selectAllStudents');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedInfo = document.getElementById('selectedInfo');
+    
+    if (selectAllCheckbox) selectAllCheckbox.checked = true;
+    if (bulkActions) bulkActions.style.display = 'flex';
+    if (selectedInfo && window.TOTAL_STUDENTS) {
+        selectedInfo.textContent = `Выбрано: ${window.TOTAL_STUDENTS} студентов`;
+    }
+    
+    saveSelectedStudents();
+    updateURLWithSelection();
+}
+
+function deselectAllStudents() {
+    allStudentsSelected = false;
+    selectedStudentsIds.clear();
+    
+    document.querySelectorAll('.student-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    
+    const selectAllCheckbox = document.getElementById('selectAllStudents');
+    const bulkActions = document.getElementById('bulkActions');
+    
+    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+    if (bulkActions) bulkActions.style.display = 'none';
+    
+    clearSelectedStudents();
+    updateURLWithSelection();
+}
+
+function updatePaginationLinks() {
+    const paginationLinks = document.querySelectorAll('.page-btn[href]');
+    paginationLinks.forEach(link => {
+        const href = new URL(link.href);
+        
+        if (allStudentsSelected) {
+            href.searchParams.set('select_all', 'true');
+        } else if (selectedStudentsIds.size > 0) {
+            const selectedArray = Array.from(selectedStudentsIds);
+            href.searchParams.set('selected', selectedArray.join(','));
+        } else {
+            href.searchParams.delete('select_all');
+            href.searchParams.delete('selected');
+        }
+        
+        link.href = href.toString();
+    });
+}
+
+function updateSelectionState() {
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedInfo = document.getElementById('selectedInfo');
+    const selectAllCheckbox = document.getElementById('selectAllStudents');
+    
+    if (!bulkActions || !selectedInfo || !selectAllCheckbox) return;
+    
+    const totalSelected = selectedStudentsIds.size;
+    
+    if (totalSelected === 0 && !allStudentsSelected) {
+        bulkActions.style.display = 'none';
+        selectAllCheckbox.checked = false;
+        allStudentsSelected = false;
+    } else if (allStudentsSelected) {
+        bulkActions.style.display = 'flex';
+        selectedInfo.textContent = `Выбрано: ВСЕ ${window.TOTAL_STUDENTS || 0} студентов`;
+        selectAllCheckbox.checked = true;
+    } else {
+        bulkActions.style.display = 'flex';
+        selectedInfo.textContent = `Выбрано: ${totalSelected}`;
+        
+        if (checkedBoxes.length === checkboxes.length && checkboxes.length > 0) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = true;
+        } else if (checkedBoxes.length > 0 || totalSelected > 0) {
+            selectAllCheckbox.indeterminate = true;
+            selectAllCheckbox.checked = false;
+        } else {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = false;
+        }
+    }
+    
+    updateExportMenu();
+}
+
+// ====================================
+// ФУНКЦИИ МАССОВЫХ ОПЕРАЦИЙ
+// ====================================
+
+function getSelectedStudents() {
+    if (allStudentsSelected) {
+        return {
+            all: true,
+            filters: window.CURRENT_FILTERS || {},
+            count: window.TOTAL_STUDENTS || 0
+        };
+    } else {
+        const selectedArray = Array.from(selectedStudentsIds);
+        return {
+            all: false,
+            ids: selectedArray,
+            count: selectedArray.length
+        };
+    }
+}
+
+function bulkCreateAccess() {
+    const selection = getSelectedStudents();
+    
+    if (selection.count === 0) {
+        return;
+    }
+    
+    bulkCreateAccessSelection = selection;
+    
+    const createAccessCount = document.getElementById('createAccessCount');
+    const createAccessText = document.getElementById('createAccessText');
+    
+    if (createAccessCount) {
+        createAccessCount.textContent = selection.count;
+    }
+    
+    if (createAccessText) {
+        createAccessText.textContent = selection.all ? 
+            'всех найденных студентов' : 
+            'выбранных студентов';
+    }
+    
+    const createAccessModal = document.getElementById('createAccessModal');
+    if (createAccessModal) {
+        const modal = new bootstrap.Modal(createAccessModal);
+        modal.show();
+    }
+}
+
+function bulkActivateStudents() {
+    const selection = getSelectedStudents();
+    if (selection.count === 0) {
+        return;
+    }
+    
+    bulkUpdateStatus(selection, true, 'активированы');
+}
+
+function bulkDeactivateStudents() {
+    const selection = getSelectedStudents();
+    if (selection.count === 0) {
+        return;
+    }
+    
+    bulkUpdateStatus(selection, false, 'деактивированы');
+}
+
+function bulkDeleteStudents() {
+    const selection = getSelectedStudents();
+    if (selection.count === 0) {
+        return;
+    }
+    
+    bulkDeleteSelection = selection;
+    
+    const bulkDeleteCount = document.getElementById('bulkDeleteCount');
+    const bulkDeleteText = document.getElementById('bulkDeleteText');
+    
+    if (bulkDeleteCount) {
+        bulkDeleteCount.textContent = selection.count;
+    }
+    
+    if (bulkDeleteText) {
+        bulkDeleteText.textContent = selection.all ? 
+            'всех найденных студентов' : 
+            'выбранных студентов';
+    }
+    
+    const bulkDeleteModal = document.getElementById('bulkDeleteModal');
+    if (bulkDeleteModal) {
+        const modal = new bootstrap.Modal(bulkDeleteModal);
+        modal.show();
+    }
+}
+
+function bulkUpdateStatus(selection, isActive, action) {
+    fetch('/students/bulk-update-status/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            ...selection,
+            is_active: isActive
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            setTimeout(() => window.location.reload(), 500);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+    });
+}
+
+// ====================================
+// ФУНКЦИИ ЭКСПОРТА
+// ====================================
+
+function updateExportMenu() {
+    const selectedCount = getSelectedStudents().count;
+    const exportSelectedHeader = document.getElementById('exportSelectedHeader');
+    const exportSelectedExcel = document.getElementById('exportSelectedExcel');
+    const exportSelectedPDF = document.getElementById('exportSelectedPDF');
+    
+    if (selectedCount > 0) {
+        if (exportSelectedHeader) exportSelectedHeader.style.display = 'block';
+        if (exportSelectedExcel) {
+            exportSelectedExcel.style.display = 'block';
+            exportSelectedExcel.innerHTML = `<i class="bi bi-file-earmark-spreadsheet text-success"></i> ${selectedCount} в Excel`;
+        }
+        if (exportSelectedPDF) {
+            exportSelectedPDF.style.display = 'block';
+            exportSelectedPDF.innerHTML = `<i class="bi bi-file-earmark-pdf text-danger"></i> ${selectedCount} в PDF`;
+        }
+    } else {
+        if (exportSelectedHeader) exportSelectedHeader.style.display = 'none';
+        if (exportSelectedExcel) exportSelectedExcel.style.display = 'none';
+        if (exportSelectedPDF) exportSelectedPDF.style.display = 'none';
+    }
+}
+
+function exportAllToExcel() {
+    exportStudents('excel', {
+        all: true,
+        filters: window.CURRENT_FILTERS || {},
+        count: window.TOTAL_STUDENTS || 0
+    });
+    closeAllDropdowns();
+}
+
+function exportAllToPDF() {
+    exportStudents('pdf', {
+        all: true,
+        filters: window.CURRENT_FILTERS || {},
+        count: window.TOTAL_STUDENTS || 0
+    });
+    closeAllDropdowns();
+}
+
+function exportSelectedToExcel() {
+    const selection = getSelectedStudents();
+    if (selection.count === 0) {
+        return;
+    }
+    
+    exportStudents('excel', selection);
+    closeAllDropdowns();
+}
+
+function exportSelectedToPDF() {
+    const selection = getSelectedStudents();
+    if (selection.count === 0) {
+        return;
+    }
+    
+    exportStudents('pdf', selection);
+    closeAllDropdowns();
+}
+
+function exportStudents(format, selection) {
+    const exportTrigger = document.getElementById('exportTrigger');
+    const originalText = exportTrigger.innerHTML;
+    exportTrigger.innerHTML = '<i class="bi bi-hourglass-split"></i> Экспорт...';
+    exportTrigger.disabled = true;
+    
+    fetch('/students/export/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            ...selection,
+            format: format
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const disposition = response.headers.get('Content-Disposition');
+        let filename = `students_export.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+        if (disposition) {
+            const filenameMatch = disposition.match(/filename="(.+)"/);
+            if (filenameMatch) {
+                filename = filenameMatch[1];
+            }
+        }
+        
+        return response.blob().then(blob => ({ blob, filename }));
+    })
+    .then(({ blob, filename }) => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+    })
+    .catch(error => {
+        console.error('Export error:', error);
+        alert('Произошла ошибка при экспорте: ' + error.message);
+    })
+    .finally(() => {
+        exportTrigger.innerHTML = originalText;
+        exportTrigger.disabled = false;
+    });
+}
+
+// ====================================
+// ВЫПАДАЮЩИЕ МЕНЮ
+// ====================================
+
+function initializeDropdowns() {
+    const exportTrigger = document.getElementById('exportTrigger');
+    const exportMenu = document.getElementById('exportMenu');
+    
+    if (exportTrigger && exportMenu) {
+        exportMenu.classList.remove('active');
+        exportMenu.style.display = 'none';
+        
+        exportTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+                if (menu !== exportMenu) {
+                    menu.classList.remove('active');
+                    menu.style.display = 'none';
+                }
+            });
+            
+            const isCurrentlyVisible = exportMenu.style.display === 'block';
+            
+            if (isCurrentlyVisible) {
+                exportMenu.classList.remove('active');
+                exportMenu.style.display = 'none';
+            } else {
+                exportMenu.classList.add('active');
+                exportMenu.style.display = 'block';
+                exportMenu.style.opacity = '1';
+                exportMenu.style.visibility = 'visible';
+                exportMenu.style.transform = 'translateY(0)';
+                exportMenu.style.position = 'absolute';
+                exportMenu.style.top = '100%';
+                exportMenu.style.right = '0';
+                exportMenu.style.zIndex = '1000';
+            }
+        });
+        
+        exportMenu.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+    
+    const addStudentTrigger = document.getElementById('addStudentTrigger');
+    const addStudentMenu = document.getElementById('addStudentMenu');
+    
+    if (addStudentTrigger && addStudentMenu) {
+        addStudentMenu.classList.remove('active');
+        addStudentMenu.style.display = 'none';
+        
+        addStudentTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                if (menu !== addStudentMenu) {
+                    menu.classList.remove('active');
+                    menu.style.display = 'none';
+                }
+            });
+            
+            if (addStudentMenu.classList.contains('active')) {
+                addStudentMenu.classList.remove('active');
+                addStudentMenu.style.display = 'none';
+            } else {
+                addStudentMenu.classList.add('active');
+                addStudentMenu.style.display = 'block';
+            }
+        });
+        
+        addStudentMenu.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+    
+    document.addEventListener('click', function(e) {
+        const isInsideDropdown = e.target.closest('.dropdown-action');
+        if (!isInsideDropdown) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.remove('active');
+                menu.style.display = 'none';
+            });
+        }
+    });
+}
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.classList.remove('active');
+        menu.style.display = 'none';
+    });
+}
+
+// ====================================
+// ИНДИВИДУАЛЬНЫЕ ДЕЙСТВИЯ
+// ====================================
+
+function deleteStudent(id) {
+    studentIdToDelete = id;
+    const row = document.querySelector(`[data-id="${id}"]`);
+    
+    if (!row) {
+        return;
+    }
+    
+    const studentName = row.querySelector('.user-name');
+    const nameText = studentName ? studentName.textContent : 'Неизвестный студент';
+    
+    const studentNameElement = document.getElementById('studentNameToDelete');
+    if (studentNameElement) {
+        studentNameElement.textContent = nameText;
+    }
+    
+    const deleteModal = document.getElementById('deleteModal');
+    if (deleteModal) {
+        const modal = new bootstrap.Modal(deleteModal);
+        modal.show();
+    }
+}
+
+function viewStudent(id) {
+    window.location.href = `/students/${id}/`;
+}
+
+function editStudent(id) {
+    window.location.href = `/students/${id}/edit/`;
+}
+
+function toggleStudentStatus(id) {
+    fetch(`/students/${id}/toggle-status/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const row = document.querySelector(`[data-id="${id}"]`);
+            const statusPill = row.querySelector('.status-pill');
+            const statusText = statusPill.querySelector('span');
+            const onlineIndicator = row.querySelector('.online-indicator');
+            
+            if (data.is_active) {
+                statusPill.className = 'status-pill status-active';
+                statusText.textContent = 'Активен';
+                onlineIndicator.className = 'online-indicator online';
+            } else {
+                statusPill.className = 'status-pill status-inactive';
+                statusText.textContent = 'Неактивен';
+                onlineIndicator.className = 'online-indicator offline';
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Toggle status error:', error);
+    });
+}
+
+function addSingleStudent() {
+    window.location.href = "{% url 'admin_student_create' %}";
+    closeAllDropdowns();
+}
+
+function bulkImportStudents() {
+    window.location.href = "{% url 'admin_student_import' %}";
+    closeAllDropdowns();
+}
+
+function clearSearch() {
+    const searchField = document.querySelector('.search-field');
+    if (searchField) {
+        searchField.value = '';
+        document.querySelector('.search-form').submit();
+    }
+}
+
+console.log('✅ Script loaded successfully!');
+</script>
+
+<style>
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.empty-illustration {
+    font-size: 4rem;
+    color: #e5e7eb;
+    margin-bottom: 24px;
+}
+
+.empty-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+}
+
+.empty-description {
+    color: #6b7280;
+    margin-bottom: 32px;
+    line-height: 1.6;
+}
+
+.empty-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.empty-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.empty-btn.primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.empty-btn.primary:hover {
+    background: #2563eb;
+}
+
+.empty-btn.secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.empty-btn.secondary:hover {
+    background: #e5e7eb;
+}
+</style>
+
+
+
+{% endblock %}

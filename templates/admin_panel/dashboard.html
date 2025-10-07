@@ -1,0 +1,291 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Главная - МПТ Журнал{% endblock %}
+{% block page_title %}Панель управления{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Приветствие -->
+<div class="welcome-header">
+    <div class="welcome-info">
+        <h1>Добро пожаловать!</h1>
+        <p>Управление учебным процессом МПТ</p>
+    </div>
+</div>
+
+<!-- Быстрые действия -->
+<div class="content-grid">
+    <div class="quick-actions">
+        <h3>Быстрые действия</h3>
+        <div class="actions-list">
+            <button class="action-btn" onclick="openAddStudent()">
+                <i class="bi bi-person-plus"></i>
+                <span>Добавить студента</span>
+            </button>
+            <button class="action-btn" onclick="openAddTeacher()">
+                <i class="bi bi-person-workspace"></i>
+                <span>Добавить преподавателя</span>
+            </button>
+            <button class="action-btn" onclick="openAddGroup()">
+                <i class="bi bi-people"></i>
+                <span>Создать группу</span>
+            </button>
+            <button class="action-btn" onclick="openSchedule()">
+                <i class="bi bi-calendar-week"></i>
+                <span>Расписание</span>
+            </button>
+            <button class="action-btn" onclick="openGrades()">
+                <i class="bi bi-clipboard-data"></i>
+                <span>Журнал оценок</span>
+            </button>
+            <button class="action-btn" onclick="openReports()">
+                <i class="bi bi-bar-chart"></i>
+                <span>Отчеты</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="recent-activity">
+        <div class="activity-header">
+            <h3>Недавние действия</h3>
+            <button class="clear-activity-btn" onclick="clearAllActivity()" title="Очистить все">
+                <i class="bi bi-trash3"></i>
+            </button>
+        </div>
+        
+        <div class="activity-list" id="activityList">
+            {% for log in recent_logs %}
+            <div class="activity-item" data-log-id="{{ log.id }}">
+                <div class="activity-icon {{ log.action_type }}">
+                    <i class="bi {{ log.icon }}"></i>
+                </div>
+                <div class="activity-text">
+                    <div>{{ log.description|safe }}</div>
+                    <div class="activity-time">{{ log.created_at|timesince }} назад</div>
+                </div>
+                <button class="remove-activity" onclick="removeActivityItem({{ log.id }})" title="Удалить">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            {% empty %}
+            <div class="no-activity" id="noActivity">
+                <i class="bi bi-clock-history"></i>
+                <p>Пока нет действий</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF токен для запросов
+const csrftoken = getCookie('csrftoken');
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Функция добавления лога активности
+function addActivityLog(actionType, description, icon = null) {
+    fetch('/admin/add-activity-log/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            action_type: actionType,
+            description: description,
+            icon: icon
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Activity logged successfully');
+            addActivityToDOM(data.log);
+        }
+    })
+    .catch(error => {
+        console.error('Error logging activity:', error);
+    });
+}
+
+// Добавление активности в DOM
+function addActivityToDOM(logData) {
+    const activityList = document.getElementById('activityList');
+    const noActivity = document.getElementById('noActivity');
+    
+    // Убираем "нет действий" если есть
+    if (noActivity) {
+        noActivity.remove();
+    }
+    
+    // Создаем новый элемент активности
+    const activityItem = document.createElement('div');
+    activityItem.className = 'activity-item new-activity';
+    activityItem.setAttribute('data-log-id', logData.id);
+    
+    activityItem.innerHTML = `
+        <div class="activity-icon ${logData.action_type}">
+            <i class="bi ${logData.icon}"></i>
+        </div>
+        <div class="activity-text">
+            <div>${logData.description}</div>
+            <div class="activity-time">только что</div>
+        </div>
+        <button class="remove-activity" onclick="removeActivityItem(${logData.id})" title="Удалить">
+            <i class="bi bi-x"></i>
+        </button>
+    `;
+    
+    // Добавляем в начало списка
+    activityList.insertBefore(activityItem, activityList.firstChild);
+    
+    // Анимация появления
+    setTimeout(() => {
+        activityItem.classList.remove('new-activity');
+    }, 100);
+    
+    // Ограничиваем количество показываемых логов (например, 10)
+    const items = activityList.querySelectorAll('.activity-item');
+    if (items.length > 10) {
+        items[items.length - 1].remove();
+    }
+}
+
+// Удаление конкретного лога
+function removeActivityItem(logId) {
+    fetch('/admin/remove-activity-log/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            log_id: logId
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const item = document.querySelector(`[data-log-id="${logId}"]`);
+            if (item) {
+                item.style.opacity = '0';
+                item.style.transform = 'translateX(20px)';
+                setTimeout(() => {
+                    item.remove();
+                    
+                    // Проверяем если список пустой
+                    const activityList = document.getElementById('activityList');
+                    if (activityList.children.length === 0) {
+                        activityList.innerHTML = `
+                            <div class="no-activity" id="noActivity">
+                                <i class="bi bi-clock-history"></i>
+                                <p>Пока нет действий</p>
+                            </div>
+                        `;
+                    }
+                }, 300);
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error removing activity:', error);
+    });
+}
+
+// Очистка всех логов
+function clearAllActivity() {
+    if (!confirm('Вы уверены, что хотите очистить все недавние действия?')) {
+        return;
+    }
+    
+    fetch('/admin/clear-activity-logs/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const activityList = document.getElementById('activityList');
+            activityList.innerHTML = `
+                <div class="no-activity" id="noActivity">
+                    <i class="bi bi-clock-history"></i>
+                    <p>Пока нет действий</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Error clearing activities:', error);
+    });
+}
+
+// Функции быстрых действий с логированием
+function openAddStudent() {
+    addActivityLog('create', 'Переход к добавлению студента', 'bi-person-plus');
+    window.location.href = "{% url 'admin_student_create' %}";
+}
+
+function openAddTeacher() {
+    addActivityLog('create', 'Переход к добавлению преподавателя', 'bi-person-workspace');
+    console.log('Добавление преподавателя');
+}
+
+function openAddGroup() {
+    addActivityLog('create', 'Переход к созданию группы', 'bi-people');
+    console.log('Создание группы');
+}
+
+function openSchedule() {
+    addActivityLog('view', 'Просмотр расписания', 'bi-calendar-week');
+    console.log('Расписание');
+}
+
+function openGrades() {
+    addActivityLog('view', 'Переход к журналу оценок', 'bi-clipboard-data');
+    console.log('Оценки');
+}
+
+function openReports() {
+    addActivityLog('view', 'Переход к отчетам', 'bi-bar-chart');
+    console.log('Отчеты');
+}
+
+// Логирование при переходах по меню (можно добавить глобально)
+document.addEventListener('DOMContentLoaded', function() {
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+            const linkText = this.querySelector('span')?.textContent || this.textContent.trim();
+            const icon = this.querySelector('i')?.className || 'bi-arrow-right';
+            
+            if (linkText && linkText !== 'Панель управления') {
+                addActivityLog('navigation', `Переход в раздел "${linkText}"`, icon.split(' ')[1] || 'bi-arrow-right');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
