@@ -1,0 +1,622 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Добавить студента - МПТ Журнал{% endblock %}
+{% block page_title %}Добавить нового студента{% endblock %}
+{% block mobile_title %}Добавить{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<style>
+.form-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.form-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-row.single {
+    grid-template-columns: 1fr;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 500;
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.form-label.required::after {
+    content: '*';
+    color: var(--bs-danger);
+    margin-left: 4px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+}
+
+.info-card {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-card .info-title {
+    font-weight: 600;
+    color: #16a34a;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.info-card ul {
+    margin-bottom: 0;
+    padding-left: 1rem;
+}
+
+.info-card li {
+    color: var(--bs-body-color);
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--sidebar-bg);
+    color: var(--nav-link-color);
+    border: 1px solid var(--sidebar-border);
+}
+
+.btn-secondary:hover {
+    background: var(--nav-link-hover);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.secondary-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.primary-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.error-message {
+    color: var(--bs-danger);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-card {
+        padding: 1.5rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .secondary-actions,
+    .primary-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Информационная карточка -->
+    <div class="form-card">
+        <div class="info-card">
+            <div class="info-title">
+                <i class="bi bi-plus-circle"></i>
+                Создание нового студента
+            </div>
+            <ul>
+                <li>Заполните обязательные поля: <strong>Фамилия, Имя и Email</strong></li>
+                <li>Email должен быть уникальным в системе</li>
+                <li>Группу можно назначить сразу или позже</li>
+                <li>Остальные поля заполняются по желанию</li>
+            </ul>
+        </div>
+    </div>
+
+    <form method="post" id="createStudentForm">
+        {% csrf_token %}
+        
+        <!-- Основная информация -->
+        <div class="form-card">
+            <div class="section-title">
+                <i class="bi bi-person"></i>
+                Основная информация
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required" for="last_name">Фамилия</label>
+                    <input type="text" class="form-control" id="last_name" name="last_name" 
+                           value="{{ form_data.last_name|default:'' }}" required placeholder="Иванов">
+                    <div class="error-message" id="last_name_error"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label required" for="first_name">Имя</label>
+                    <input type="text" class="form-control" id="first_name" name="first_name" 
+                           value="{{ form_data.first_name|default:'' }}" required placeholder="Иван">
+                    <div class="error-message" id="first_name_error"></div>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="middle_name">Отчество</label>
+                    <input type="text" class="form-control" id="middle_name" name="middle_name" 
+                           value="{{ form_data.middle_name|default:'' }}" placeholder="Петрович">
+                    <div class="form-text">Необязательное поле</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label required" for="email">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" 
+                           value="{{ form_data.email|default:'' }}" required placeholder="ivanov@example.com">
+                    <div class="form-text">Будет использоваться для входа в систему</div>
+                    <div class="error-message" id="email_error"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Учебная информация -->
+        <div class="form-card">
+            <div class="section-title">
+                <i class="bi bi-book"></i>
+                Учебная информация
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="group">Группа</label>
+                    <select class="form-select" id="group" name="group">
+                        <option value="">Не назначена</option>
+                        {% for group in groups %}
+                            <option value="{{ group.id }}" {% if form_data.group == group.id|stringformat:"s" %}selected{% endif %}>
+                                {{ group.name }} ({{ group.faculty.name }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Можно назначить позже</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="phone">Телефон</label>
+                    <input type="tel" class="form-control" id="phone" name="phone" 
+                           value="{{ form_data.phone|default:'' }}" placeholder="+7 (999) 123-45-67">
+                    <div class="form-text">Дополнительный контакт</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Дополнительная информация -->
+        <div class="form-card">
+            <div class="section-title">
+                <i class="bi bi-person-badge"></i>
+                Дополнительная информация
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="date_of_birth">Дата рождения</label>
+                    <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" 
+                           value="{{ form_data.date_of_birth|default:'' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="gender">Пол</label>
+                    <select class="form-select" id="gender" name="gender">
+                        <option value="">Не указано</option>
+                        <option value="M" {% if form_data.gender == 'M' %}selected{% endif %}>Мужской</option>
+                        <option value="F" {% if form_data.gender == 'F' %}selected{% endif %}>Женский</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row single">
+                <div class="form-group">
+                    <label class="form-label" for="address">Адрес проживания</label>
+                    <textarea class="form-control" id="address" name="address" rows="2" 
+                              placeholder="Укажите полный адрес">{{ form_data.address|default:'' }}</textarea>
+                </div>
+            </div>
+            
+            <div class="form-row single">
+                <div class="form-group">
+                    <label class="form-label" for="notes">Дополнительные заметки</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="2" 
+                              placeholder="Любая дополнительная информация">{{ form_data.notes|default:'' }}</textarea>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Действия -->
+        <div class="form-actions">
+            <div class="secondary-actions">
+                <a href="{% url 'admin_students' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i>
+                    Отмена
+                </a>
+            </div>
+            
+            <div class="primary-actions">
+                <button type="submit" class="btn btn-primary" id="submitBtn">
+                    <i class="bi bi-person-plus"></i>
+                    Создать студента
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+// Функция показа уведомлений
+function showNotification(message, type = 'success') {
+    const alertClass = type === 'error' ? 'alert-danger' : 'alert-success';
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+    
+    // Автоматически скрыть через 5 секунд
+    setTimeout(() => {
+        const alert = document.querySelector('.alert:last-child');
+        if (alert) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('createStudentForm');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    // Обработка отправки формы
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        console.log('=== Отправка формы создания студента ===');
+        
+        // Очищаем предыдущие ошибки
+        document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+        
+        // Показываем индикатор загрузки
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Создаем студента...';
+        submitBtn.disabled = true;
+        
+        // Собираем данные формы
+        const formData = new FormData(form);
+        
+        // Выводим данные формы для отладки
+        console.log('Данные формы:');
+        for (let [key, value] of formData.entries()) {
+            console.log(`  ${key}: ${value}`);
+        }
+        
+        const url = window.location.href;
+        console.log(`URL для запроса: ${url}`);
+        
+        // Отправляем AJAX запрос
+        fetch(url, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        })
+        .then(response => {
+            console.log('=== Получен ответ от сервера ===');
+            console.log(`Статус ответа: ${response.status}`);
+            console.log(`Статус текст: ${response.statusText}`);
+            
+            // Проверяем успешность запроса
+            if (!response.ok) {
+                console.error(`HTTP ошибка! Статус: ${response.status}`);
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            // Проверяем тип контента
+            const contentType = response.headers.get('content-type');
+            console.log(`Content-Type: ${contentType}`);
+            
+            if (!contentType || !contentType.includes('application/json')) {
+                console.error('Сервер вернул не JSON ответ');
+                // Читаем ответ как текст для отладки
+                return response.text().then(text => {
+                    console.error('Содержимое ответа (HTML):', text);
+                    throw new Error('Сервер вернул не JSON ответ. Возможно ошибка на сервере.');
+                });
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            console.log('=== Парсинг JSON успешен ===');
+            console.log('Данные ответа:', data);
+            
+            if (data.success) {
+                console.log('Успешное создание!');
+                showNotification('Студент успешно создан! Теперь можно назначить группу и создать доступ к системе.');
+                
+                // Перенаправляем на страницу списка студентов
+                if (data.redirect_url) {
+                    setTimeout(() => {
+                        window.location.href = data.redirect_url;
+                    }, 2000);
+                } else {
+                    setTimeout(() => {
+                        window.location.href = "{% url 'admin_students' %}";
+                    }, 2000);
+                }
+                
+            } else {
+                console.log('Ошибка создания:', data.message);
+                
+                // Показываем ошибки валидации
+                if (data.errors) {
+                    console.log('Ошибки валидации:', data.errors);
+                    Object.keys(data.errors).forEach(field => {
+                        const errorElement = document.getElementById(field + '_error');
+                        if (errorElement && data.errors[field] && data.errors[field].length > 0) {
+                            errorElement.textContent = data.errors[field][0];
+                        }
+                    });
+                }
+                
+                // Если есть подробная отладочная информация
+                if (data.error_type) {
+                    console.error(`Тип ошибки сервера: ${data.error_type}`);
+                }
+                if (data.traceback) {
+                    console.error('Traceback сервера:', data.traceback);
+                }
+                
+                showNotification(data.message || 'Ошибка при создании студента', 'error');
+            }
+            
+            // Возвращаем кнопку в исходное состояние
+            submitBtn.innerHTML = '<i class="bi bi-person-plus"></i> Создать студента';
+            submitBtn.disabled = false;
+        })
+        .catch(error => {
+            console.error('=== ОШИБКА FETCH ===');
+            console.error('Тип ошибки:', typeof error);
+            console.error('Сообщение ошибки:', error.message);
+            console.error('Stack trace:', error.stack);
+            
+            let errorMessage = 'Произошла ошибка при создании студента';
+            if (error.message.includes('JSON')) {
+                errorMessage = 'Ошибка обработки ответа сервера. Сервер вернул HTML вместо JSON. Проверьте консоль для деталей.';
+            } else if (error.message.includes('HTTP error')) {
+                errorMessage = `Ошибка сервера (${error.message}). Проверьте логи сервера.`;
+            }
+            
+            showNotification(errorMessage, 'error');
+            
+            // Возвращаем кнопку в исходное состояние
+            submitBtn.innerHTML = '<i class="bi bi-person-plus"></i> Создать студента';
+            submitBtn.disabled = false;
+        });
+    });
+    
+    // Форматирование телефона
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            
+            if (value.startsWith('7')) {
+                value = value.substring(1);
+            }
+            
+            if (value.startsWith('8')) {
+                value = value.substring(1);
+            }
+            
+            if (value.length > 0) {
+                value = value.substring(0, 10);
+                let formatted = '+7';
+                
+                if (value.length > 0) {
+                    formatted += ' (' + value.substring(0, 3);
+                }
+                if (value.length >= 4) {
+                    formatted += ') ' + value.substring(3, 6);
+                }
+                if (value.length >= 7) {
+                    formatted += '-' + value.substring(6, 8);
+                }
+                if (value.length >= 9) {
+                    formatted += '-' + value.substring(8, 10);
+                }
+                
+                e.target.value = formatted;
+            }
+        });
+    }
+    
+    // Автоматическое заполнение email на основе ФИО (опционально)
+    const lastNameInput = document.getElementById('last_name');
+    const firstNameInput = document.getElementById('first_name');
+    const emailInput = document.getElementById('email');
+    
+    function generateEmailSuggestion() {
+        const lastName = lastNameInput.value.trim().toLowerCase();
+        const firstName = firstNameInput.value.trim().toLowerCase();
+        
+        if (lastName && firstName && !emailInput.value) {
+            // Простая транслитерация
+            const translitMap = {
+                'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
+                'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
+                'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
+                'ф': 'f', 'х': 'h', 'ц': 'c', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
+                'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya'
+            };
+            
+            function translit(text) {
+                return text.split('').map(char => translitMap[char] || char).join('');
+            }
+            
+            const translitLastName = translit(lastName);
+            const translitFirstName = translit(firstName);
+            
+            emailInput.placeholder = `${translitLastName}.${translitFirstName}@example.com`;
+        }
+    }
+    
+    lastNameInput.addEventListener('input', generateEmailSuggestion);
+    firstNameInput.addEventListener('input', generateEmailSuggestion);
+});
+</script>
+{% endblock %}

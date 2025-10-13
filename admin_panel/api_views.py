@@ -1,421 +1,276 @@
+# admin_panel/api_views.py
+from django.shortcuts import get_object_or_404
+from django.http import JsonResponse, HttpResponse
+from django.contrib.auth.models import User
+from django.core.mail import send_mail
+from django.conf import settings
+from django.db.models import Q
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from drf_yasg.utils import swagger_auto_schema
+from drf_yasg import openapi
 import json
 import secrets
 import string
-from datetime import datetime, date
-from io import BytesIO
+from datetime import datetime
 
-from django.http import JsonResponse, HttpResponse
-from django.shortcuts import get_object_or_404, render, redirect
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_http_methods
-from django.contrib import messages
-from django.db import transaction
-from django.db.models import Q
-
+# Безопасная проверка импорта моделей
 try:
-    import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment
-    EXCEL_AVAILABLE = True
+    from .models import Student, Group, Faculty
+    MODELS_AVAILABLE = True
 except ImportError:
-    EXCEL_AVAILABLE = False
-
-from .models import Faculty, Group, Student
+    MODELS_AVAILABLE = False
 
 # ====================================
-# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+# ФУНКЦИИ ДЛЯ ГЕНЕРАЦИИ УЧЕТНЫХ ДАННЫХ
 # ====================================
-
-def get_csrf_token(request):
-    """Получить CSRF токен"""
-    from django.middleware.csrf import get_token
-    return get_token(request)
 
 def generate_username(first_name, last_name):
-    """Генерация уникального логина"""
-    transliteration = {
+    """Генерация уникального username"""
+    base = f"{first_name.lower()}.{last_name.lower()}"
+    # Транслитерация
+    translit_map = {
         'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
         'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
         'н': 'n', 'о': 'o', 'п': 'p', 'р': 'r', 'с': 's', 'т': 't', 'у': 'u',
         'ф': 'f', 'х': 'h', 'ц': 'c', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
-        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
+        'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya', ' ': '_'
     }
     
-    def translit(text):
-        return ''.join(transliteration.get(char.lower(), char.lower()) for char in text)
+    username = ''.join(translit_map.get(char, char) for char in base.lower())
     
-    username = f"{translit(last_name)}.{translit(first_name)}"
-    
+    # Проверка уникальности
     counter = 1
     original_username = username
     while User.objects.filter(username=username).exists():
-        username = f"{original_username}{counter}"
+        username = f"{original_username}_{counter}"
         counter += 1
     
     return username
 
 def generate_password(length=8):
-    """Генерация безопасного пароля"""
+    """Генерация случайного пароля"""
     characters = string.ascii_letters + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
 
-# ====================================
-# API ДЛЯ ФАКУЛЬТЕТОВ
-# ====================================
-
-@login_required
-def faculty_detail_view(request, faculty_id):
-    """Просмотр детальной информации о факультете"""
-    faculty = get_object_or_404(Faculty, id=faculty_id)
-    
-    context = {
-        'faculty': faculty,
-        'groups_count': faculty.groups_count,
-        'students_count': faculty.students_count,
-        'active_students_count': faculty.active_students_count,
-    }
-    
-    return render(request, 'admin_panel/faculty/faculty_detail.html', context)
-
-@login_required
-def faculty_edit_view(request, faculty_id):
-    """Редактирование факультета"""
-    faculty = get_object_or_404(Faculty, id=faculty_id)
-    
-    if request.method == 'POST':
-        try:
-            faculty.name = request.POST.get('name', faculty.name).strip()
-            faculty.code = request.POST.get('code', faculty.code).strip()
-            faculty.description = request.POST.get('description', faculty.description).strip()
-            faculty.is_active = request.POST.get('is_active') == 'on'
-            
-            faculty.save()
-            messages.success(request, f'Факультет "{faculty.name}" успешно обновлен!')
-            return redirect('admin_faculties')
-            
-        except Exception as e:
-            messages.error(request, f'Ошибка при сохранении: {str(e)}')
-    
-    context = {
-        'faculty': faculty,
-        'is_edit': True,
-    }
-    
-    return render(request, 'admin_panel/faculty/faculty_form.html', context)
-
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
-def faculty_delete_api(request, faculty_id):
-    """API удаления факультета"""
+def send_credentials_email(student, username, password):
+    """Отправка учетных данных студенту"""
     try:
-        faculty = get_object_or_404(Faculty, id=faculty_id)
-        faculty_name = faculty.name
-        
-        # Проверяем связанные объекты
-        groups_count = faculty.groups_count
-        
-        if groups_count > 0:
-            return JsonResponse({
-                'success': False,
-                'message': f'Нельзя удалить факультет "{faculty_name}". К нему привязано {groups_count} групп.'
-            }, status=400)
-        
-        # Удаляем факультет
-        faculty.delete()
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Факультет "{faculty_name}" успешно удален',
-            'faculty_id': faculty_id
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Ошибка при удалении факультета: {str(e)}'
-        }, status=500)
+        subject = f'Доступ к системе МПТ Журнал'
+        message = f'''
+Здравствуйте, {student.get_full_name()}!
 
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
-def faculty_toggle_status_api(request, faculty_id):
-    """API переключения статуса факультета"""
-    try:
-        faculty = get_object_or_404(Faculty, id=faculty_id)
-        
-        # Получаем новый статус из JSON
-        try:
-            data = json.loads(request.body)
-            new_status = data.get('is_active')
-        except:
-            new_status = None
-        
-        if new_status is None:
-            # Если статус не передан, переключаем текущий
-            new_status = not faculty.is_active
-        
-        faculty.is_active = new_status
-        faculty.save()
-        
-        status_text = "активирован" if new_status else "деактивирован"
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Факультет "{faculty.name}" {status_text}',
-            'is_active': new_status,
-            'faculty_id': faculty_id
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Ошибка при изменении статуса: {str(e)}'
-        }, status=500)
+Для вас создан аккаунт в системе МПТ Журнал.
 
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
-def faculty_bulk_activate_api(request):
-    """API массовой активации факультетов"""
-    try:
-        data = json.loads(request.body)
-        faculty_ids = data.get('faculty_ids', [])
-        
-        if not faculty_ids:
-            return JsonResponse({
-                'success': False,
-                'message': 'Не выбраны факультеты для активации'
-            }, status=400)
-        
-        with transaction.atomic():
-            updated_count = Faculty.objects.filter(
-                id__in=faculty_ids
-            ).update(is_active=True)
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Активировано {updated_count} факультетов',
-            'updated_count': updated_count
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Ошибка при массовой активации: {str(e)}'
-        }, status=500)
+Данные для входа:
+Логин: {username}
+Пароль: {password}
 
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
-def faculty_bulk_deactivate_api(request):
-    """API массовой деактивации факультетов"""
-    try:
-        data = json.loads(request.body)
-        faculty_ids = data.get('faculty_ids', [])
-        
-        if not faculty_ids:
-            return JsonResponse({
-                'success': False,
-                'message': 'Не выбраны факультеты для деактивации'
-            }, status=400)
-        
-        with transaction.atomic():
-            updated_count = Faculty.objects.filter(
-                id__in=faculty_ids
-            ).update(is_active=False)
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Деактивировано {updated_count} факультетов',
-            'updated_count': updated_count
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Ошибка при массовой деактивации: {str(e)}'
-        }, status=500)
+Адрес входа: {getattr(settings, 'SITE_URL', 'http://localhost:8000')}
 
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
-def faculty_bulk_delete_api(request):
-    """API массового удаления факультетов"""
-    try:
-        data = json.loads(request.body)
-        faculty_ids = data.get('faculty_ids', [])
+С уважением,
+Администрация МПТ
+'''
         
-        if not faculty_ids:
-            return JsonResponse({
-                'success': False,
-                'message': 'Не выбраны факультеты для удаления'
-            }, status=400)
-        
-        # Получаем факультеты для проверки
-        faculties = Faculty.objects.filter(id__in=faculty_ids)
-        
-        # Проверяем какие можно удалить
-        deletable_ids = []
-        non_deletable = []
-        
-        for faculty in faculties:
-            groups_count = faculty.groups_count
-            if groups_count > 0:
-                non_deletable.append(f"{faculty.name} ({groups_count} групп)")
-            else:
-                deletable_ids.append(faculty.id)
-        
-        deleted_count = 0
-        if deletable_ids:
-            with transaction.atomic():
-                deleted_count = Faculty.objects.filter(
-                    id__in=deletable_ids
-                ).delete()[0]
-        
-        message = f'Удалено {deleted_count} факультетов'
-        if non_deletable:
-            message += f'. Не удалено {len(non_deletable)} (есть связанные группы)'
-        
-        return JsonResponse({
-            'success': True,
-            'message': message,
-            'deleted_ids': deletable_ids,
-            'deleted_count': deleted_count,
-            'non_deletable': non_deletable
-        })
-        
+        send_mail(
+            subject,
+            message,
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@mpt.ru'),
+            [student.email],
+            fail_silently=False,
+        )
+        return True
     except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Ошибка при массовом удалении: {str(e)}'
-        }, status=500)
+        print(f"Ошибка отправки email: {e}")
+        return False
+
+def send_password_email(student, password):
+    """Отправить новый пароль на email"""
+    try:
+        subject = 'Новый пароль для доступа к МПТ Журнал'
+        message = f'''
+Здравствуйте, {student.get_full_name()}!
+
+Ваш пароль для входа в систему МПТ Журнал был сброшен.
+
+Новые данные для входа:
+Логин: {student.user.username}
+Пароль: {password}
+
+Адрес входа: {getattr(settings, 'SITE_URL', 'http://localhost:8000')}
+
+С уважением,
+Администрация МПТ
+'''
+        
+        send_mail(
+            subject,
+            message,
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@mpt.ru'),
+            [student.email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"Ошибка отправки email: {e}")
+        return False
 
 # ====================================
-# API ДЛЯ СТУДЕНТОВ
+# API ENDPOINTS ДЛЯ СТУДЕНТОВ
 # ====================================
 
-@login_required
-def student_detail_view(request, student_id):
-    """Просмотр детальной информации о студенте"""
-    student = get_object_or_404(Student, id=student_id)
-    
-    context = {
-        'student': student,
-        'has_system_access': student.has_system_access(),
-        'is_active_account': student.is_active_account,
+@swagger_auto_schema(
+    method='post',
+    operation_description="Удалить студента по ID",
+    responses={
+        200: openapi.Response('Студент успешно удален', openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                'message': openapi.Schema(type=openapi.TYPE_STRING)
+            }
+        )),
+        404: 'Студент не найден',
+        500: 'Ошибка сервера'
     }
-    
-    return render(request, 'admin_panel/student/student_detail.html', context)
-
-@login_required
-def student_edit_view(request, student_id):
-    """Редактирование студента"""
-    student = get_object_or_404(Student, id=student_id)
-    
-    if request.method == 'POST':
-        try:
-            # Обновляем основные поля
-            student.first_name = request.POST.get('first_name', '').strip()
-            student.last_name = request.POST.get('last_name', '').strip()
-            student.middle_name = request.POST.get('middle_name', '').strip()
-            student.email = request.POST.get('email', '').strip()
-            student.phone = request.POST.get('phone', '').strip()
-            student.course = int(request.POST.get('course', 1))
-            student.study_status = request.POST.get('study_status', 'active')
-            
-            # Обновляем группу если указана
-            group_id = request.POST.get('group')
-            if group_id:
-                student.group = get_object_or_404(Group, id=group_id)
-            
-            student.save()
-            messages.success(request, f'Студент "{student.get_full_name()}" успешно обновлен!')
-            return redirect('admin_students')
-            
-        except Exception as e:
-            messages.error(request, f'Ошибка при сохранении: {str(e)}')
-    
-    context = {
-        'student': student,
-        'groups': Group.objects.filter(is_active=True),
-        'is_edit': True,
-    }
-    
-    return render(request, 'admin_panel/student/student_form.html', context)
-
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def student_delete_api(request, student_id):
-    """API удаления студента"""
+    """API для удаления одного студента"""
+    print(f"=== student_delete_api вызван для студента ID: {student_id} ===")
+    
+    if not MODELS_AVAILABLE:
+        return JsonResponse({'success': False, 'message': 'Модели не загружены'}, status=500)
+    
     try:
         student = get_object_or_404(Student, id=student_id)
         student_name = student.get_full_name()
+        print(f"Найден студент: {student_name}")
         
         # Удаляем связанного пользователя если есть
-        if student.has_system_access():
+        if hasattr(student, 'user') and student.user:
+            user_id = student.user.id
             student.user.delete()
+            print(f"Удален пользователь ID: {user_id}")
         
         # Удаляем студента
         student.delete()
+        print(f"Студент удален: {student_name}")
         
         return JsonResponse({
             'success': True,
-            'message': f'Студент "{student_name}" успешно удален',
-            'student_id': student_id
+            'message': f'Студент "{student_name}" успешно удален'
         })
         
-    except Exception as e:
+    except Student.DoesNotExist:
         return JsonResponse({
             'success': False,
-            'message': f'Ошибка при удалении студента: {str(e)}'
+            'message': 'Студент не найден'
+        }, status=404)
+        
+    except Exception as e:
+        print(f"ОШИБКА при удалении студента {student_id}: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'message': f'Ошибка при удалении: {str(e)}'
         }, status=500)
 
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
+@swagger_auto_schema(
+    method='post',
+    operation_description="Переключить статус активности аккаунта студента",
+    responses={
+        200: openapi.Response('Статус изменен', openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                'message': openapi.Schema(type=openapi.TYPE_STRING),
+                'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+            }
+        )),
+        400: 'У студента нет аккаунта',
+        404: 'Студент не найден',
+        500: 'Ошибка сервера'
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def student_toggle_status_api(request, student_id):
-    """API переключения статуса аккаунта студента"""
+    """API для изменения статуса студента"""
+    print(f"=== student_toggle_status_api вызван для студента ID: {student_id} ===")
+    
+    if not MODELS_AVAILABLE:
+        return JsonResponse({'success': False, 'message': 'Модели не загружены'}, status=500)
+    
     try:
         student = get_object_or_404(Student, id=student_id)
+        print(f"Найден студент: {student.get_full_name()}")
         
-        if not student.has_system_access():
+        if not hasattr(student, 'user') or not student.user:
             return JsonResponse({
                 'success': False,
-                'message': 'У студента нет доступа к системе'
+                'message': 'У студента нет аккаунта для изменения статуса'
             }, status=400)
         
-        # Переключаем статус аккаунта
-        new_status = not student.user.is_active
-        student.user.is_active = new_status
+        # Переключаем статус
+        old_status = student.user.is_active
+        student.user.is_active = not old_status
         student.user.save()
         
-        status_text = "активирован" if new_status else "заблокирован"
+        new_status = student.user.is_active
+        status_text = 'активирован' if new_status else 'деактивирован'
+        print(f"Статус изменен: {old_status} -> {new_status}")
         
         return JsonResponse({
             'success': True,
-            'message': f'Аккаунт студента "{student.get_full_name()}" {status_text}',
-            'is_active': new_status,
-            'student_id': student_id
+            'message': f'Студент "{student.get_full_name()}" {status_text}',
+            'is_active': new_status
         })
         
+    except Student.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Студент не найден'
+        }, status=404)
+        
     except Exception as e:
+        print(f"ОШИБКА при изменении статуса студента {student_id}: {str(e)}")
         return JsonResponse({
             'success': False,
             'message': f'Ошибка при изменении статуса: {str(e)}'
         }, status=500)
 
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
+@swagger_auto_schema(
+    method='post',
+    operation_description="Создать доступ к системе для студента",
+    responses={
+        200: openapi.Response('Доступ создан', openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                'message': openapi.Schema(type=openapi.TYPE_STRING),
+                'username': openapi.Schema(type=openapi.TYPE_STRING),
+                'password': openapi.Schema(type=openapi.TYPE_STRING),
+                'email_sent': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+            }
+        )),
+        400: 'Доступ уже существует',
+        404: 'Студент не найден',
+        500: 'Ошибка сервера'
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
 def student_create_access_api(request, student_id):
-    """API создания доступа к системе для студента"""
+    """Создать доступ к системе для студента"""
+    if not MODELS_AVAILABLE:
+        return JsonResponse({'success': False, 'message': 'Модели недоступны'}, status=500)
+    
     try:
         student = get_object_or_404(Student, id=student_id)
         
-        if student.has_system_access():
+        # Проверяем что доступа еще нет
+        if hasattr(student, 'user') and student.user:
             return JsonResponse({
                 'success': False,
                 'message': 'У студента уже есть доступ к системе'
@@ -428,21 +283,24 @@ def student_create_access_api(request, student_id):
         user = User.objects.create_user(
             username=username,
             email=student.email,
-            password=password,
             first_name=student.first_name,
             last_name=student.last_name,
-            is_active=True,
+            password=password
         )
         
+        # Связываем с студентом
         student.user = user
         student.save()
         
+        # Отправляем данные на email
+        email_sent = send_credentials_email(student, username, password)
+        
         return JsonResponse({
             'success': True,
-            'message': f'Создан доступ для студента "{student.get_full_name()}"',
+            'message': f'Доступ создан! {"Данные отправлены на email" if email_sent else "Сохраните данные"}',
             'username': username,
             'password': password,
-            'student_id': student_id
+            'email_sent': email_sent
         })
         
     except Exception as e:
@@ -451,383 +309,482 @@ def student_create_access_api(request, student_id):
             'message': f'Ошибка при создании доступа: {str(e)}'
         }, status=500)
 
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
-def student_bulk_activate_api(request):
-    """API массовой активации студентов"""
-    try:
-        data = json.loads(request.body)
-        student_ids = data.get('student_ids', [])
-        
-        if not student_ids:
-            return JsonResponse({
-                'success': False,
-                'message': 'Не выбраны студенты для активации'
-            }, status=400)
-        
-        students = Student.objects.filter(id__in=student_ids)
-        updated_count = 0
-        
-        with transaction.atomic():
-            for student in students:
-                if student.has_system_access():
-                    student.user.is_active = True
-                    student.user.save()
-                    updated_count += 1
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Активировано {updated_count} аккаунтов студентов',
-            'updated_count': updated_count
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Ошибка при массовой активации: {str(e)}'
-        }, status=500)
-
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
-def student_bulk_deactivate_api(request):
-    """API массовой деактивации студентов"""
-    try:
-        data = json.loads(request.body)
-        student_ids = data.get('student_ids', [])
-        
-        if not student_ids:
-            return JsonResponse({
-                'success': False,
-                'message': 'Не выбраны студенты для деактивации'
-            }, status=400)
-        
-        students = Student.objects.filter(id__in=student_ids)
-        updated_count = 0
-        
-        with transaction.atomic():
-            for student in students:
-                if student.has_system_access():
-                    student.user.is_active = False
-                    student.user.save()
-                    updated_count += 1
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Деактивировано {updated_count} аккаунтов студентов',
-            'updated_count': updated_count
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Ошибка при массовой деактивации: {str(e)}'
-        }, status=500)
-
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
-def student_bulk_delete_api(request):
-    """API массового удаления студентов"""
-    try:
-        data = json.loads(request.body)
-        student_ids = data.get('student_ids', [])
-        
-        if not student_ids:
-            return JsonResponse({
-                'success': False,
-                'message': 'Не выбраны студенты для удаления'
-            }, status=400)
-        
-        students = Student.objects.filter(id__in=student_ids)
-        deleted_count = 0
-        
-        with transaction.atomic():
-            for student in students:
-                # Удаляем связанного пользователя если есть
-                if student.has_system_access():
-                    student.user.delete()
-                
-                student.delete()
-                deleted_count += 1
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Удалено {deleted_count} студентов',
-            'deleted_ids': student_ids,
-            'deleted_count': deleted_count
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Ошибка при массовом удалении: {str(e)}'
-        }, status=500)
-
-@login_required
-@require_http_methods(["POST"])
-@csrf_exempt
-def student_bulk_create_access_api(request):
-    """API массового создания доступа для студентов"""
-    try:
-        data = json.loads(request.body)
-        student_ids = data.get('student_ids', [])
-        
-        if not student_ids:
-            return JsonResponse({
-                'success': False,
-                'message': 'Не выбраны студенты для создания доступа'
-            }, status=400)
-        
-        students = Student.objects.filter(id__in=student_ids)
-        created_count = 0
-        created_accounts = []
-        
-        with transaction.atomic():
-            for student in students:
-                if not student.has_system_access():
-                    try:
-                        username = generate_username(student.first_name, student.last_name)
-                        password = generate_password()
-                        
-                        user = User.objects.create_user(
-                            username=username,
-                            email=student.email,
-                            password=password,
-                            first_name=student.first_name,
-                            last_name=student.last_name,
-                            is_active=True,
-                        )
-                        
-                        student.user = user
-                        student.save()
-                        
-                        created_accounts.append({
-                            'student_name': student.get_full_name(),
-                            'username': username,
-                            'password': password
-                        })
-                        created_count += 1
-                        
-                    except Exception as e:
-                        continue  # Пропускаем если не удалось создать
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Создан доступ для {created_count} студентов',
-            'created_count': created_count,
-            'accounts': created_accounts
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Ошибка при массовом создании доступа: {str(e)}'
-        }, status=500)
-
-# ====================================
-# ЭКСПОРТ В EXCEL
-# ====================================
-
-def create_excel_workbook():
-    """Создать Excel workbook со стилями"""
-    if not EXCEL_AVAILABLE:
-        raise ImportError("openpyxl не установлен")
+@swagger_auto_schema(
+    method='post',
+    operation_description="Сбросить пароль студента",
+    responses={
+        200: openapi.Response('Пароль сброшен', openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                'message': openapi.Schema(type=openapi.TYPE_STRING),
+                'password': openapi.Schema(type=openapi.TYPE_STRING),
+                'email_sent': openapi.Schema(type=openapi.TYPE_BOOLEAN)
+            }
+        )),
+        400: 'У студента нет аккаунта',
+        404: 'Студент не найден',
+        500: 'Ошибка сервера'
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def student_reset_password_api(request, student_id):
+    """Сбросить пароль студента"""
+    if not MODELS_AVAILABLE:
+        return JsonResponse({'success': False, 'message': 'Модели недоступны'}, status=500)
     
-    wb = openpyxl.Workbook()
-    return wb
-
-@login_required
-def faculty_export_view(request):
-    """Экспорт факультетов в Excel"""
     try:
-        if not EXCEL_AVAILABLE:
-            messages.error(request, 'Экспорт недоступен: не установлен openpyxl')
-            return redirect('admin_faculties')
+        student = get_object_or_404(Student, id=student_id)
         
-        # Получаем параметры фильтрации
-        search = request.GET.get('search', '')
-        status_filter = request.GET.get('status', '')
-        selected_ids = request.GET.get('selected', '')
+        # Проверяем что у студента есть аккаунт
+        if not hasattr(student, 'user') or not student.user:
+            return JsonResponse({
+                'success': False,
+                'message': 'У студента нет доступа к системе'
+            }, status=400)
         
-        # Формируем queryset
-        queryset = Faculty.objects.all()
+        # Генерируем новый пароль
+        new_password = generate_password()
+        student.user.set_password(new_password)
+        student.user.save()
         
-        if selected_ids:
-            faculty_ids = [int(id) for id in selected_ids.split(',') if id.isdigit()]
-            queryset = queryset.filter(id__in=faculty_ids)
-        else:
-            if search:
-                queryset = queryset.filter(name__icontains=search)
-            
-            if status_filter == 'active':
-                queryset = queryset.filter(is_active=True)
-            elif status_filter == 'inactive':
-                queryset = queryset.filter(is_active=False)
+        # Отправляем на email
+        email_sent = send_password_email(student, new_password)
         
-        # Создаем Excel файл
-        wb = create_excel_workbook()
-        ws = wb.active
-        ws.title = "Факультеты"
-        
-        # Стили
-        header_font = Font(bold=True)
-        header_fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
-        
-        # Заголовки
-        headers = ['№', 'Название', 'Код', 'Описание', 'Статус', 'Групп', 'Студентов']
-        for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col, value=header)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = Alignment(horizontal="center")
-        
-        # Данные
-        for row_idx, faculty in enumerate(queryset, 2):
-            ws.cell(row=row_idx, column=1, value=row_idx-1)
-            ws.cell(row=row_idx, column=2, value=faculty.name)
-            ws.cell(row=row_idx, column=3, value=faculty.code)
-            ws.cell(row=row_idx, column=4, value=faculty.description or '')
-            ws.cell(row=row_idx, column=5, value='Активный' if faculty.is_active else 'Неактивный')
-            ws.cell(row=row_idx, column=6, value=faculty.groups_count)
-            ws.cell(row=row_idx, column=7, value=faculty.students_count)
-        
-        # Автоширина колонок
-        for column in ws.columns:
-            max_length = max(len(str(cell.value or '')) for cell in column)
-            ws.column_dimensions[column[0].column_letter].width = min(max_length + 2, 50)
-        
-        # Сохраняем в память
-        buffer = BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
-        
-        # Отправляем файл
-        response = HttpResponse(
-            buffer.read(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        
-        filename = f'faculties_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-        if selected_ids:
-            filename = f'selected_faculties_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-        
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response
+        return JsonResponse({
+            'success': True,
+            'message': f'Новый пароль {"отправлен на email" if email_sent else "сгенерирован"}: {new_password}',
+            'password': new_password,
+            'email_sent': email_sent
+        })
         
     except Exception as e:
-        messages.error(request, f'Ошибка при экспорте: {str(e)}')
-        return redirect('admin_faculties')
+        return JsonResponse({
+            'success': False,
+            'message': f'Ошибка при сбросе пароля: {str(e)}'
+        }, status=500)
 
-@login_required
+# ====================================
+# МАССОВЫЕ ОПЕРАЦИИ
+# ====================================
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Массовая активация студентов",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'mode': openapi.Schema(type=openapi.TYPE_STRING, description='Режим: selected или all'),
+            'student_ids': openapi.Schema(
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Schema(type=openapi.TYPE_INTEGER),
+                description='Список ID студентов (для режима selected)'
+            ),
+            'filters': openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                description='Фильтры (для режима all)',
+                properties={
+                    'search': openapi.Schema(type=openapi.TYPE_STRING),
+                    'group': openapi.Schema(type=openapi.TYPE_STRING),
+                    'status': openapi.Schema(type=openapi.TYPE_STRING)
+                }
+            )
+        }
+    ),
+    responses={
+        200: openapi.Response('Студенты активированы', openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                'message': openapi.Schema(type=openapi.TYPE_STRING)
+            }
+        )),
+        400: 'Не выбраны студенты',
+        500: 'Ошибка сервера'
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def student_bulk_activate_api(request):
+    """Массовая активация студентов"""
+    # Импорт функции из views.py
+    from .views import student_bulk_activate_view
+    return student_bulk_activate_view(request)
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Массовая деактивация студентов",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'mode': openapi.Schema(type=openapi.TYPE_STRING, description='Режим: selected или all'),
+            'student_ids': openapi.Schema(
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Schema(type=openapi.TYPE_INTEGER),
+                description='Список ID студентов (для режима selected)'
+            ),
+            'filters': openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                description='Фильтры (для режима all)'
+            )
+        }
+    ),
+    responses={200: 'Студенты деактивированы', 400: 'Не выбраны студенты', 500: 'Ошибка сервера'}
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def student_bulk_deactivate_api(request):
+    """Массовая деактивация студентов"""
+    from .views import student_bulk_deactivate_view
+    return student_bulk_deactivate_view(request)
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Массовое удаление студентов",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'mode': openapi.Schema(type=openapi.TYPE_STRING, description='Режим: selected или all'),
+            'student_ids': openapi.Schema(
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Schema(type=openapi.TYPE_INTEGER),
+                description='Список ID студентов (для режима selected)'
+            ),
+            'filters': openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                description='Фильтры (для режима all)'
+            )
+        }
+    ),
+    responses={200: 'Студенты удалены', 400: 'Не выбраны студенты', 500: 'Ошибка сервера'}
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def student_bulk_delete_api(request):
+    """Массовое удаление студентов"""
+    from .views import student_bulk_delete_view
+    return student_bulk_delete_view(request)
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Массовое создание доступа для студентов",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'mode': openapi.Schema(type=openapi.TYPE_STRING, description='Режим: selected или all'),
+            'student_ids': openapi.Schema(
+                type=openapi.TYPE_ARRAY,
+                items=openapi.Schema(type=openapi.TYPE_INTEGER),
+                description='Список ID студентов (для режима selected)'
+            ),
+            'filters': openapi.Schema(
+                type=openapi.TYPE_OBJECT,
+                description='Фильтры (для режима all)'
+            )
+        }
+    ),
+    responses={200: 'Доступ создан', 400: 'Не выбраны студенты', 500: 'Ошибка сервера'}
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def student_bulk_create_access_api(request):
+    """Массовое создание доступа для студентов"""
+    from .views import student_bulk_create_access_view
+    return student_bulk_create_access_view(request)
+
+@swagger_auto_schema(
+    method='get',
+    operation_description="Экспорт студентов в Excel",
+    manual_parameters=[
+        openapi.Parameter('search', openapi.IN_QUERY, description="Поиск по имени/фамилии/email", type=openapi.TYPE_STRING),
+        openapi.Parameter('group', openapi.IN_QUERY, description="Фильтр по группе", type=openapi.TYPE_STRING),
+        openapi.Parameter('status', openapi.IN_QUERY, description="Фильтр по статусу", type=openapi.TYPE_STRING),
+        openapi.Parameter('selected', openapi.IN_QUERY, description="ID выбранных студентов через запятую", type=openapi.TYPE_STRING),
+        openapi.Parameter('export_all', openapi.IN_QUERY, description="Экспортировать всех", type=openapi.TYPE_STRING),
+    ],
+    responses={
+        200: openapi.Response('Excel файл', schema=openapi.Schema(type=openapi.TYPE_FILE)),
+        400: 'Нет студентов для экспорта',
+        500: 'Ошибка сервера'
+    }
+)
+@api_view(['GET'])
+@permission_classes([AllowAny])
 def student_export_view(request):
     """Экспорт студентов в Excel"""
+    print(f"=== student_export_view вызван ===")
+    print(f"Параметры запроса: {dict(request.GET)}")
+    
+    if not MODELS_AVAILABLE:
+        return JsonResponse({'success': False, 'message': 'Модели не загружены'}, status=500)
+    
     try:
-        if not EXCEL_AVAILABLE:
-            messages.error(request, 'Экспорт недоступен: не установлен openpyxl')
-            return redirect('admin_students')
+        # Получаем студентов с учетом фильтров
+        students = Student.objects.all().select_related('group', 'group__faculty', 'user')
         
-        # Получаем параметры фильтрации
-        search = request.GET.get('search', '')
-        group_filter = request.GET.get('group', '')
-        status_filter = request.GET.get('status', '')
-        account_filter = request.GET.get('account', '')
-        selected_ids = request.GET.get('selected', '')
+        # Применяем фильтры
+        search = request.GET.get('search', '').strip()
+        group_filter = request.GET.get('group', '').strip()
+        status_filter = request.GET.get('status', '').strip()
+        selected = request.GET.get('selected', '').strip()
+        export_all = request.GET.get('export_all', '').strip()
         
-        # Формируем queryset
-        queryset = Student.objects.select_related('group', 'user').all()
+        if search:
+            print(f"Применяем поиск: '{search}'")
+            students = students.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search)
+            )
         
-        if selected_ids:
-            student_ids = [int(id) for id in selected_ids.split(',') if id.isdigit()]
-            queryset = queryset.filter(id__in=student_ids)
-        else:
-            if search:
-                queryset = queryset.filter(
-                    Q(first_name__icontains=search) |
-                    Q(last_name__icontains=search) |
-                    Q(middle_name__icontains=search) |
-                    Q(email__icontains=search) |
-                    Q(student_id__icontains=search)
-                )
-            
-            if group_filter:
-                queryset = queryset.filter(group_id=group_filter)
-            
-            if status_filter:
-                queryset = queryset.filter(study_status=status_filter)
-            
-            if account_filter == 'with_access':
-                queryset = queryset.filter(user__isnull=False)
-            elif account_filter == 'without_access':
-                queryset = queryset.filter(user__isnull=True)
-            elif account_filter == 'active_accounts':
-                queryset = queryset.filter(user__isnull=False, user__is_active=True)
-            elif account_filter == 'inactive_accounts':
-                queryset = queryset.filter(user__isnull=False, user__is_active=False)
+        if group_filter:
+            print(f"Применяем фильтр группы: {group_filter}")
+            students = students.filter(group_id=group_filter)
+        
+        if status_filter:
+            print(f"Применяем фильтр статуса: '{status_filter}'")
+            if status_filter == 'active':
+                students = students.filter(user__is_active=True)
+            elif status_filter == 'inactive':
+                students = students.filter(user__is_active=False)
+        
+        # Если выбраны конкретные студенты
+        if selected and not export_all:
+            try:
+                selected_ids = [int(id) for id in selected.split(',') if id.strip()]
+                print(f"Экспорт выбранных студентов: {selected_ids}")
+                students = students.filter(id__in=selected_ids)
+            except ValueError:
+                print("Ошибка парсинга выбранных ID")
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Неверный формат выбранных студентов'
+                }, status=400)
+        
+        students_list = list(students.order_by('last_name', 'first_name'))
+        print(f"Студентов для экспорта: {len(students_list)}")
+        
+        if not students_list:
+            return JsonResponse({
+                'success': False,
+                'message': 'Нет студентов для экспорта'
+            }, status=400)
         
         # Создаем Excel файл
-        wb = create_excel_workbook()
-        ws = wb.active
-        ws.title = "Студенты"
+        try:
+            import pandas as pd
+            import io
+            from datetime import datetime
+        except ImportError:
+            return JsonResponse({
+                'success': False,
+                'message': 'Не установлены необходимые библиотеки для экспорта'
+            }, status=500)
         
-        # Стили
-        header_font = Font(bold=True)
-        header_fill = PatternFill(start_color="CCCCCC", end_color="CCCCCC", fill_type="solid")
+        data = []
+        for student in students_list:
+            data.append({
+                'ID': student.id,
+                'Фамилия': student.last_name,
+                'Имя': student.first_name,
+                'Отчество': student.middle_name or '',
+                'Email': student.email,
+                'Телефон': getattr(student, 'phone', '') or '',
+                'Группа': student.group.name if student.group else '',
+                'Факультет': student.group.faculty.name if student.group and student.group.faculty else '',
+                'Статус': 'Активен' if (student.user and student.user.is_active) else 'Неактивен',
+                'Логин': student.user.username if student.user else '',
+                'Последний вход': student.user.last_login.strftime('%d.%m.%Y %H:%M') if (student.user and student.user.last_login) else '',
+                'Дата создания': student.created_at.strftime('%d.%m.%Y') if hasattr(student, 'created_at') else '',
+            })
         
-        # Заголовки
-        headers = [
-            '№', 'Студ. билет', 'ФИО', 'Email', 'Телефон', 
-            'Группа', 'Курс', 'Статус обучения', 'Логин', 'Статус аккаунта'
-        ]
-        for col, header in enumerate(headers, 1):
-            cell = ws.cell(row=1, column=col, value=header)
-            cell.font = header_font
-            cell.fill = header_fill
-            cell.alignment = Alignment(horizontal="center")
+        df = pd.DataFrame(data)
         
-        # Данные
-        for row_idx, student in enumerate(queryset, 2):
-            ws.cell(row=row_idx, column=1, value=row_idx-1)
-            ws.cell(row=row_idx, column=2, value=student.student_id)
-            ws.cell(row=row_idx, column=3, value=student.get_full_name())
-            ws.cell(row=row_idx, column=4, value=student.email)
-            ws.cell(row=row_idx, column=5, value=student.phone or '')
-            ws.cell(row=row_idx, column=6, value=str(student.group) if student.group else '')
-            ws.cell(row=row_idx, column=7, value=f"{student.course} курс")
-            ws.cell(row=row_idx, column=8, value=student.get_study_status_display())
-            ws.cell(row=row_idx, column=9, value=student.username or '')
+        # Создаем Excel файл в памяти
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Студенты', index=False)
             
-            # Статус аккаунта
-            if student.has_system_access():
-                account_status = 'Активен' if student.is_active_account else 'Заблокирован'
-            else:
-                account_status = 'Нет доступа'
-            ws.cell(row=row_idx, column=10, value=account_status)
+            # Автоширина колонок
+            worksheet = writer.sheets['Студенты']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
         
-        # Автоширина колонок
-        for column in ws.columns:
-            max_length = max(len(str(cell.value or '')) for cell in column)
-            ws.column_dimensions[column[0].column_letter].width = min(max_length + 2, 50)
+        output.seek(0)
         
-        # Сохраняем в память
-        buffer = BytesIO()
-        wb.save(buffer)
-        buffer.seek(0)
-        
-        # Отправляем файл
+        # Возвращаем файл
         response = HttpResponse(
-            buffer.read(),
+            output.read(),
             content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
         )
         
-        filename = f'students_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-        if selected_ids:
-            filename = f'selected_students_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
-        
+        # Формируем имя файла
+        if selected and not export_all:
+            filename = f'students_selected_{len(students_list)}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        else:
+            filename = f'students_all_{len(students_list)}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+            
         response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        print(f"Excel файл создан успешно: {filename}")
         return response
         
     except Exception as e:
-        messages.error(request, f'Ошибка при экспорте: {str(e)}')
-        return redirect('admin_students')
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"ОШИБКА при экспорте:")
+        print(f"Тип ошибки: {type(e).__name__}")
+        print(f"Сообщение: {str(e)}")
+        print(f"Traceback:\n{error_details}")
+        
+        return JsonResponse({
+            'success': False,
+            'message': f'Ошибка при экспорте: {str(e)}',
+            'error_type': type(e).__name__
+        }, status=500)
+
+
+@swagger_auto_schema(
+    method='get',
+    operation_description="Получить список студентов (для AJAX)",
+    manual_parameters=[
+        openapi.Parameter('search', openapi.IN_QUERY, description="Поиск", type=openapi.TYPE_STRING),
+        openapi.Parameter('page', openapi.IN_QUERY, description="Номер страницы", type=openapi.TYPE_INTEGER),
+    ],
+    responses={
+        200: openapi.Response('Список студентов', openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                'students': openapi.Schema(
+                    type=openapi.TYPE_ARRAY,
+                    items=openapi.Schema(
+                        type=openapi.TYPE_OBJECT,
+                        properties={
+                            'id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                            'full_name': openapi.Schema(type=openapi.TYPE_STRING),
+                            'email': openapi.Schema(type=openapi.TYPE_STRING),
+                            'group': openapi.Schema(type=openapi.TYPE_STRING),
+                            'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                            'has_access': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                        }
+                    )
+                ),
+                'pagination': openapi.Schema(type=openapi.TYPE_OBJECT)
+            }
+        )),
+        500: 'Ошибка сервера'
+    }
+)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def student_list_api(request):
+    """API для получения списка студентов (AJAX)"""
+    if not MODELS_AVAILABLE:
+        return JsonResponse({'success': False, 'message': 'Модели недоступны'}, status=500)
+    
+    try:
+        students = Student.objects.select_related('user', 'group').all()
+        
+        # Фильтрация
+        search = request.GET.get('search', '').strip()
+        if search:
+            students = students.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(email__icontains=search)
+            )
+        
+        # Пагинация
+        from django.core.paginator import Paginator
+        paginator = Paginator(students, 20)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+        
+        # Сериализация
+        students_data = []
+        for student in page_obj:
+            students_data.append({
+                'id': student.id,
+                'full_name': student.get_full_name(),
+                'email': student.email,
+                'group': student.group.name if student.group else '',
+                'is_active': hasattr(student, 'user') and student.user and student.user.is_active,
+                'has_access': hasattr(student, 'user') and student.user is not None,
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'students': students_data,
+            'pagination': {
+                'page': page_obj.number,
+                'pages': paginator.num_pages,
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous(),
+                'count': paginator.count,
+            }
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+
+# ====================================
+# ЗАГЛУШКИ ДЛЯ ФАКУЛЬТЕТОВ
+# ====================================
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Удалить факультет",
+    responses={200: 'Факультет удален', 400: 'Есть связанные группы', 500: 'Ошибка сервера'}
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def faculty_delete_api(request, faculty_id):
+    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)
+
+@swagger_auto_schema(
+    method='post',
+    operation_description="Переключить статус факультета",
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Новый статус')
+        }
+    )
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def faculty_toggle_status_api(request, faculty_id):
+    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def faculty_bulk_activate_api(request):
+    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def faculty_bulk_deactivate_api(request):
+    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def faculty_bulk_delete_api(request):
+    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def faculty_export_view(request):
+    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)

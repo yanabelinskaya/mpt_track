@@ -1,0 +1,1113 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}{{ student.get_full_name }} - МПТ Журнал{% endblock %}
+{% block page_title %}Профиль студента{% endblock %}
+{% block mobile_title %}{{ student.get_short_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<style>
+.profile-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.profile-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.profile-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.student-avatar {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(45deg, var(--bs-primary), #6366f1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.status-indicator {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 3px solid var(--sidebar-bg);
+}
+
+.status-indicator.active {
+    background: #10b981;
+}
+
+.status-indicator.inactive {
+    background: #ef4444;
+}
+
+.student-info {
+    flex: 1;
+}
+
+.student-name {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+}
+
+.student-meta {
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.status-pill.status-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-pill.status-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.info-section {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.info-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--bs-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: 1rem;
+    color: var(--bs-body-color);
+    font-weight: 500;
+}
+
+.info-value.empty {
+    color: var(--bs-secondary);
+    font-style: italic;
+}
+
+.access-section {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.access-status {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.access-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.access-icon.granted {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.access-icon.denied {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.access-details h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+    color: var(--bs-body-color);
+}
+
+.access-details p {
+    font-size: 0.85rem;
+    color: var(--bs-secondary);
+    margin: 0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--sidebar-bg);
+    color: var(--nav-link-color);
+    border: 1px solid var(--sidebar-border);
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.page-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.back-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.main-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Темная тема */
+[data-bs-theme="dark"] .access-section {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-bs-theme="dark"] .access-icon.granted {
+    background: #064e3b;
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .access-icon.denied {
+    background: #7f1d1d;
+    color: #fee2e2;
+}
+
+[data-bs-theme="dark"] .status-pill.status-active {
+    background: #064e3b;
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .status-pill.status-inactive {
+    background: #7f1d1d;
+    color: #fca5a5;
+}
+
+/* ====================================
+   СТИЛИ МОДАЛЬНЫХ ОКОН
+   ==================================== */
+
+/* Общие стили для всех модальных окон */
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    background: var(--sidebar-bg);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--sidebar-bg), var(--sidebar-border));
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    padding: 2rem 2rem 1rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    position: relative;
+}
+
+.modal-body {
+    padding: 1.5rem 2rem 2rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    background: var(--sidebar-bg);
+    color: var(--bs-body-color);
+}
+
+.modal-footer {
+    background: var(--sidebar-bg);
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    border-top: 1px solid var(--sidebar-border);
+    padding: 1.5rem 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--bs-body-color);
+    text-align: center;
+    width: 100%;
+}
+
+/* Иконки модальных окон */
+.modal-icon-danger {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #dc2626;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
+    animation: pulse 2s infinite;
+}
+
+.modal-icon-success {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #16a34a;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(22, 163, 74, 0.2);
+    animation: bounce 1s ease-out;
+}
+
+.modal-icon-warning {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fef3c7, #fed7aa);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #d97706;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(217, 119, 6, 0.2);
+    animation: shake 0.5s ease-in-out;
+}
+
+/* Анимации для иконок */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes bounce {
+    0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
+    40%, 43% { transform: translate3d(0,-10px,0); }
+    70% { transform: translate3d(0,-5px,0); }
+    90% { transform: translate3d(0,-2px,0); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Кнопки в модальных окнах */
+.modal .btn {
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.modal .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.modal .btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+    color: white;
+}
+
+.modal .btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+}
+
+.modal .btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    color: white;
+}
+
+.modal .btn-success:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: white;
+}
+
+.modal .btn-warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border: none;
+    color: white;
+}
+
+.modal .btn-warning:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    color: white;
+}
+
+.modal .btn-outline-secondary {
+    border: 2px solid var(--sidebar-border);
+    color: var(--bs-secondary);
+    background: var(--sidebar-bg);
+}
+
+.modal .btn-outline-secondary:hover {
+    background: var(--sidebar-border);
+    border-color: var(--bs-secondary);
+    color: var(--bs-body-color);
+}
+
+/* Backdrop улучшенный */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+/* Темная тема для модальных окон */
+[data-bs-theme="dark"] .modal-icon-danger {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    color: #fca5a5;
+}
+
+[data-bs-theme="dark"] .modal-icon-success {
+    background: linear-gradient(135deg, #064e3b, #065f46);
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .modal-icon-warning {
+    background: linear-gradient(135deg, #78350f, #92400e);
+    color: #fbbf24;
+}
+
+/* Стили для уведомлений */
+.alert {
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+    border: none;
+    padding: 1rem 1.5rem;
+    font-weight: 500;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #065f46;
+    border-left: 4px solid #10b981;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #7f1d1d;
+    border-left: 4px solid #ef4444;
+}
+
+/* Темная тема для уведомлений */
+[data-bs-theme="dark"] .alert-success {
+    background: linear-gradient(135deg, #064e3b, #065f46);
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .alert-danger {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    color: #fca5a5;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .student-avatar {
+        align-self: center;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .page-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .back-actions,
+    .main-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .modal-dialog {
+        margin: 1rem;
+        max-width: calc(100vw - 2rem);
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .modal .btn {
+        width: 100%;
+        margin: 0;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- Основная информация о студенте -->
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="student-avatar">
+                <span>{{ student.first_name|first }}{{ student.last_name|first }}</span>
+                <div class="status-indicator {% if student.is_active_account %}active{% else %}inactive{% endif %}"></div>
+            </div>
+            
+            <div class="student-info">
+                <h1 class="student-name">{{ student.get_full_name }}</h1>
+                <div class="student-meta">
+                    <i class="bi bi-envelope"></i> {{ student.email }}
+                    {% if student.group %}
+                        • <i class="bi bi-collection"></i> {{ student.group.name }}
+                    {% endif %}
+                </div>
+                
+                <div class="status-pill {% if student.is_active_account %}status-active{% else %}status-inactive{% endif %}">
+                    <div class="status-dot"></div>
+                    {% if student.is_active_account %}Активен{% else %}Неактивен{% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Основные данные -->
+        <div class="info-section">
+            <div class="section-title">
+                <i class="bi bi-person"></i>
+                Основная информация
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">ФИО</div>
+                    <div class="info-value">{{ student.get_full_name }}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Email</div>
+                    <div class="info-value {% if not student.email %}empty{% endif %}">
+                        {% if student.email %}
+                            <a href="mailto:{{ student.email }}">{{ student.email }}</a>
+                        {% else %}
+                            Не указан
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Группа</div>
+                    <div class="info-value {% if not student.group %}empty{% endif %}">
+                        {{ student.group.name|default:"Не назначена" }}
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Статус в системе</div>
+                    <div class="info-value">
+                        {% if student.is_active_account %}
+                            <span style="color: #10b981;">Активен</span>
+                        {% else %}
+                            <span style="color: #ef4444;">Неактивен</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Доступ к системе -->
+    <div class="profile-card">
+        <div class="section-title">
+            <i class="bi bi-key"></i>
+            Доступ к системе
+        </div>
+        
+        <div class="access-section">
+            {% if student.has_system_access %}
+                <div class="access-status">
+                    <div class="access-icon granted">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div class="access-details">
+                        <h4>Доступ создан</h4>
+                        <p>Студент может входить в систему</p>
+                    </div>
+                </div>
+                
+                <div class="info-grid">
+                    <div class="info-item">
+                        <div class="info-label">Логин</div>
+                        <div class="info-value">{{ student.username }}</div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-label">Последний вход</div>
+                        <div class="info-value {% if not student.last_login %}empty{% endif %}">
+                            {% if student.last_login %}
+                                {{ student.last_login|date:"d.m.Y H:i" }}
+                            {% else %}
+                                Ещё не заходил
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-warning" onclick="showResetPasswordModal({{ student.id }})">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        Сбросить пароль
+                    </button>
+                    
+                    {% if student.is_active_account %}
+                        <button class="btn btn-secondary" onclick="showToggleAccessModal({{ student.id }}, false)">
+                            <i class="bi bi-lock"></i>
+                            Заблокировать
+                        </button>
+                    {% else %}
+                        <button class="btn btn-success" onclick="showToggleAccessModal({{ student.id }}, true)">
+                            <i class="bi bi-unlock"></i>
+                            Активировать
+                        </button>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="access-status">
+                    <div class="access-icon denied">
+                        <i class="bi bi-x-circle"></i>
+                    </div>
+                    <div class="access-details">
+                        <h4>Доступ не создан</h4>
+                        <p>Студент не может входить в систему</p>
+                    </div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button class="btn btn-success" onclick="showCreateAccessModal({{ student.id }})">
+                        <i class="bi bi-key"></i>
+                        Создать доступ к системе
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Действия со страницей -->
+<div class="page-actions">
+    <div class="back-actions">
+        <a href="{% url 'admin_students' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i>
+            Назад к списку
+        </a>
+    </div>
+    
+    <div class="main-actions">
+        <a href="{% url 'admin_student_edit' student.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil"></i>
+            Редактировать
+        </a>
+        
+        <button class="btn btn-danger" onclick="showDeleteModal({{ student.id }})">
+            <i class="bi bi-trash"></i>
+            Удалить
+        </button>
+    </div>
+</div>
+
+<!-- Модальные окна -->
+
+<!-- Модальное окно создания доступа -->
+<div class="modal fade" id="createAccessModal" tabindex="-1" aria-labelledby="createAccessModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createAccessModalLabel">Создание доступа</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-success">
+                    <i class="bi bi-key"></i>
+                </div>
+                <p><strong>Создать доступ к системе для студента?</strong></p>
+                <p class="text-muted">На указанный email будут отправлены логин и пароль для входа в систему.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-success" id="confirmCreateAccess">
+                    <i class="bi bi-key"></i>
+                    Создать доступ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно сброса пароля -->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resetPasswordModalLabel">Сброс пароля</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-warning">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </div>
+                <p><strong>Сбросить пароль студента?</strong></p>
+                <p class="text-muted">Новый пароль будет сгенерирован и отправлен на email студента.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-warning" id="confirmResetPassword">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Сбросить пароль
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно изменения доступа -->
+<div class="modal fade" id="toggleAccessModal" tabindex="-1" aria-labelledby="toggleAccessModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="toggleAccessModalLabel">Изменение доступа</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-warning" id="toggleAccessIcon">
+                    <i class="bi bi-lock"></i>
+                </div>
+                <p id="toggleAccessText"><strong>Заблокировать доступ студента?</strong></p>
+                <p class="text-muted" id="toggleAccessDescription">Студент не сможет войти в систему до активации.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-warning" id="confirmToggleAccess">
+                    <i class="bi bi-lock"></i>
+                    Заблокировать
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Удаление студента</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-danger">
+                    <i class="bi bi-trash"></i>
+                </div>
+                <p><strong>Удалить студента?</strong></p>
+                <p class="text-muted">Это действие нельзя отменить! Все данные студента будут безвозвратно удалены.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">
+                    <i class="bi bi-trash"></i>
+                    Удалить студента
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+let currentStudentId = null;
+let currentToggleAction = null;
+
+// Показать уведомление с красивым дизайном
+function showNotification(message, type = 'success') {
+    const alertClass = type === 'error' ? 'alert-danger' : 'alert-success';
+    const icon = type === 'error' ? 'bi-exclamation-triangle' : 'bi-check-circle';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            <i class="bi ${icon} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+    
+    setTimeout(() => {
+        const alert = document.querySelector('.alert:last-child');
+        if (alert) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+// Показать модальное окно создания доступа
+function showCreateAccessModal(studentId) {
+    currentStudentId = studentId;
+    const modal = new bootstrap.Modal(document.getElementById('createAccessModal'));
+    modal.show();
+}
+
+// Показать модальное окно сброса пароля
+function showResetPasswordModal(studentId) {
+    currentStudentId = studentId;
+    const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+    modal.show();
+}
+
+// Показать модальное окно изменения доступа
+function showToggleAccessModal(studentId, activate) {
+    currentStudentId = studentId;
+    currentToggleAction = activate;
+    
+    const modal = new bootstrap.Modal(document.getElementById('toggleAccessModal'));
+    const icon = document.getElementById('toggleAccessIcon');
+    const text = document.getElementById('toggleAccessText');
+    const description = document.getElementById('toggleAccessDescription');
+    const button = document.getElementById('confirmToggleAccess');
+    
+    if (activate) {
+        icon.innerHTML = '<i class="bi bi-unlock"></i>';
+        icon.className = 'modal-icon-success';
+        text.innerHTML = '<strong>Активировать доступ студента?</strong>';
+        description.textContent = 'Студент сможет войти в систему и использовать электронный журнал.';
+        button.className = 'btn btn-success';
+        button.innerHTML = '<i class="bi bi-unlock"></i> Активировать';
+    } else {
+        icon.innerHTML = '<i class="bi bi-lock"></i>';
+        icon.className = 'modal-icon-warning';
+        text.innerHTML = '<strong>Заблокировать доступ студента?</strong>';
+        description.textContent = 'Студент не сможет войти в систему до активации.';
+        button.className = 'btn btn-warning';
+        button.innerHTML = '<i class="bi bi-lock"></i> Заблокировать';
+    }
+    
+    modal.show();
+}
+
+// Показать модальное окно удаления
+function showDeleteModal(studentId) {
+    currentStudentId = studentId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+// Обработчики подтверждения
+
+// Создать доступ к системе
+document.getElementById('confirmCreateAccess').addEventListener('click', function() {
+    if (!currentStudentId) return;
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('createAccessModal'));
+    modal.hide();
+    
+    fetch(`/students/${currentStudentId}/create-access/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Доступ создан! Логин и пароль отправлены на email студента.');
+            setTimeout(() => window.location.reload(), 2000);
+        } else {
+            showNotification(data.error || 'Ошибка при создании доступа', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при создании доступа', 'error');
+    });
+});
+
+// Сбросить пароль
+document.getElementById('confirmResetPassword').addEventListener('click', function() {
+    if (!currentStudentId) return;
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal'));
+    modal.hide();
+    
+    fetch(`/students/${currentStudentId}/reset-password/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Пароль сброшен! Новый пароль отправлен на email студента.');
+        } else {
+            showNotification(data.error || 'Ошибка при сбросе пароля', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при сбросе пароля', 'error');
+    });
+});
+
+// Заблокировать/активировать доступ
+document.getElementById('confirmToggleAccess').addEventListener('click', function() {
+    if (!currentStudentId) return;
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('toggleAccessModal'));
+    modal.hide();
+    
+    fetch(`/students/${currentStudentId}/toggle-status/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(`Доступ ${currentToggleAction ? 'активирован' : 'заблокирован'}`);
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showNotification(data.error || 'Ошибка при изменении доступа', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при изменении доступа', 'error');
+    });
+});
+
+// Удалить студента
+document.getElementById('confirmDelete').addEventListener('click', function() {
+    if (!currentStudentId) return;
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+    modal.hide();
+    
+    fetch(`/students/${currentStudentId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Студент удален');
+            setTimeout(() => {
+                window.location.href = "{% url 'admin_students' %}";
+            }, 1500);
+        } else {
+            showNotification(data.error || 'Ошибка при удалении студента', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при удалении студента', 'error');
+    });
+});
+
+// Исправление проблемы с aria-hidden для модальных окон
+document.addEventListener('show.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+});
+
+document.addEventListener('hidden.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+    // Очищаем переменные
+    currentStudentId = null;
+    currentToggleAction = null;
+});
+</script>
+{% endblock %}

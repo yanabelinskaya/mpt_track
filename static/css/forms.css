@@ -1,0 +1,478 @@
+/* Добавьте эти стили к существующим в блоке {% block extra_css %} */
+
+/* ====================================
+   УЛУЧШЕННЫЕ СТИЛИ МОДАЛЬНЫХ ОКОН
+   ==================================== */
+
+/* Общие стили для всех модальных окон */
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    background: var(--surface);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--surface-hover), var(--surface-active));
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    padding: 2rem 2rem 1rem;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+}
+
+.modal-body {
+    padding: 1.5rem 2rem 2rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    background: var(--surface);
+    color: var(--text-primary);
+}
+
+.modal-footer {
+    background: var(--surface-hover);
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    border-top: 1px solid var(--border);
+    padding: 1.5rem 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-primary);
+    text-align: center;
+    width: 100%;
+}
+
+/* Иконки модальных окон */
+.modal-icon-danger {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #dc2626;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
+    animation: pulse 2s infinite;
+}
+
+.modal-icon-success {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #16a34a;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(22, 163, 74, 0.2);
+    animation: bounce 1s ease-out;
+}
+
+.modal-icon-warning {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fef3c7, #fed7aa);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #d97706;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(217, 119, 6, 0.2);
+    animation: shake 0.5s ease-in-out;
+}
+
+.modal-icon-info {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #2563eb;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
+}
+
+/* Анимации для иконок */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes bounce {
+    0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
+    40%, 43% { transform: translate3d(0,-10px,0); }
+    70% { transform: translate3d(0,-5px,0); }
+    90% { transform: translate3d(0,-2px,0); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Кнопки в модальных окнах */
+.modal .btn {
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.modal .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.modal .btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+    color: white;
+}
+
+.modal .btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+}
+
+.modal .btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    color: white;
+}
+
+.modal .btn-success:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+    color: white;
+}
+
+.modal .btn-warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border: none;
+    color: white;
+}
+
+.modal .btn-warning:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+    color: white;
+}
+
+.modal .btn-outline-secondary {
+    border: 2px solid var(--border);
+    color: var(--text-secondary);
+    background: var(--surface);
+}
+
+.modal .btn-outline-secondary:hover {
+    background: var(--surface-hover);
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
+/* Backdrop улучшенный */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+/* Стили для списков в модальных окнах */
+.student-list {
+    max-height: 200px;
+    overflow-y: auto;
+    background: var(--surface-hover);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 16px 0;
+    border: 1px solid var(--border);
+}
+
+.student-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.student-item:last-child {
+    border-bottom: none;
+}
+
+.student-avatar-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 12px;
+}
+
+.student-name {
+    font-weight: 500;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+}
+
+/* Бейджи для подсчета */
+.count-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, var(--primary), #2563eb);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 4px;
+}
+
+.all-students-badge {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    color: white;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+/* Информационные блоки в модальных окнах */
+.modal-info-section {
+    background: var(--surface-active);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.modal-info-title {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.modal-info-text {
+    color: var(--text-primary);
+    line-height: 1.5;
+    margin: 0;
+}
+
+/* Темная тема для модальных окон */
+[data-bs-theme="dark"] .modal-icon-danger {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    color: #fca5a5;
+}
+
+[data-bs-theme="dark"] .modal-icon-success {
+    background: linear-gradient(135deg, #064e3b, #065f46);
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .modal-icon-warning {
+    background: linear-gradient(135deg, #78350f, #92400e);
+    color: #fbbf24;
+}
+
+[data-bs-theme="dark"] .modal-icon-info {
+    background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+    color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .student-list {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-bs-theme="dark"] .modal-info-section {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+/* Адаптивность для мобильных */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 1rem;
+        max-width: calc(100vw - 2rem);
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .modal .btn {
+        width: 100%;
+        margin: 0;
+    }
+    
+    .modal-icon-danger,
+    .modal-icon-success,
+    .modal-icon-warning,
+    .modal-icon-info {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .student-list {
+        max-height: 150px;
+    }
+}
+
+/* Анимация появления модальных окон */
+.modal.fade .modal-dialog {
+    transition: transform 0.3s ease-out;
+    transform: translate(0, -50px);
+}
+
+.modal.show .modal-dialog {
+    transform: none;
+}
+
+/* Стили для уведомлений */
+.alert {
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+    border: none;
+    padding: 1rem 1.5rem;
+    font-weight: 500;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #065f46;
+    border-left: 4px solid #10b981;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #7f1d1d;
+    border-left: 4px solid #ef4444;
+}
+
+.alert-warning {
+    background: linear-gradient(135deg, #fef3c7, #fed7aa);
+    color: #78350f;
+    border-left: 4px solid #f59e0b;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #1e3a8a;
+    border-left: 4px solid #3b82f6;
+}
+
+/* Темная тема для уведомлений */
+[data-bs-theme="dark"] .alert-success {
+    background: linear-gradient(135deg, #064e3b, #065f46);
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .alert-danger {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    color: #fca5a5;
+}
+
+[data-bs-theme="dark"] .alert-warning {
+    background: linear-gradient(135deg, #78350f, #92400e);
+    color: #fbbf24;
+}
+
+[data-bs-theme="dark"] .alert-info {
+    background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+    color: #93c5fd;
+}
+
+/* Загрузочная анимация */
+#loadingOverlay {
+    background: rgba(0, 0, 0, 0.6) !important;
+    backdrop-filter: blur(4px) !important;
+}
+
+#loadingOverlay .bg-white {
+    background: var(--surface) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+}
+
+#loadingOverlay .spinner-border {
+    color: var(--primary) !important;
+}
+
+/* Дополнительные стили для улучшенного UX */
+.modal-content {
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* Скроллбар для модальных окон */
+.modal-body::-webkit-scrollbar,
+.student-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.modal-body::-webkit-scrollbar-track,
+.student-list::-webkit-scrollbar-track {
+    background: var(--surface-hover);
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb,
+.student-list::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+.modal-body::-webkit-scrollbar-thumb:hover,
+.student-list::-webkit-scrollbar-thumb:hover {
+    background: var(--text-muted);
+}

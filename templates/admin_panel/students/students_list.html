@@ -1,0 +1,2158 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Студенты - МПТ Журнал{% endblock %}
+{% block page_title %}Управление студентами{% endblock %}
+{% block mobile_title %}Студенты{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tables.css' %}">
+<style>
+/* Стили для модальных окон */
+.modal-icon-danger {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: #dc2626;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
+    animation: pulse 2s infinite;
+}
+
+.modal-icon-success {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: #16a34a;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(22, 163, 74, 0.2);
+    animation: bounce 1s ease-out;
+}
+
+.modal-icon-warning {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fef3c7, #fed7aa);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: #d97706;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(217, 119, 6, 0.2);
+    animation: shake 0.5s ease-in-out;
+}
+
+.modal-icon-info {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    color: #2563eb;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
+}
+
+/* Анимации */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes bounce {
+    0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
+    40%, 43% { transform: translate3d(0,-10px,0); }
+    70% { transform: translate3d(0,-5px,0); }
+    90% { transform: translate3d(0,-2px,0); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+
+/* Улучшенные стили модальных окон */
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+}
+
+.modal-header {
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    padding: 2rem 2rem 1rem;
+}
+
+.modal-body {
+    padding: 1rem 2rem 2rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.modal-footer {
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    padding: 1.5rem 2rem;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: #485569;
+}
+
+.btn {
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #10b981, #059669);
+    border: none;
+    color: white;
+}
+
+.btn-success:hover {
+    background: linear-gradient(135deg, #059669, #047857);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #f59e0b, #d97706);
+    border: none;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #d97706, #b45309);
+}
+
+.btn-outline-secondary {
+    border: 2px solid #e5e7eb;
+    color: #6b7280;
+    background: white;
+}
+
+.btn-outline-secondary:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    color: #374151;
+}
+
+/* Backdrop */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+/* Стили для списков в модальных окнах */
+.student-list {
+    max-height: 200px;
+    overflow-y: auto;
+    border-radius: 8px;
+    padding: 12px;
+    margin: 16px 0;
+}
+
+.student-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.student-item:last-child {
+    border-bottom: none;
+}
+
+.student-avatar-small {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 600;
+    margin-right: 12px;
+}
+
+.student-name {
+    font-weight: 500;
+    color: #485569;
+}
+
+.count-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: white;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin: 0 4px;
+}
+
+
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.empty-illustration {
+    font-size: 4rem;
+    color: #e5e7eb;
+    margin-bottom: 24px;
+}
+
+.empty-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+}
+
+.empty-description {
+    color: #6b7280;
+    margin-bottom: 32px;
+    line-height: 1.6;
+}
+
+.empty-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.empty-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.empty-btn.primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.empty-btn.primary:hover {
+    background: #2563eb;
+}
+
+.empty-btn.secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.empty-btn.secondary:hover {
+    background: #e5e7eb;
+}
+
+/* Анимации для строк */
+.data-row {
+    transition: all 0.3s ease;
+}
+
+.data-row:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Стили для уведомлений */
+.alert {
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Компактная панель поиска и фильтров -->
+<div class="search-filter-bar">
+    <form method="get" class="search-form">
+        <div class="search-container">
+            <div class="search-input-wrapper">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" name="search" value="{{ search }}" 
+                       placeholder="Найти студента..." class="search-field">
+                {% if search %}
+                    <button type="button" class="clear-search" onclick="clearSearch()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                {% endif %}
+            </div>
+            
+            <div class="filter-dropdown">
+                <button type="button" class="filter-trigger" id="filterTrigger">
+                    <i class="bi bi-funnel"></i>
+                    <span>Фильтры</span>
+                    {% if group_filter %}
+                        <span class="filter-badge">1</span>
+                    {% endif %}
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                
+                <div class="filter-menu" id="filterMenu">
+                    <div class="filter-section">
+                        <label class="filter-title">Группа</label>
+                        <select name="group" class="filter-select" onchange="this.form.submit()">
+                            <option value="">Все группы</option>
+                            {% for group in groups %}
+                                <option value="{{ group.id }}" {% if group_filter == group.id|stringformat:"s" %}selected{% endif %}>
+                                    {{ group.name }} ({{ group.students_count }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="filter-section">
+                        <label class="filter-title">Статус</label>
+                        <div class="status-filters">
+                            <label class="status-option">
+                                <input type="radio" name="status" value="" {% if not status_filter %}checked{% endif %}>
+                                <span class="status-dot all"></span>
+                                <span>Все</span>
+                            </label>
+                            <label class="status-option">
+                                <input type="radio" name="status" value="active" {% if status_filter == 'active' %}checked{% endif %}>
+                                <span class="status-dot active"></span>
+                                <span>Активные</span>
+                            </label>
+                            <label class="status-option">
+                                <input type="radio" name="status" value="inactive" {% if status_filter == 'inactive' %}checked{% endif %}>
+                                <span class="status-dot inactive"></span>
+                                <span>Неактивные</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button type="submit" class="apply-filters">
+                            <i class="bi bi-check"></i>
+                            Применить
+                        </button>
+                        <a href="{% url 'admin_students' %}" class="reset-filters">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            Сбросить
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Основная панель студентов -->
+<div class="data-panel students-panel">
+    <div class="panel-top">
+        <div class="panel-info">
+            <div class="info-icon">
+                <i class="bi bi-people"></i>
+            </div>
+            <div class="info-content">
+                <h1 class="panel-title">Студенты</h1>
+                <div class="panel-stats">
+                    {% if page_obj.paginator.count %}
+                        <span class="stat-item">
+                            <i class="bi bi-person"></i>
+                            {{ page_obj.paginator.count }} студентов
+                        </span>
+                        <span class="stat-separator">•</span>
+                        <span class="stat-item">
+                            <i class="bi bi-collection"></i>
+                            {{ groups.count }} групп
+                        </span>
+                    {% else %}
+                        <span class="stat-item empty">Студенты не найдены</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel-controls">
+            <div class="table-actions">
+                <!-- Экспорт -->
+                <div class="dropdown-action">
+                    <button class="action-btn secondary" id="exportTrigger" title="Экспорт">
+                        <i class="bi bi-download"></i>
+                        Экспорт
+                        <i class="bi bi-chevron-down ms-1"></i>
+                    </button>
+                    <div class="dropdown-menu" id="exportMenu">
+                        <div class="dropdown-header">
+                            <span>Экспорт всех студентов</span>
+                        </div>
+                        <a href="#" class="dropdown-item" onclick="exportAllToExcel(); return false;">
+                            <i class="bi bi-file-earmark-spreadsheet text-success"></i>
+                            Excel (.xlsx)
+                        </a>
+                        
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-header" id="exportSelectedHeader" style="display: none;">
+                            <span>Экспорт выбранных</span>
+                        </div>
+                        <a href="#" class="dropdown-item" id="exportSelectedExcel" style="display: none;" onclick="exportSelectedToExcel(); return false;">
+                            <i class="bi bi-file-earmark-spreadsheet text-success"></i>
+                            Выбранные в Excel
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Добавление студентов -->
+                <div class="dropdown-action">
+                    <button class="action-btn add-student-btn" id="addStudentTrigger">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>Добавить</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-menu" id="addStudentMenu">
+                        <button class="dropdown-item" onclick="addSingleStudent()">
+                            <i class="bi bi-person-plus"></i>
+                            <div>
+                                <span>Добавить одного студента</span>
+                                <small class="dropdown-desc">Форма с ФИО и контактами</small>
+                            </div>
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button class="dropdown-item" onclick="bulkImportStudents()">
+                            <i class="bi bi-file-earmark-spreadsheet"></i>
+                            <div>
+                                <span>Массовое добавление</span>
+                                <small class="dropdown-desc">Импорт из Excel файла</small>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if page_obj %}
+        <div class="selection-bar">
+            <div class="selection-controls">
+                <label class="select-all-wrapper">
+                    <input type="checkbox" id="selectAllStudents" class="select-checkbox">
+                    <span class="checkmark"></span>
+                    <span class="select-label">Выбрать все</span>
+                </label>
+            </div>
+            <div class="bulk-actions" id="bulkActions" style="display: none;">
+                <span class="selected-info" id="selectedInfo">Выбрано: 0</span>
+                <div class="bulk-buttons">
+                    <button class="bulk-btn" onclick="bulkCreateAccess()" style="background: #10b981; color: white;">
+                        <i class="bi bi-key"></i>
+                        Создать доступ
+                    </button>
+                    <button class="bulk-btn activate-btn" onclick="bulkActivateStudents()">
+                        <i class="bi bi-check-circle"></i>
+                        Активировать
+                    </button>
+                    <button class="bulk-btn deactivate-btn" onclick="bulkDeactivateStudents()">
+                        <i class="bi bi-x-circle"></i>
+                        Деактивировать
+                    </button>
+                    <button class="bulk-btn delete-btn" onclick="bulkDeleteStudents()">
+                        <i class="bi bi-trash"></i>
+                        Удалить
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Передаем общее количество студентов в скрипт -->
+        <script>
+            window.TOTAL_STUDENTS = {{ page_obj.paginator.count }};
+            window.CURRENT_FILTERS = {
+                search: "{{ search|default:'' }}",
+                group: "{{ group_filter|default:'' }}",
+                status: "{{ status_filter|default:'' }}"
+            };
+        </script>
+        
+        <div class="data-table students-table">
+            <div class="table-header">
+                <div class="header-col col-select"></div>
+                <div class="header-col col-student">
+                    <span class="col-title">
+                        <i class="bi bi-person"></i>
+                        Студент
+                    </span>
+                </div>
+                <div class="header-col col-group">
+                    <span class="col-title">
+                        <i class="bi bi-collection"></i>
+                        Группа
+                    </span>
+                </div>
+                <div class="header-col col-contact">
+                    <span class="col-title">
+                        <i class="bi bi-envelope"></i>
+                        Контакты
+                    </span>
+                </div>
+                <div class="header-col col-status">
+                    <span class="col-title">
+                        <i class="bi bi-shield-check"></i>
+                        Статус
+                    </span>
+                </div>
+                <div class="header-col col-actions">
+                    <span class="col-title">Действия</span>
+                </div>
+            </div>
+            
+            <div class="table-body">
+                {% for student in page_obj %}
+                    <div class="data-row" data-id="{{ student.id }}">
+                        <div class="row-col col-select">
+                            <label class="row-select-wrapper">
+                                <input type="checkbox" class="select-checkbox student-checkbox" value="{{ student.id }}">
+                                <span class="checkmark"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="row-col col-student">
+                            <div class="user-card">
+                                <div class="user-photo">
+                                    <div class="photo-placeholder">
+                                        <span class="initials">{{ student.first_name|first }}{{ student.last_name|first }}</span>
+                                    </div>
+                                    <div class="online-indicator {% if student.is_active_account %}online{% else %}offline{% endif %}"></div>
+                                </div>
+                                <div class="user-details">
+                                    <div class="user-name">{{ student.get_full_name }}</div>
+                                    <div class="user-meta">@{{ student.username }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-group">
+                            {% if student.group %}
+                                <div class="group-pill">
+                                    <i class="bi bi-collection"></i>
+                                    <span>{{ student.group.name }}</span>
+                                </div>
+                            {% else %}
+                                <span class="no-data">Не назначена</span>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="row-col col-contact">
+                            <div class="contact-info">
+                                {% if student.email %}
+                                    <div class="contact-row">
+                                        <i class="bi bi-envelope"></i>
+                                        <a href="mailto:{{ student.email }}">{{ student.email }}</a>
+                                    </div>
+                                {% endif %}
+                                {% if student.phone %}
+                                    <div class="contact-row">
+                                        <i class="bi bi-telephone"></i>
+                                        <a href="tel:{{ student.phone }}">{{ student.phone }}</a>
+                                    </div>
+                                {% endif %}
+                                {% if not student.email and not student.phone %}
+                                    <span class="no-data">—</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-status">
+                            <div class="status-pill {% if student.is_active_account %}status-active{% else %}status-inactive{% endif %}" 
+                                 onclick="toggleStudentStatus({{ student.id }})" style="cursor: pointer;" 
+                                 title="Кликните для изменения статуса">
+                                <div class="status-indicator"></div>
+                                <span>{% if student.is_active_account %}Активен{% else %}Неактивен{% endif %}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-actions">
+                            <div class="actions-menu">
+                                <button class="action-item view-action" onclick="viewStudent({{ student.id }})" title="Просмотр профиля">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="action-item edit-action" onclick="editStudent({{ student.id }})" title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="action-item delete-action" onclick="showDeleteModal({{ student.id }}, '{{ student.get_full_name }}')" title="Удалить">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        {% if page_obj.has_other_pages %}
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    <span class="info-text">
+                        Показано <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> 
+                        из <strong>{{ page_obj.paginator.count }}</strong> студентов
+                    </span>
+                </div>
+                
+                <nav class="pagination-nav">
+                    <div class="pagination-buttons">
+                        {% if page_obj.has_previous %}
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if group_filter %}group={{ group_filter }}&{% endif %}page=1" 
+                               class="page-btn first-btn" title="Первая страница">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if group_filter %}group={{ group_filter }}&{% endif %}page={{ page_obj.previous_page_number }}" 
+                               class="page-btn prev-btn" title="Предыдущая">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <span class="page-btn current">{{ num }}</span>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <a href="?{% if search %}search={{ search }}&{% endif %}{% if group_filter %}group={{ group_filter }}&{% endif %}page={{ num }}" 
+                                   class="page-btn">{{ num }}</a>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if group_filter %}group={{ group_filter }}&{% endif %}page={{ page_obj.next_page_number }}" 
+                               class="page-btn next-btn" title="Следующая">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if group_filter %}group={{ group_filter }}&{% endif %}page={{ page_obj.paginator.num_pages }}" 
+                               class="page-btn last-btn" title="Последняя страница">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </nav>
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-illustration">
+                <i class="bi bi-people"></i>
+            </div>
+            <h2 class="empty-title">Студенты не найдены</h2>
+            <p class="empty-description">
+                {% if search or group_filter %}
+                    Попробуйте изменить параметры поиска или очистить фильтры.
+                {% else %}
+                    Начните добавлять студентов в систему для управления учебным процессом.
+                {% endif %}
+            </p>
+            <div class="empty-actions">
+                {% if search or group_filter %}
+                    <a href="{% url 'admin_students' %}" class="empty-btn secondary">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        Очистить фильтры
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- МОДАЛЬНЫЕ ОКНА -->
+
+<!-- Модальное окно для удаления одного студента -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div class="w-100 text-center">
+                    <div class="modal-icon-danger mb-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                    <h5 class="modal-title" id="deleteModalLabel">Подтвердите удаление</h5>
+                </div>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-2">Вы действительно хотите удалить студента</p>
+                <strong id="studentNameToDelete" class="text-danger fs-5"></strong>?
+                <p class="text-muted mt-3 mb-0">
+                    <i class="bi bi-exclamation-circle me-1"></i>
+                    Это действие нельзя отменить. Также будет удален связанный аккаунт пользователя.
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x me-1"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="bi bi-trash me-1"></i> Удалить студента
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для массового удаления -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div class="w-100 text-center">
+                    <div class="modal-icon-danger mb-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                    <h5 class="modal-title" id="bulkDeleteModalLabel">Массовое удаление</h5>
+                </div>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-2">Вы действительно хотите удалить</p>
+                <div id="deletionTargetDisplay">
+                    <!-- Будет заполнено JavaScript -->
+                </div>
+                
+                <div id="studentListPreview" class="student-list mt-3" style="display: none;">
+                    <!-- Список студентов будет добавлен через JavaScript -->
+                </div>
+                
+                <p class="text-muted mt-3 mb-0">
+                    <i class="bi bi-exclamation-circle me-1"></i>
+                    Это действие нельзя отменить. Также будут удалены связанные аккаунты пользователей.
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x me-1"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmBulkDeleteBtn">
+                    <i class="bi bi-trash me-1"></i> Удалить студентов
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для создания доступа -->
+<div class="modal fade" id="createAccessModal" tabindex="-1" aria-labelledby="createAccessModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div class="w-100 text-center">
+                    <div class="modal-icon-success mb-3">
+                        <i class="bi bi-key-fill"></i>
+                    </div>
+                    <h5 class="modal-title" id="createAccessModalLabel">Создание доступа к системе</h5>
+                </div>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-2">Создать доступ к системе для</p>
+                <div id="accessTargetDisplay">
+                    <!-- Будет заполнено JavaScript -->
+                </div>
+                
+                <div id="accessStudentListPreview" class="student-list mt-3" style="display: none;">
+                    <!-- Список студентов будет добавлен через JavaScript -->
+                </div>
+                
+                <p class="text-muted mt-3 mb-0">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Будут созданы учетные записи и отправлены письма с данными для входа
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x me-1"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-success" id="confirmCreateAccessBtn">
+                    <i class="bi bi-key-fill me-1"></i> Создать доступ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно для активации/деактивации -->
+<div class="modal fade" id="bulkStatusModal" tabindex="-1" aria-labelledby="bulkStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div class="w-100 text-center">
+                    <div class="modal-icon-warning mb-3" id="statusModalIcon">
+                        <i class="bi bi-toggle-on"></i>
+                    </div>
+                    <h5 class="modal-title" id="bulkStatusModalLabel">Изменение статуса</h5>
+                </div>
+            </div>
+            <div class="modal-body text-center">
+                <p class="mb-2" id="statusActionText">Изменить статус для</p>
+                <div id="statusTargetDisplay">
+                    <!-- Будет заполнено JavaScript -->
+                </div>
+                
+                <div id="statusStudentListPreview" class="student-list mt-3" style="display: none;">
+                    <!-- Список студентов будет добавлен через JavaScript -->
+                </div>
+                
+                <p class="text-muted mt-3 mb-0" id="statusDescription">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Статус аккаунтов студентов будет изменен
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x me-1"></i> Отмена
+                </button>
+                <button type="button" class="btn btn-warning" id="confirmBulkStatusBtn">
+                    <i class="bi bi-toggle-on me-1"></i> Изменить статус
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/tables.js' %}"></script>
+<script>
+// === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ СТУДЕНТОВ ===
+window.STUDENT_CREATE_URL = "{% url 'admin_student_create' %}";
+window.STUDENT_IMPORT_URL = "{% url 'admin_student_import' %}";
+window.STUDENT_EDIT_URL = "{% url 'admin_student_edit' 0 %}".replace('0', '{id}');
+window.STUDENT_VIEW_URL = "{% url 'admin_student_detail' 0 %}".replace('0', '{id}');
+
+// API URLs - используем Django reverse
+window.STUDENT_DELETE_URL = "{% url 'student_delete_api' 0 %}".replace('0', '{id}');
+window.STUDENT_TOGGLE_STATUS_URL = "{% url 'student_toggle_status_api' 0 %}".replace('0', '{id}');
+window.STUDENT_BULK_ACTIVATE_URL = "{% url 'student_bulk_activate_api' %}";
+window.STUDENT_BULK_DEACTIVATE_URL = "{% url 'student_bulk_deactivate_api' %}";
+window.STUDENT_BULK_DELETE_URL = "{% url 'student_bulk_delete_api' %}";
+window.STUDENT_BULK_CREATE_ACCESS_URL = "{% url 'student_bulk_create_access_api' %}";
+window.STUDENT_EXPORT_URL = "{% url 'student_export' %}";
+
+// Переменные для модальных окон и выбора
+let studentIdToDelete = null;
+let bulkOperationData = null;
+let selectedStudentsIds = new Set();
+let allStudentsSelected = false;  // Флаг "выбрать все"
+
+const csrftoken = getCookie('csrftoken');
+
+// CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Показать уведомление
+function showNotification(message, type = 'success') {
+    const alertClass = type === 'success' ? 'alert-success' : 
+                     type === 'error' || type === 'danger' ? 'alert-danger' : 
+                     type === 'warning' ? 'alert-warning' : 'alert-info';
+    
+    const notification = document.createElement('div');
+    notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.2);';
+    notification.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="bi ${type === 'success' ? 'bi-check-circle' : type === 'error' || type === 'danger' ? 'bi-exclamation-triangle' : 'bi-info-circle'} me-2"></i>
+            ${message}
+        </div>
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    setTimeout(() => {
+        if (notification.parentNode) notification.remove();
+    }, 5000);
+}
+
+// Показать загрузку
+function showLoading(message = 'Загрузка...') {
+    const loading = document.createElement('div');
+    loading.id = 'loadingOverlay';
+    loading.className = 'position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center';
+    loading.style.cssText = 'background: rgba(0,0,0,0.6); z-index: 9999; backdrop-filter: blur(4px);';
+    loading.innerHTML = `
+        <div class="bg-white p-4 rounded-4 shadow-lg">
+            <div class="d-flex align-items-center">
+                <div class="spinner-border text-primary me-3" role="status"></div>
+                <span class="fs-6 fw-500">${message}</span>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(loading);
+}
+
+// Скрыть загрузку
+function hideLoading() {
+    const loading = document.getElementById('loadingOverlay');
+    if (loading) loading.remove();
+}
+
+// === ФУНКЦИИ ДЛЯ РАБОТЫ С ВЫБОРОМ ===
+
+// Получить реальное количество выбранных студентов
+function getSelectedCount() {
+    if (allStudentsSelected) {
+        return window.TOTAL_STUDENTS || 0;
+    }
+    return selectedStudentsIds.size;
+}
+
+// Получить данные выбранных студентов для операций
+function getSelectedStudentsData() {
+    if (allStudentsSelected) {
+        return {
+            mode: 'all',
+            filters: window.CURRENT_FILTERS || {},
+            count: window.TOTAL_STUDENTS || 0
+        };
+    } else {
+        return {
+            mode: 'selected',
+            ids: Array.from(selectedStudentsIds),
+            count: selectedStudentsIds.size
+        };
+    }
+}
+
+// === ОБРАБОТЧИКИ DROPDOWN МЕНЮ ===
+
+function initializeDropdowns() {
+    console.log('Инициализация dropdown меню...');
+    
+    // Обработчик для кнопки "Добавить"
+    const addStudentTrigger = document.getElementById('addStudentTrigger');
+    const addStudentMenu = document.getElementById('addStudentMenu');
+    
+    if (addStudentTrigger && addStudentMenu) {
+        console.log('Найдены элементы для dropdown "Добавить"');
+        
+        addStudentTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Клик по кнопке "Добавить"');
+            
+            // Закрываем все остальные dropdown
+            closeAllDropdowns();
+            
+            // Переключаем состояние текущего dropdown (используем класс active)
+            addStudentMenu.classList.toggle('active');
+            
+            console.log('Dropdown "Добавить" теперь:', addStudentMenu.classList.contains('active') ? 'показан' : 'скрыт');
+        });
+    } else {
+        console.error('Не найдены элементы для dropdown "Добавить"');
+        console.error('addStudentTrigger:', addStudentTrigger);
+        console.error('addStudentMenu:', addStudentMenu);
+    }
+    
+    // Обработчик для кнопки "Экспорт"
+    const exportTrigger = document.getElementById('exportTrigger');
+    const exportMenu = document.getElementById('exportMenu');
+    
+    if (exportTrigger && exportMenu) {
+        console.log('Найдены элементы для dropdown "Экспорт"');
+        
+        exportTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Клик по кнопке "Экспорт"');
+            
+            // Закрываем все остальные dropdown
+            closeAllDropdowns();
+            
+            // Переключаем состояние текущего dropdown (используем класс active)
+            exportMenu.classList.toggle('active');
+            
+            // Обновляем содержимое меню экспорта
+            updateExportMenu();
+            
+            console.log('Dropdown "Экспорт" теперь:', exportMenu.classList.contains('active') ? 'показан' : 'скрыт');
+        });
+    } else {
+        console.error('Не найдены элементы для dropdown "Экспорт"');
+        console.error('exportTrigger:', exportTrigger);
+        console.error('exportMenu:', exportMenu);
+    }
+    
+    // Обработчик для кнопки фильтров
+    const filterTrigger = document.getElementById('filterTrigger');
+    const filterMenu = document.getElementById('filterMenu');
+    
+    if (filterTrigger && filterMenu) {
+        console.log('Найдены элементы для dropdown "Фильтры"');
+        
+        filterTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Клик по кнопке "Фильтры"');
+            
+            // Закрываем все остальные dropdown
+            closeAllDropdowns();
+            
+            // Переключаем состояние текущего dropdown (используем класс active)
+            filterMenu.classList.toggle('active');
+            
+            console.log('Dropdown "Фильтры" теперь:', filterMenu.classList.contains('active') ? 'показан' : 'скрыт');
+        });
+    }
+    
+    // Закрытие dropdown при клике вне их
+    document.addEventListener('click', function(e) {
+        // Проверяем, что клик не по dropdown элементам
+        if (!e.target.closest('.dropdown-action') && !e.target.closest('.filter-dropdown')) {
+            closeAllDropdowns();
+        }
+    });
+    
+    console.log('Dropdown меню инициализированы');
+}
+
+function closeAllDropdowns() {
+    const dropdowns = [
+        document.getElementById('addStudentMenu'),
+        document.getElementById('exportMenu'),
+        document.getElementById('filterMenu')
+    ];
+    
+    dropdowns.forEach(dropdown => {
+        if (dropdown) {
+            dropdown.classList.remove('active'); // Используем класс active
+        }
+    });
+}
+
+function updateExportMenu() {
+    const exportSelectedHeader = document.getElementById('exportSelectedHeader');
+    const exportSelectedExcel = document.getElementById('exportSelectedExcel');
+    
+    const hasSelected = selectedStudentsIds.size > 0 || allStudentsSelected;
+    
+    if (exportSelectedHeader && exportSelectedExcel) {
+        if (hasSelected) {
+            exportSelectedHeader.style.display = 'block';
+            exportSelectedExcel.style.display = 'block';
+        } else {
+            exportSelectedHeader.style.display = 'none';
+            exportSelectedExcel.style.display = 'none';
+        }
+    }
+}
+
+// === МОДАЛЬНЫЕ ОКНА (ИСПРАВЛЕННЫЕ) ===
+
+// Показать модальное окно удаления одного студента
+function showDeleteModal(studentId, studentName) {
+    studentIdToDelete = studentId;
+    document.getElementById('studentNameToDelete').textContent = studentName;
+    
+    const modalElement = document.getElementById('deleteModal');
+    
+    // Правильно инициализируем модальное окно
+    const modal = new bootstrap.Modal(modalElement, {
+        backdrop: 'static',
+        keyboard: false
+    });
+    
+    // Исправляем проблему с aria-hidden
+    modalElement.addEventListener('show.bs.modal', function() {
+        this.removeAttribute('aria-hidden');
+    }, { once: true });
+    
+    modalElement.addEventListener('hidden.bs.modal', function() {
+        this.removeAttribute('aria-hidden');
+        // Убираем фокус с кнопок внутри модального окна
+        const focusedElement = this.querySelector(':focus');
+        if (focusedElement) {
+            focusedElement.blur();
+        }
+    }, { once: true });
+    
+    modal.show();
+}
+
+// Показать модальное окно массового удаления
+function showBulkDeleteModal(selectionData) {
+    bulkOperationData = {type: 'delete', data: selectionData};
+    
+    const targetDisplay = document.getElementById('deletionTargetDisplay');
+    const previewContainer = document.getElementById('studentListPreview');
+    
+    if (selectionData.mode === 'all') {
+        targetDisplay.innerHTML = `
+            <div class="all-students-badge">
+                ${selectionData.count} студентов
+            </div>
+        `;
+        
+        const filtersText = getFiltersText(selectionData.filters);
+        if (filtersText) {
+            targetDisplay.innerHTML += `<p class="text-muted mt-2 mb-0">с учетом фильтров: ${filtersText}</p>`;
+        }
+        
+        previewContainer.style.display = 'none';
+    } else {
+        const count = selectionData.count;
+        targetDisplay.innerHTML = `
+            <span class="count-badge">${count}</span>
+            <span>${count === 1 ? 'выбранного студента' : 'выбранных студентов'}</span>
+        `;
+        
+        // Показать список студентов (первые 5)
+        showStudentPreview(previewContainer, selectionData.ids);
+    }
+    
+    const modalElement = document.getElementById('bulkDeleteModal');
+    const modal = new bootstrap.Modal(modalElement, {
+        backdrop: 'static',
+        keyboard: false
+    });
+    
+    // Исправляем проблему с aria-hidden
+    modalElement.addEventListener('show.bs.modal', function() {
+        this.removeAttribute('aria-hidden');
+    }, { once: true });
+    
+    modalElement.addEventListener('hidden.bs.modal', function() {
+        this.removeAttribute('aria-hidden');
+        const focusedElement = this.querySelector(':focus');
+        if (focusedElement) {
+            focusedElement.blur();
+        }
+    }, { once: true });
+    
+    modal.show();
+}
+
+// Показать модальное окно создания доступа
+function showCreateAccessModal(selectionData) {
+    bulkOperationData = {type: 'create_access', data: selectionData};
+    
+    const targetDisplay = document.getElementById('accessTargetDisplay');
+    const previewContainer = document.getElementById('accessStudentListPreview');
+    
+    if (selectionData.mode === 'all') {
+        targetDisplay.innerHTML = `
+            <div class="all-students-badge">
+                ${selectionData.count} студентов
+            </div>
+        `;
+        
+        const filtersText = getFiltersText(selectionData.filters);
+        if (filtersText) {
+            targetDisplay.innerHTML += `<p class="text-muted mt-2 mb-0">с учетом фильтров: ${filtersText}</p>`;
+        }
+        
+        previewContainer.style.display = 'none';
+    } else {
+        const count = selectionData.count;
+        targetDisplay.innerHTML = `
+            <span class="count-badge">${count}</span>
+            <span>${count === 1 ? 'выбранного студента' : 'выбранных студентов'}</span>
+        `;
+        
+        showStudentPreview(previewContainer, selectionData.ids);
+    }
+    
+    const modalElement = document.getElementById('createAccessModal');
+    const modal = new bootstrap.Modal(modalElement, {
+        backdrop: 'static',
+        keyboard: false
+    });
+    
+    // Исправляем проблему с aria-hidden
+    modalElement.addEventListener('show.bs.modal', function() {
+        this.removeAttribute('aria-hidden');
+    }, { once: true });
+    
+    modalElement.addEventListener('hidden.bs.modal', function() {
+        this.removeAttribute('aria-hidden');
+        const focusedElement = this.querySelector(':focus');
+        if (focusedElement) {
+            focusedElement.blur();
+        }
+    }, { once: true });
+    
+    modal.show();
+}
+
+// Показать модальное окно изменения статуса
+function showBulkStatusModal(selectionData, action) {
+    bulkOperationData = {type: 'status', data: selectionData, action: action};
+    
+    const isActivate = action === 'activate';
+    const actionText = isActivate ? 'Активировать' : 'Деактивировать';
+    const icon = isActivate ? 'bi-check-circle' : 'bi-x-circle';
+    const color = isActivate ? '#10b981' : '#ef4444';
+    
+    document.getElementById('statusActionText').textContent = actionText;
+    
+    const targetDisplay = document.getElementById('statusTargetDisplay');
+    const previewContainer = document.getElementById('statusStudentListPreview');
+    
+    if (selectionData.mode === 'all') {
+        targetDisplay.innerHTML = `
+            <div class="all-students-badge">
+                ${selectionData.count} студентов
+            </div>
+        `;
+        
+        const filtersText = getFiltersText(selectionData.filters);
+        if (filtersText) {
+            targetDisplay.innerHTML += `<p class="text-muted mt-2 mb-0">с учетом фильтров: ${filtersText}</p>`;
+        }
+        
+        previewContainer.style.display = 'none';
+    } else {
+        const count = selectionData.count;
+        targetDisplay.innerHTML = `
+            <span class="count-badge">${count}</span>
+            <span>${count === 1 ? 'выбранного студента' : 'выбранных студентов'}</span>
+        `;
+        
+        showStudentPreview(previewContainer, selectionData.ids);
+    }
+    
+    // Обновляем описание и кнопки
+    const count = selectionData.count;
+    document.getElementById('statusDescription').innerHTML = `
+        <i class="bi bi-info-circle me-1"></i>
+        Статус ${count === 1 ? 'аккаунта студента' : 'аккаунтов студентов'} будет изменен на "${isActivate ? 'Активен' : 'Неактивен'}"
+    `;
+    
+    // Обновляем иконку и цвета
+    const modalIcon = document.getElementById('statusModalIcon');
+    modalIcon.innerHTML = `<i class="${icon}"></i>`;
+    modalIcon.style.background = `linear-gradient(135deg, ${color}20, ${color}40)`;
+    modalIcon.style.color = color;
+    
+    const confirmBtn = document.getElementById('confirmBulkStatusBtn');
+    confirmBtn.innerHTML = `<i class="${icon} me-1"></i> ${actionText}`;
+    confirmBtn.style.background = `linear-gradient(135deg, ${color}, ${color}dd)`;
+    
+    const modalElement = document.getElementById('bulkStatusModal');
+    const modal = new bootstrap.Modal(modalElement, {
+        backdrop: 'static',
+        keyboard: false
+    });
+    
+    // Исправляем проблему с aria-hidden
+    modalElement.addEventListener('show.bs.modal', function() {
+        this.removeAttribute('aria-hidden');
+    }, { once: true });
+    
+    modalElement.addEventListener('hidden.bs.modal', function() {
+        this.removeAttribute('aria-hidden');
+        const focusedElement = this.querySelector(':focus');
+        if (focusedElement) {
+            focusedElement.blur();
+        }
+    }, { once: true });
+    
+    modal.show();
+}
+
+// Вспомогательные функции для модальных окон
+function showStudentPreview(container, studentIds) {
+    const studentsToShow = studentIds.slice(0, 5);
+    
+    let previewHtml = '';
+    studentsToShow.forEach(id => {
+        const row = document.querySelector(`[data-id="${id}"]`);
+        if (row) {
+            const name = row.querySelector('.user-name').textContent;
+            const initials = row.querySelector('.initials').textContent;
+            
+            previewHtml += `
+                <div class="student-item">
+                    <div class="student-avatar-small">${initials}</div>
+                    <div class="student-name">${name}</div>
+                </div>
+            `;
+        }
+    });
+    
+    if (studentIds.length > 5) {
+        previewHtml += `<div class="text-muted small mt-2">и еще ${studentIds.length - 5} студентов...</div>`;
+    }
+    
+    container.innerHTML = previewHtml;
+    container.style.display = 'block';
+}
+
+function getFiltersText(filters) {
+    const parts = [];
+    if (filters.search) parts.push(`поиск "${filters.search}"`);
+    if (filters.group) parts.push('выбранная группа');
+    if (filters.status) parts.push(`статус "${filters.status}"`);
+    return parts.join(', ');
+}
+
+// === ОБРАБОТЧИКИ МОДАЛЬНЫХ ОКОН (ИСПРАВЛЕННЫЕ) ===
+
+// Подтверждение удаления одного студента
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+    if (studentIdToDelete) {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+        const currentStudentId = studentIdToDelete;
+        studentIdToDelete = null;
+        
+        // Убираем фокус с кнопки и закрываем модальное окно
+        this.blur();
+        modal.hide();
+        
+        // Ждем завершения анимации закрытия
+        setTimeout(() => {
+            deleteStudentConfirmed(currentStudentId);
+        }, 200);
+    }
+});
+
+// Подтверждение массового удаления
+document.getElementById('confirmBulkDeleteBtn').addEventListener('click', function() {
+    if (bulkOperationData && bulkOperationData.type === 'delete') {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal'));
+        const currentOperationData = bulkOperationData.data;
+        bulkOperationData = null;
+        
+        // Убираем фокус с кнопки и закрываем модальное окно
+        this.blur();
+        modal.hide();
+        
+        // Ждем завершения анимации закрытия
+        setTimeout(() => {
+            bulkDeleteStudentsConfirmed(currentOperationData);
+        }, 200);
+    }
+});
+
+// Подтверждение создания доступа
+document.getElementById('confirmCreateAccessBtn').addEventListener('click', function() {
+    if (bulkOperationData && bulkOperationData.type === 'create_access') {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('createAccessModal'));
+        const currentOperationData = bulkOperationData.data;
+        bulkOperationData = null;
+        
+        // Убираем фокус с кнопки и закрываем модальное окно
+        this.blur();
+        modal.hide();
+        
+        // Ждем завершения анимации закрытия
+        setTimeout(() => {
+            bulkCreateAccessConfirmed(currentOperationData);
+        }, 200);
+    }
+});
+
+// Подтверждение изменения статуса
+document.getElementById('confirmBulkStatusBtn').addEventListener('click', function() {
+    if (bulkOperationData && bulkOperationData.type === 'status') {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('bulkStatusModal'));
+        const currentOperationData = bulkOperationData.data;
+        const currentAction = bulkOperationData.action;
+        bulkOperationData = null;
+        
+        // Убираем фокус с кнопки и закрываем модальное окно
+        this.blur();
+        modal.hide();
+        
+        // Ждем завершения анимации закрытия
+        setTimeout(() => {
+            bulkStatusChangeConfirmed(currentOperationData, currentAction);
+        }, 200);
+    }
+});
+
+// === ОСНОВНЫЕ ФУНКЦИИ ДЕЙСТВИЙ ===
+
+function viewStudent(id) {
+    showLoading('Загрузка информации о студенте...');
+    const url = window.STUDENT_VIEW_URL.replace('{id}', id);
+    window.location.href = url;
+}
+
+function editStudent(id) {
+    showLoading('Открытие формы редактирования...');
+    const url = window.STUDENT_EDIT_URL.replace('{id}', id);
+    window.location.href = url;
+}
+
+function deleteStudentConfirmed(id) {
+    showLoading('Удаление студента...');
+    
+    console.log('=== Удаление одного студента ===');
+    console.log('ID студента:', id);
+    
+    const url = window.STUDENT_DELETE_URL.replace('{id}', id);
+    console.log('URL запроса:', url);
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        console.log(`Получен ответ со статусом: ${response.status}`);
+        hideLoading();
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Данные ответа:', data);
+        if (data.success) {
+            // Удаляем строку из таблицы с анимацией
+            const row = document.querySelector(`[data-id="${id}"]`);
+            if (row) {
+                row.style.transform = 'translateX(100%)';
+                row.style.opacity = '0';
+                row.style.transition = 'all 0.3s ease';
+                
+                setTimeout(() => {
+                    row.remove();
+                    updateStudentCounters(1);
+                    showNotification(data.message || 'Студент успешно удален', 'success');
+                }, 300);
+            }
+            
+            // Убираем из выбранных
+            selectedStudentsIds.delete(parseInt(id));
+            updateSelectionState();
+            
+        } else {
+            let errorMessage = data.message || 'Ошибка при удалении студента';
+            if (data.error_type) {
+                errorMessage += ` (${data.error_type})`;
+            }
+            showNotification(errorMessage, 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при удалении студента. Проверьте логи сервера Django.', 'danger');
+    });
+}
+
+function toggleStudentStatus(id) {
+    showLoading('Изменение статуса...');
+    
+    const url = window.STUDENT_TOGGLE_STATUS_URL.replace('{id}', id);
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        hideLoading();
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Обновляем статус в таблице
+            updateStudentStatusInTable(id, data.is_active);
+            showNotification(data.message || 'Статус студента успешно изменен', 'success');
+        } else {
+            showNotification(data.message || 'Ошибка при изменении статуса студента', 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при изменении статуса студента', 'danger');
+    });
+}
+
+function bulkDeleteStudentsConfirmed(selectionData) {
+    showLoading('Массовое удаление студентов...');
+    
+    console.log('=== Отправка запроса на массовое удаление ===');
+    console.log('Данные для удаления:', selectionData);
+    
+    const requestData = selectionData.mode === 'all' ? {
+        mode: 'all',
+        filters: selectionData.filters
+    } : {
+        mode: 'selected',
+        student_ids: selectionData.ids
+    };
+    
+    console.log('Данные запроса:', requestData);
+    
+    fetch(window.STUDENT_BULK_DELETE_URL, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => {
+        console.log(`Получен ответ со статусом: ${response.status}`);
+        hideLoading();
+        
+        if (!response.ok) {
+            console.error(`HTTP ошибка! Статус: ${response.status}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return response.json();
+    })
+    .then(data => {
+        console.log('Данные ответа:', data);
+        
+        if (data.success) {
+            showNotification(data.message || 'Массовое удаление выполнено успешно', 'success');
+            
+            // Перезагружаем страницу для обновления данных
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+            
+        } else {
+            let errorMessage = data.message || 'Ошибка при массовом удалении студентов';
+            
+            // Показываем подробности ошибки если есть
+            if (data.error_type) {
+                console.error(`Тип ошибки сервера: ${data.error_type}`);
+                errorMessage += ` (${data.error_type})`;
+            }
+            
+            if (data.traceback) {
+                console.error('Traceback сервера:', data.traceback);
+            }
+            
+            showNotification(errorMessage, 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('=== ОШИБКА FETCH ===');
+        console.error('Тип ошибки:', typeof error);
+        console.error('Сообщение ошибки:', error.message);
+        console.error('Stack trace:', error.stack);
+        
+        let errorMessage = 'Произошла ошибка при массовом удалении студентов';
+        if (error.message.includes('HTTP error')) {
+            errorMessage = `Ошибка сервера (${error.message}). Проверьте логи сервера Django для деталей.`;
+        }
+        
+        showNotification(errorMessage, 'danger');
+    });
+}
+
+function bulkCreateAccessConfirmed(selectionData) {
+    showLoading('Создание доступа для студентов...');
+    
+    console.log('=== Отправка запроса на создание доступа ===');
+    console.log('Данные для создания доступа:', selectionData);
+    
+    const requestData = selectionData.mode === 'all' ? {
+        mode: 'all',
+        filters: selectionData.filters
+    } : {
+        mode: 'selected',
+        student_ids: selectionData.ids
+    };
+    
+    console.log('Данные запроса:', requestData);
+    
+    fetch(window.STUDENT_BULK_CREATE_ACCESS_URL, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => {
+        console.log(`Получен ответ со статусом: ${response.status}`);
+        hideLoading();
+        
+        if (!response.ok) {
+            console.error(`HTTP ошибка! Статус: ${response.status}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return response.json();
+    })
+    .then(data => {
+        console.log('Данные ответа:', data);
+        
+        if (data.success) {
+            showNotification(data.message || `Создан доступ для ${data.created_count || selectionData.count} студентов`, 'success');
+            
+            // Очищаем выбор и обновляем страницу
+            deselectAllStudents();
+            setTimeout(() => window.location.reload(), 1000);
+            
+        } else {
+            let errorMessage = data.message || 'Ошибка при создании доступа';
+            
+            if (data.error_type) {
+                console.error(`Тип ошибки сервера: ${data.error_type}`);
+                errorMessage += ` (${data.error_type})`;
+            }
+            
+            if (data.traceback) {
+                console.error('Traceback сервера:', data.traceback);
+            }
+            
+            showNotification(errorMessage, 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('=== ОШИБКА FETCH ===');
+        console.error('Сообщение ошибки:', error.message);
+        console.error('Stack trace:', error.stack);
+        
+        showNotification('Произошла ошибка при создании доступа. Проверьте логи сервера Django.', 'danger');
+    });
+}
+
+function bulkStatusChangeConfirmed(selectionData, action) {
+    const isActivate = action === 'activate';
+    const actionName = isActivate ? 'активация' : 'деактивация';
+    
+    showLoading(`Массовая ${actionName} студентов...`);
+    
+    console.log(`=== Отправка запроса на массовую ${actionName} ===`);
+    console.log('Данные для изменения статуса:', selectionData);
+    console.log('Действие:', action);
+    
+    const url = isActivate ? window.STUDENT_BULK_ACTIVATE_URL : window.STUDENT_BULK_DEACTIVATE_URL;
+    
+    const requestData = selectionData.mode === 'all' ? {
+        mode: 'all',
+        filters: selectionData.filters
+    } : {
+        mode: 'selected',
+        student_ids: selectionData.ids
+    };
+    
+    console.log('URL:', url);
+    console.log('Данные запроса:', requestData);
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
+    })
+    .then(response => {
+        console.log(`Получен ответ со статусом: ${response.status}`);
+        hideLoading();
+        
+        if (!response.ok) {
+            console.error(`HTTP ошибка! Статус: ${response.status}`);
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        return response.json();
+    })
+    .then(data => {
+        console.log('Данные ответа:', data);
+        
+        if (data.success) {
+            showNotification(data.message || `Массовая ${actionName} выполнена успешно`, 'success');
+            
+            // Очищаем выбор и обновляем страницу
+            deselectAllStudents();
+            setTimeout(() => window.location.reload(), 1000);
+            
+        } else {
+            let errorMessage = data.message || `Ошибка при массовой ${actionName} студентов`;
+            
+            if (data.error_type) {
+                console.error(`Тип ошибки сервера: ${data.error_type}`);
+                errorMessage += ` (${data.error_type})`;
+            }
+            
+            if (data.traceback) {
+                console.error('Traceback сервера:', data.traceback);
+            }
+            
+            showNotification(errorMessage, 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('=== ОШИБКА FETCH ===');
+        console.error('Сообщение ошибки:', error.message);
+        console.error('Stack trace:', error.stack);
+        
+        showNotification(`Произошла ошибка при массовой ${actionName} студентов. Проверьте логи сервера Django.`, 'danger');
+    });
+}
+
+// === МАССОВЫЕ ОПЕРАЦИИ ===
+
+function bulkActivateStudents() {
+    const selectionData = getSelectedStudentsData();
+    if (selectionData.count === 0) {
+        showNotification('Выберите студентов для активации', 'warning');
+        return;
+    }
+    
+    showBulkStatusModal(selectionData, 'activate');
+}
+
+function bulkDeactivateStudents() {
+    const selectionData = getSelectedStudentsData();
+    if (selectionData.count === 0) {
+        showNotification('Выберите студентов для деактивации', 'warning');
+        return;
+    }
+    
+    showBulkStatusModal(selectionData, 'deactivate');
+}
+
+function bulkDeleteStudents() {
+    const selectionData = getSelectedStudentsData();
+    if (selectionData.count === 0) {
+        showNotification('Выберите студентов для удаления', 'warning');
+        return;
+    }
+    
+    showBulkDeleteModal(selectionData);
+}
+
+function bulkCreateAccess() {
+    const selectionData = getSelectedStudentsData();
+    if (selectionData.count === 0) {
+        showNotification('Выберите студентов для создания доступа', 'warning');
+        return;
+    }
+    
+    showCreateAccessModal(selectionData);
+}
+
+// === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ===
+
+function updateStudentStatusInTable(id, isActive) {
+    const row = document.querySelector(`[data-id="${id}"]`);
+    if (!row) return;
+    
+    const statusPill = row.querySelector('.status-pill');
+    const statusSpan = statusPill.querySelector('span');
+    const onlineIndicator = row.querySelector('.online-indicator');
+    
+    if (isActive) {
+        statusPill.className = 'status-pill status-active';
+        statusSpan.textContent = 'Активен';
+        if (onlineIndicator) onlineIndicator.className = 'online-indicator online';
+    } else {
+        statusPill.className = 'status-pill status-inactive';
+        statusSpan.textContent = 'Неактивен';
+        if (onlineIndicator) onlineIndicator.className = 'online-indicator offline';
+    }
+}
+
+function updateStudentCounters(deletedCount = 1) {
+    if (window.TOTAL_STUDENTS) {
+        window.TOTAL_STUDENTS -= deletedCount;
+    }
+    
+    const statsElement = document.querySelector('.panel-stats .stat-item');
+    if (statsElement) {
+        if (window.TOTAL_STUDENTS <= 0) {
+            statsElement.innerHTML = '<i class="bi bi-person"></i> Студенты не найдены';
+            statsElement.classList.add('empty');
+        } else {
+            statsElement.innerHTML = `<i class="bi bi-person"></i> ${window.TOTAL_STUDENTS} студентов`;
+            statsElement.classList.remove('empty');
+        }
+    }
+    
+    if (window.TOTAL_STUDENTS <= 0) {
+        setTimeout(() => showEmptyState(), 500);
+    }
+}
+
+function showEmptyState() {
+    const dataTable = document.querySelector('.data-table');
+    const paginationContainer = document.querySelector('.pagination-container');
+    const selectionBar = document.querySelector('.selection-bar');
+    
+    if (dataTable) dataTable.style.display = 'none';
+    if (paginationContainer) paginationContainer.style.display = 'none';
+    if (selectionBar) selectionBar.style.display = 'none';
+    
+    const dataPanel = document.querySelector('.data-panel');
+    if (dataPanel && !document.querySelector('.empty-state')) {
+        const emptyStateHtml = `
+            <div class="empty-state">
+                <div class="empty-illustration">
+                    <i class="bi bi-people"></i>
+                </div>
+                <h2 class="empty-title">Студенты не найдены</h2>
+                <p class="empty-description">
+                    Все студенты были удалены. Добавьте новых студентов для управления учебным процессом.
+                </p>
+                <div class="empty-actions">
+                    <button class="empty-btn primary" onclick="addSingleStudent()">
+                        <i class="bi bi-person-plus"></i>
+                        Добавить студента
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        dataPanel.insertAdjacentHTML('beforeend', emptyStateHtml);
+    }
+}
+
+// === ФУНКЦИИ ВЫБОРА СТУДЕНТОВ ===
+
+function selectAllStudents() {
+    allStudentsSelected = true;
+    selectedStudentsIds.clear();
+    
+    // Отмечаем видимые чекбоксы
+    document.querySelectorAll('.student-checkbox').forEach(cb => {
+        cb.checked = true;
+        selectedStudentsIds.add(parseInt(cb.value));
+    });
+    
+    updateSelectionState();
+}
+
+function deselectAllStudents() {
+    allStudentsSelected = false;
+    selectedStudentsIds.clear();
+    
+    document.querySelectorAll('.student-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    
+    updateSelectionState();
+}
+
+function updateSelectionState() {
+    const checkboxes = document.querySelectorAll('.student-checkbox');
+    const checkedBoxes = document.querySelectorAll('.student-checkbox:checked');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedInfo = document.getElementById('selectedInfo');
+    const selectAllCheckbox = document.getElementById('selectAllStudents');
+    
+    if (!bulkActions || !selectedInfo || !selectAllCheckbox) return;
+    
+    const totalSelected = getSelectedCount();
+    
+    if (totalSelected === 0) {
+        bulkActions.style.display = 'none';
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+        allStudentsSelected = false;
+    } else if (allStudentsSelected) {
+        bulkActions.style.display = 'flex';
+        selectedInfo.innerHTML = `Выбрано: <span class="all-students-badge">  ${window.TOTAL_STUDENTS || 0} студентов</span>`;
+        selectAllCheckbox.checked = true;
+        selectAllCheckbox.indeterminate = false;
+    } else {
+        bulkActions.style.display = 'flex';
+        selectedInfo.textContent = `Выбрано: ${totalSelected}`;
+        
+        // Проверяем, выбраны ли все видимые студенты
+        if (checkedBoxes.length === checkboxes.length && checkboxes.length > 0) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = true;
+        } else if (checkedBoxes.length > 0 || totalSelected > 0) {
+            selectAllCheckbox.indeterminate = true;
+            selectAllCheckbox.checked = false;
+        } else {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = false;
+        }
+    }
+}
+
+// === ЭКСПОРТ И НАВИГАЦИЯ ===
+
+// === ЭКСПОРТ И НАВИГАЦИЯ (ИСПРАВЛЕННЫЕ ФУНКЦИИ) ===
+
+function exportAllToExcel() {
+    showLoading('Подготовка экспорта всех студентов...');
+    
+    const params = new URLSearchParams(window.CURRENT_FILTERS || {});
+    params.set('export_all', 'true');
+    const url = window.STUDENT_EXPORT_URL + '?' + params.toString();
+    
+    console.log('Экспорт всех студентов, URL:', url);
+    
+    // Используем fetch для лучшего контроля ошибок
+    fetch(url, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': csrftoken,
+        },
+    })
+    .then(response => {
+        console.log(`Статус ответа экспорта: ${response.status}`);
+        hideLoading();
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Проверяем заголовки ответа
+        const contentType = response.headers.get('content-type');
+        console.log('Content-Type:', contentType);
+        
+        if (contentType && contentType.includes('application/json')) {
+            // Если получили JSON, значит ошибка
+            return response.json().then(data => {
+                throw new Error(data.message || 'Ошибка при экспорте');
+            });
+        }
+        
+        // Получаем blob для скачивания файла
+        return response.blob();
+    })
+    .then(blob => {
+        // Создаем ссылку для скачивания
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `students_all_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        showNotification('Экспорт всех студентов завершен успешно!', 'success');
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Ошибка экспорта:', error);
+        showNotification('Ошибка при экспорте: ' + error.message, 'danger');
+    });
+}
+
+function exportSelectedToExcel() {
+    const selectionData = getSelectedStudentsData();
+    if (selectionData.count === 0) {
+        showNotification('Выберите студентов для экспорта', 'warning');
+        return;
+    }
+    
+    showLoading(`Подготовка экспорта ${selectionData.count} выбранных студентов...`);
+    
+    const params = new URLSearchParams(window.CURRENT_FILTERS || {});
+    
+    if (selectionData.mode === 'all') {
+        params.set('export_all', 'true');
+    } else {
+        params.set('selected', selectionData.ids.join(','));
+    }
+    
+    const url = window.STUDENT_EXPORT_URL + '?' + params.toString();
+    
+    console.log('Экспорт выбранных студентов, URL:', url);
+    console.log('Данные выбора:', selectionData);
+    
+    // Используем fetch для лучшего контроля ошибок
+    fetch(url, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': csrftoken,
+        },
+    })
+    .then(response => {
+        console.log(`Статус ответа экспорта: ${response.status}`);
+        hideLoading();
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Проверяем заголовки ответа
+        const contentType = response.headers.get('content-type');
+        console.log('Content-Type:', contentType);
+        
+        if (contentType && contentType.includes('application/json')) {
+            // Если получили JSON, значит ошибка
+            return response.json().then(data => {
+                throw new Error(data.message || data.error || 'Ошибка при экспорте');
+            });
+        }
+        
+        // Получаем blob для скачивания файла
+        return response.blob();
+    })
+    .then(blob => {
+        // Проверяем размер blob
+        if (blob.size === 0) {
+            throw new Error('Получен пустой файл. Возможно, нет данных для экспорта.');
+        }
+        
+        // Создаем ссылку для скачивания
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `students_selected_${selectionData.count}_${new Date().toISOString().split('T')[0]}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        window.URL.revokeObjectURL(url);
+        
+        showNotification(`Экспорт ${selectionData.count} выбранных студентов завершен успешно!`, 'success');
+        
+        // Закрываем dropdown меню экспорта
+        closeAllDropdowns();
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Ошибка экспорта:', error);
+        showNotification('Ошибка при экспорте: ' + error.message, 'danger');
+    });
+}
+
+function addSingleStudent() {
+    window.location.href = window.STUDENT_CREATE_URL;
+}
+
+function bulkImportStudents() {
+    window.location.href = window.STUDENT_IMPORT_URL;
+}
+
+function clearSearch() {
+    const searchField = document.querySelector('.search-field');
+    if (searchField) {
+        searchField.value = '';
+        document.querySelector('.search-form').submit();
+    }
+}
+
+// === УЛУЧШЕННАЯ ИНИЦИАЛИЗАЦИЯ ===
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 DOM loaded, initializing improved modals...');
+    
+    // Инициализация dropdown меню
+    initializeDropdowns();
+    
+    // Инициализация чекбоксов
+    const selectAllCheckbox = document.getElementById('selectAllStudents');
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            if (this.checked && !this.indeterminate) {
+                selectAllStudents();
+            } else {
+                deselectAllStudents();
+            }
+        });
+    }
+    
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('student-checkbox')) {
+            const studentId = parseInt(e.target.value);
+            
+            if (e.target.checked) {
+                selectedStudentsIds.add(studentId);
+            } else {
+                selectedStudentsIds.delete(studentId);
+                allStudentsSelected = false;
+            }
+            
+            updateSelectionState();
+            updateExportMenu(); // Обновляем меню экспорта
+        }
+    });
+    
+    // Глобальная обработка модальных окон для исправления aria-hidden
+    document.addEventListener('show.bs.modal', function(e) {
+        const modal = e.target;
+        // Удаляем aria-hidden при показе
+        modal.removeAttribute('aria-hidden');
+    });
+    
+    document.addEventListener('hide.bs.modal', function(e) {
+        const modal = e.target;
+        // Убираем фокус с активных элементов внутри модального окна
+        const focusedElement = modal.querySelector(':focus');
+        if (focusedElement) {
+            focusedElement.blur();
+        }
+    });
+    
+    document.addEventListener('hidden.bs.modal', function(e) {
+        const modal = e.target;
+        // Окончательно удаляем aria-hidden после закрытия
+        modal.removeAttribute('aria-hidden');
+    });
+});
+
+console.log('✅ Students script with fixed modals and dropdowns loaded successfully!');
+</script>
+{% endblock %}

@@ -1,0 +1,896 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Редактировать {{ student.get_full_name }} - МПТ Журнал{% endblock %}
+{% block page_title %}Редактирование студента{% endblock %}
+{% block mobile_title %}Изменить {{ student.get_short_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<style>
+.edit-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.edit-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.edit-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.student-avatar {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(45deg, var(--bs-primary), #6366f1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+}
+
+.edit-info h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin: 0 0 0.5rem 0;
+}
+
+.edit-meta {
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-row.single {
+    grid-template-columns: 1fr;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 500;
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.form-label.required::after {
+    content: '*';
+    color: var(--bs-danger);
+    margin-left: 4px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--sidebar-bg);
+    color: var(--nav-link-color);
+    border: 1px solid var(--sidebar-border);
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.error-message {
+    color: var(--bs-danger);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.secondary-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.primary-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.info-card {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-card .info-title {
+    font-weight: 600;
+    color: var(--bs-primary);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.info-card ul {
+    margin-bottom: 0;
+    padding-left: 1rem;
+}
+
+.info-card li {
+    color: var(--bs-body-color);
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+/* ====================================
+   СТИЛИ МОДАЛЬНЫХ ОКОН
+   ==================================== */
+
+/* Общие стили для всех модальных окон */
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    background: var(--sidebar-bg);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--sidebar-bg), var(--sidebar-border));
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    padding: 2rem 2rem 1rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    position: relative;
+}
+
+.modal-body {
+    padding: 1.5rem 2rem 2rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    background: var(--sidebar-bg);
+    color: var(--bs-body-color);
+}
+
+.modal-footer {
+    background: var(--sidebar-bg);
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    border-top: 1px solid var(--sidebar-border);
+    padding: 1.5rem 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--bs-body-color);
+    text-align: center;
+    width: 100%;
+}
+
+/* Иконка для модального окна удаления */
+.modal-icon-danger {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #dc2626;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
+    animation: pulse 2s infinite;
+}
+
+/* Анимация для иконки */
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+/* Кнопки в модальных окнах */
+.modal .btn {
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.modal .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.modal .btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+    color: white;
+}
+
+.modal .btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+}
+
+.modal .btn-outline-secondary {
+    border: 2px solid var(--sidebar-border);
+    color: var(--bs-secondary);
+    background: var(--sidebar-bg);
+}
+
+.modal .btn-outline-secondary:hover {
+    background: var(--sidebar-border);
+    border-color: var(--bs-secondary);
+    color: var(--bs-body-color);
+}
+
+/* Backdrop улучшенный */
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+/* Темная тема для модальных окон */
+[data-bs-theme="dark"] .modal-icon-danger {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    color: #fca5a5;
+}
+
+/* Стили для уведомлений */
+.alert {
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+    border: none;
+    padding: 1rem 1.5rem;
+    font-weight: 500;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #065f46;
+    border-left: 4px solid #10b981;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #7f1d1d;
+    border-left: 4px solid #ef4444;
+}
+
+/* Темная тема для уведомлений */
+[data-bs-theme="dark"] .alert-success {
+    background: linear-gradient(135deg, #064e3b, #065f46);
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .alert-danger {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    color: #fca5a5;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .edit-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .secondary-actions,
+    .primary-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .modal-dialog {
+        margin: 1rem;
+        max-width: calc(100vw - 2rem);
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .modal .btn {
+        width: 100%;
+        margin: 0;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-container">
+    <!-- Заголовок с информацией о студенте -->
+    <div class="edit-card">
+        <div class="edit-header">
+            <div class="student-avatar">
+                <span>{{ student.first_name|first }}{{ student.last_name|first }}</span>
+            </div>
+            <div class="edit-info">
+                <h1>Редактирование студента</h1>
+                <div class="edit-meta">
+                    <i class="bi bi-person"></i> {{ student.get_full_name }}
+                    • <i class="bi bi-envelope"></i> {{ student.email }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Информационная карточка -->
+        <div class="info-card">
+            <div class="info-title">
+                <i class="bi bi-info-circle"></i>
+                Редактирование профиля студента
+            </div>
+            <ul>
+                <li>Изменяйте только необходимые поля</li>
+                <li>ФИО и email - основные данные для идентификации</li>
+                <li>Группу можно назначить или изменить через выпадающий список</li>
+                <li>Остальные поля заполняются по мере необходимости</li>
+            </ul>
+        </div>
+    </div>
+
+    <form method="post" id="editStudentForm">
+        {% csrf_token %}
+        
+        <!-- Основная информация -->
+        <div class="edit-card">
+            <div class="section-title">
+                <i class="bi bi-person"></i>
+                Основная информация
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required" for="last_name">Фамилия</label>
+                    <input type="text" class="form-control" id="last_name" name="last_name" 
+                           value="{{ student.last_name }}" required>
+                    <div class="error-message" id="last_name_error"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label required" for="first_name">Имя</label>
+                    <input type="text" class="form-control" id="first_name" name="first_name" 
+                           value="{{ student.first_name }}" required>
+                    <div class="error-message" id="first_name_error"></div>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="middle_name">Отчество</label>
+                    <input type="text" class="form-control" id="middle_name" name="middle_name" 
+                           value="{{ student.middle_name|default:'' }}">
+                    <div class="form-text">Необязательное поле</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label required" for="email">Email</label>
+                    <input type="email" class="form-control" id="email" name="email" 
+                           value="{{ student.email }}" required>
+                    <div class="form-text">Используется для входа в систему</div>
+                    <div class="error-message" id="email_error"></div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Учебная информация -->
+        <div class="edit-card">
+            <div class="section-title">
+                <i class="bi bi-book"></i>
+                Учебная информация
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="group">Группа</label>
+                    <select class="form-select" id="group" name="group">
+                        <option value="">Не назначена</option>
+                        {% for group in groups %}
+                            <option value="{{ group.id }}" {% if student.group_id == group.id %}selected{% endif %}>
+                                {{ group.name }} ({{ group.faculty.name }})
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Можно изменить или оставить без группы</div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="phone">Телефон</label>
+                    <input type="tel" class="form-control" id="phone" name="phone" 
+                           value="{{ student.phone|default:'' }}" placeholder="+7 (999) 123-45-67">
+                    <div class="form-text">Дополнительный контакт</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Дополнительная информация -->
+        <div class="edit-card">
+            <div class="section-title">
+                <i class="bi bi-person-badge"></i>
+                Дополнительная информация
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="date_of_birth">Дата рождения</label>
+                    <input type="date" class="form-control" id="date_of_birth" name="date_of_birth" 
+                           value="{{ student.date_of_birth|date:'Y-m-d'|default:'' }}">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="gender">Пол</label>
+                    <select class="form-select" id="gender" name="gender">
+                        <option value="">Не указано</option>
+                        <option value="M" {% if student.gender == 'M' %}selected{% endif %}>Мужской</option>
+                        <option value="F" {% if student.gender == 'F' %}selected{% endif %}>Женский</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row single">
+                <div class="form-group">
+                    <label class="form-label" for="address">Адрес проживания</label>
+                    <textarea class="form-control" id="address" name="address" rows="2" 
+                              placeholder="Укажите полный адрес">{{ student.address|default:'' }}</textarea>
+                </div>
+            </div>
+            
+            <div class="form-row single">
+                <div class="form-group">
+                    <label class="form-label" for="notes">Дополнительные заметки</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="2" 
+                              placeholder="Любая дополнительная информация">{{ student.notes|default:'' }}</textarea>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Действия -->
+        <div class="form-actions">
+            <div class="secondary-actions">
+                <a href="{% url 'admin_student_detail' student.pk %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i>
+                    Отмена
+                </a>
+                
+                <button type="button" class="btn btn-danger" onclick="showDeleteModal({{ student.id }})">
+                    <i class="bi bi-trash"></i>
+                    Удалить
+                </button>
+            </div>
+            
+            <div class="primary-actions">
+                <button type="submit" class="btn btn-primary" id="saveBtn">
+                    <i class="bi bi-check"></i>
+                    Сохранить изменения
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Модальное окно удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Удаление студента</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-danger">
+                    <i class="bi bi-trash"></i>
+                </div>
+                <p><strong>Удалить студента "{{ student.get_full_name }}"?</strong></p>
+                <p class="text-muted">Это действие нельзя отменить! Все данные студента, включая связанный аккаунт и историю обучения, будут безвозвратно удалены из системы.</p>
+                <div class="mt-3 p-3" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;">
+                    <small class="text-muted">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Внимание: это действие также удалит всю связанную с студентом информацию из базы данных.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">
+                    <i class="bi bi-trash"></i>
+                    Удалить студента
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+let currentStudentId = null;
+
+// Показать уведомление с красивым дизайном
+function showNotification(message, type = 'success') {
+    const alertClass = type === 'error' ? 'alert-danger' : 'alert-success';
+    const icon = type === 'error' ? 'bi-exclamation-triangle' : 'bi-check-circle';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            <i class="bi ${icon} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+    
+    setTimeout(() => {
+        const alert = document.querySelector('.alert:last-child');
+        if (alert) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+// Показать модальное окно удаления
+function showDeleteModal(studentId) {
+    currentStudentId = studentId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('editStudentForm');
+    const saveBtn = document.getElementById('saveBtn');
+    
+    // Обработка отправки формы
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Очищаем предыдущие ошибки
+        document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+        
+        // Показываем индикатор загрузки
+        saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Сохраняем...';
+        saveBtn.disabled = true;
+        
+        // Собираем данные формы
+        const formData = new FormData(form);
+        
+        // Отправляем AJAX запрос
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+            },
+        })
+        .then(response => {
+            // Проверяем успешность запроса
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            // Проверяем тип контента
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                // Если получили HTML вместо JSON, читаем как текст для отладки
+                return response.text().then(text => {
+                    console.error('Сервер вернул HTML вместо JSON:', text);
+                    throw new Error('Сервер вернул не JSON ответ. Возможно ошибка на сервере.');
+                });
+            }
+            
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification('Данные студента успешно обновлены!');
+                
+                // Обновляем заголовок, если изменились ФИО или email
+                if (data.student) {
+                    const metaElement = document.querySelector('.edit-meta');
+                    if (metaElement) {
+                        metaElement.innerHTML = 
+                            `<i class="bi bi-person"></i> ${data.student.full_name} • <i class="bi bi-envelope"></i> ${data.student.email}`;
+                    }
+                }
+                
+                // Возвращаем кнопку в исходное состояние
+                saveBtn.innerHTML = '<i class="bi bi-check"></i> Сохранить изменения';
+                saveBtn.disabled = false;
+                
+            } else {
+                // Показываем ошибки валидации
+                if (data.errors) {
+                    Object.keys(data.errors).forEach(field => {
+                        const errorElement = document.getElementById(field + '_error');
+                        if (errorElement && data.errors[field] && data.errors[field].length > 0) {
+                            errorElement.textContent = data.errors[field][0];
+                        }
+                    });
+                }
+                
+                showNotification(data.message || 'Ошибка при сохранении данных', 'error');
+                
+                // Возвращаем кнопку в исходное состояние
+                saveBtn.innerHTML = '<i class="bi bi-check"></i> Сохранить изменения';
+                saveBtn.disabled = false;
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            
+            let errorMessage = 'Произошла ошибка при сохранении данных';
+            if (error.message.includes('JSON')) {
+                errorMessage = 'Ошибка обработки ответа сервера. Проверьте консоль для деталей.';
+            } else if (error.message.includes('HTTP error')) {
+                errorMessage = 'Ошибка сервера. Проверьте подключение и попробуйте снова.';
+            }
+            
+            showNotification(errorMessage, 'error');
+            
+            // Возвращаем кнопку в исходное состояние
+            saveBtn.innerHTML = '<i class="bi bi-check"></i> Сохранить изменения';
+            saveBtn.disabled = false;
+        });
+    });
+    
+    // Форматирование телефона
+    const phoneInput = document.getElementById('phone');
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            
+            if (value.startsWith('7')) {
+                value = value.substring(1);
+            }
+            
+            if (value.startsWith('8')) {
+                value = value.substring(1);
+            }
+            
+            if (value.length > 0) {
+                value = value.substring(0, 10);
+                let formatted = '+7';
+                
+                if (value.length > 0) {
+                    formatted += ' (' + value.substring(0, 3);
+                }
+                if (value.length >= 4) {
+                    formatted += ') ' + value.substring(3, 6);
+                }
+                if (value.length >= 7) {
+                    formatted += '-' + value.substring(6, 8);
+                }
+                if (value.length >= 9) {
+                    formatted += '-' + value.substring(8, 10);
+                }
+                
+                e.target.value = formatted;
+            }
+        });
+    }
+});
+
+// Обработчик подтверждения удаления
+document.getElementById('confirmDelete').addEventListener('click', function() {
+    if (!currentStudentId) return;
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+    modal.hide();
+    
+    fetch(`{% url 'admin_students' %}${currentStudentId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Сервер вернул не JSON ответ');
+        }
+        
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showNotification('Студент успешно удален');
+            setTimeout(() => {
+                window.location.href = "{% url 'admin_students' %}";
+            }, 1500);
+        } else {
+            showNotification(data.message || 'Ошибка при удалении студента', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при удалении студента', 'error');
+    });
+});
+
+// Исправление проблемы с aria-hidden для модальных окон
+document.addEventListener('show.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+});
+
+document.addEventListener('hidden.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+    // Очищаем переменные
+    currentStudentId = null;
+});
+</script>
+{% endblock %}
