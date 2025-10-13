@@ -3,11 +3,17 @@ from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
 
 
+# models.py
 class Faculty(models.Model):
     """Факультет"""
     name = models.CharField('Название факультета', max_length=200)
-    code = models.CharField('Код факультета', max_length=10, unique=True, default='TEMP')
+    code = models.CharField('Код факультета', max_length=10, unique=True)
+    description = models.TextField('Описание', blank=True)
+    is_active = models.BooleanField('Активный', default=True)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, 
+                                  related_name='created_faculties', verbose_name='Создан пользователем')
     
     class Meta:
         verbose_name = 'Факультет'
@@ -16,6 +22,19 @@ class Faculty(models.Model):
     
     def __str__(self):
         return self.name
+    
+    @property
+    def groups_count(self):
+        return self.group_set.count()
+    
+    @property 
+    def students_count(self):
+        return Student.objects.filter(group__faculty=self).count()
+    
+    @property
+    def active_students_count(self):
+        return Student.objects.filter(group__faculty=self, study_status='active').count()
+
 
 
 class Group(models.Model):

@@ -65,7 +65,7 @@
             </div>
             
             <div class="nav-item">
-                <a class="nav-link {% if 'faculties' in request.resolver_match.url_name %}active{% endif %}" href="#">
+                <a class="nav-link {% if 'faculties' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_faculties' %}">
                     <i class="bi bi-building"></i>
                     <span>Факультеты</span>
                 </a>

@@ -328,6 +328,7 @@
     justify-content: center;
     color: white;
     font-size: 24px;
+    background: linear-gradient(135deg, var(--primary), #8b5cf6);
 }
 
 /* Специфичные градиенты для разных разделов */
@@ -426,13 +427,13 @@
     border-color: var(--primary);
 }
 
-.add-student-btn, .add-teacher-btn {
+.add-student-btn, .add-teacher-btn, .add-faculty-btn {
     background: var(--accent);
     border-color: var(--accent);
     color: white;
 }
 
-.add-student-btn:hover, .add-teacher-btn:hover {
+.add-student-btn:hover, .add-teacher-btn:hover, .add-faculty-btn:hover {
     background: var(--accent-hover);
     transform: translateY(-1px);
     box-shadow: var(--shadow-lg);
@@ -651,6 +652,7 @@
     font-size: 12px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    z-index: 1 !important;
 }
 
 /* Специфичные сетки для разных таблиц */
@@ -662,6 +664,11 @@
 .teachers-table .table-header,
 .teachers-table .teacher-row {
     grid-template-columns: 40px 3fr 1.5fr 1.8fr 1.2fr 120px;
+}
+
+.faculties-table .table-header,
+.faculties-table .data-row {
+    grid-template-columns: 40px 3fr 3fr 1.8fr 120px;
 }
 
 .header-col {
@@ -715,6 +722,7 @@
 
 .user-photo {
     position: relative;
+    
 }
 
 .photo-placeholder {
@@ -1174,4 +1182,14 @@
     opacity: 1 !important;
     visibility: visible !important;
     transform: translateY(0) !important;
+}
+
+.stats-info{
+    display: flex;
+    gap: 10px;
+}
+
+.stat-row{
+    color: var(--text-secondary);
+    text-decoration: none;
 }

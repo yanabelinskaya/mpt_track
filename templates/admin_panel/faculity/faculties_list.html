@@ -1,0 +1,1139 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Факультеты - МПТ Журнал{% endblock %}
+{% block page_title %}Управление факультетами{% endblock %}
+{% block mobile_title %}Факультеты{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tables.css' %}">
+{% endblock %}
+
+{% block content %}
+<!-- Компактная панель поиска и фильтров -->
+<div class="search-filter-bar">
+    <form method="get" class="search-form">
+        <div class="search-container">
+            <div class="search-input-wrapper">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" name="search" value="{{ search }}" 
+                       placeholder="Найти факультет..." class="search-field">
+                {% if search %}
+                    <button type="button" class="clear-search" onclick="clearSearch()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                {% endif %}
+            </div>
+            
+            <div class="filter-dropdown">
+                <button type="button" class="filter-trigger" id="filterTrigger">
+                    <i class="bi bi-funnel"></i>
+                    <span>Фильтры</span>
+                    {% if status_filter %}
+                        <span class="filter-badge">1</span>
+                    {% endif %}
+                    <i class="bi bi-chevron-down"></i>
+                </button>
+                
+                <div class="filter-menu" id="filterMenu">
+                    <div class="filter-section">
+                        <label class="filter-title">Статус</label>
+                        <div class="status-filters">
+                            <label class="status-option">
+                                <input type="radio" name="status" value="" {% if not status_filter %}checked{% endif %}>
+                                <span class="status-dot all"></span>
+                                <span>Все</span>
+                            </label>
+                            
+                            <label class="status-option">
+                                <input type="radio" name="status" value="active" {% if status_filter == 'active' %}checked{% endif %}>
+                                <span class="status-dot active"></span>
+                                <span>Активные</span>
+                            </label>
+                            
+                            <label class="status-option">
+                                <input type="radio" name="status" value="inactive" {% if status_filter == 'inactive' %}checked{% endif %}>
+                                <span class="status-dot inactive"></span>
+                                <span>Неактивные</span>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="filter-actions">
+                        <button type="submit" class="apply-filters">
+                            <i class="bi bi-check"></i>
+                            Применить
+                        </button>
+                        <a href="{% url 'admin_faculties' %}" class="reset-filters">
+                            <i class="bi bi-arrow-clockwise"></i>
+                            Сбросить
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Основная панель факультетов -->
+<div class="data-panel faculties-panel">
+    <div class="panel-top">
+        <div class="panel-info">
+            <div class="info-icon">
+                <i class="bi bi-building"></i>
+            </div>
+            <div class="info-content">
+                <h1 class="panel-title">Факультеты</h1>
+                <div class="panel-stats">
+                    {% if page_obj and page_obj.paginator.count %}
+                        <span class="stat-item">
+                            <i class="bi bi-building"></i>
+                            {{ page_obj.paginator.count }} факультета
+                        </span>
+                    {% else %}
+                        <span class="stat-item empty">Нет данных</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel-controls">
+            <div class="table-actions">
+                <!-- Экспорт dropdown -->
+                <div class="dropdown-action">
+                    <button type="button" class="action-btn secondary" id="exportTrigger" title="Экспорт">
+                        <i class="bi bi-download"></i>
+                        <span>Экспорт</span>
+                        <i class="bi bi-chevron-down ms-1"></i>
+                    </button>
+                    <div class="dropdown-menu" id="exportMenu">
+                        <div class="dropdown-header">
+                            <span>Экспорт всех</span>
+                        </div>
+                        <a href="#" class="dropdown-item" onclick="exportAllToExcel(); return false;">
+                            <i class="bi bi-file-earmark-spreadsheet text-success"></i>
+                            Экспорт в Excel (.xlsx)
+                        </a>
+                        
+                        <div class="dropdown-divider"></div>
+                        <div class="dropdown-header" id="exportSelectedHeader" style="display: none;">
+                            <span>Экспорт выбранных</span>
+                        </div>
+                        <a href="#" class="dropdown-item" id="exportSelectedExcel" style="display: none;" onclick="exportSelectedToExcel(); return false;">
+                            <i class="bi bi-file-earmark-spreadsheet text-success"></i>
+                            Экспорт Excel
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Добавить факультет dropdown -->
+                <div class="dropdown-action">
+                    <button type="button" class="action-btn add-faculty-btn" id="addFacultyTrigger">
+                        <i class="bi bi-plus-circle"></i>
+                        <span>Добавить</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-menu" id="addFacultyMenu">
+                        <button type="button" class="dropdown-item" onclick="addSingleFaculty()">
+                            <i class="bi bi-building-add"></i>
+                            <div>
+                                <span>Добавить один факультет</span>
+                                <small class="dropdown-desc">Форма с названием и кодом</small>
+                            </div>
+                        </button>
+                        <div class="dropdown-divider"></div>
+                        <button type="button" class="dropdown-item" onclick="bulkImportFaculties()">
+                            <i class="bi bi-file-earmark-spreadsheet"></i>
+                            <div>
+                                <span>Массовое добавление</span>
+                                <small class="dropdown-desc">Импорт из Excel файла</small>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if page_obj %}
+    <!-- Массовые действия -->
+    <div class="selection-bar">
+        <div class="selection-controls">
+            <label class="select-all-wrapper">
+                <input type="checkbox" id="selectAllFaculties" class="select-checkbox">
+                <span class="checkmark"></span>
+                <span class="select-label">Выбрать все</span>
+            </label>
+        </div>
+        
+        <div class="bulk-actions" id="bulkActions" style="display: none;">
+            <span class="selected-info" id="selectedInfo">Выбрано: 0</span>
+            <div class="bulk-buttons">
+                <button class="bulk-btn activate-btn" onclick="bulkActivateFaculties()">
+                    <i class="bi bi-check-circle"></i>
+                    Активировать
+                </button>
+                <button class="bulk-btn deactivate-btn" onclick="bulkDeactivateFaculties()">
+                    <i class="bi bi-x-circle"></i>
+                    Деактивировать
+                </button>
+                <button class="bulk-btn delete-btn" onclick="bulkDeleteFaculties()">
+                    <i class="bi bi-trash"></i>
+                    Удалить
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Таблица факультетов -->
+    <div class="data-table faculties-table">
+        <div class="table-header">
+            <div class="header-col col-select"></div>
+            <div class="header-col col-faculty">
+                <span class="col-title">
+                    <i class="bi bi-building"></i>
+                    Факультет
+                </span>
+            </div>
+            <div class="header-col col-stats">
+                <span class="col-title">
+                    <i class="bi bi-bar-chart"></i>
+                    Статистика
+                </span>
+            </div>
+            <div class="header-col col-status">
+                <span class="col-title">
+                    <i class="bi bi-shield-check"></i>
+                    Статус
+                </span>
+            </div>
+            <div class="header-col col-actions">
+                <span class="col-title">Действия</span>
+            </div>
+        </div>
+        
+        <div class="table-body">
+            {% for faculty in page_obj %}
+            <div class="data-row" data-id="{{ faculty.id }}">
+                <div class="row-col col-select">
+                    <label class="row-select-wrapper">
+                        <input type="checkbox" class="select-checkbox faculty-checkbox" 
+                               data-faculty-id="{{ faculty.id }}" data-faculty-name="{{ faculty.name }}" value="{{ faculty.id }}">
+                        <span class="checkmark"></span>
+                    </label>
+                </div>
+                
+                <div class="row-col col-faculty">
+                    <div class="user-card">
+                        <div class="user-details">
+                            <div class="user-name">{{ faculty.name }}</div>
+                            <div class="user-meta">{{ faculty.code }}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row-col col-stats">
+                    <div class="stats-info">
+                        <div class="stat-row">
+                            <i class="bi bi-collection"></i>
+                            <span>{{ faculty.groups_count|default:0 }} групп{{ faculty.groups_count|pluralize:"а,ы" }}</span>
+                        </div>
+                        <div class="stat-row">
+                            <i class="bi bi-mortarboard"></i>
+                            <span>{{ faculty.students_count|default:0 }} студент{{ faculty.students_count|pluralize:",,ов" }}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row-col col-status">
+                    <div class="status-pill {% if faculty.is_active %}status-active{% else %}status-inactive{% endif %}" 
+                         onclick="toggleFacultyStatus({{ faculty.id }})" style="cursor: pointer;" title="Нажмите для изменения статуса">
+                        <div class="status-indicator"></div>
+                        <span>{% if faculty.is_active %}Активный{% else %}Неактивный{% endif %}</span>
+                    </div>
+                </div>
+                
+                <div class="row-col col-actions">
+                    <div class="actions-menu">
+                        <button class="action-item view-action" onclick="viewFaculty({{ faculty.id }})" title="Просмотр">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <button class="action-item edit-action" onclick="editFaculty({{ faculty.id }})" title="Редактировать">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button class="action-item delete-action" onclick="deleteFaculty({{ faculty.id }})" title="Удалить">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Пагинация -->
+    {% if page_obj.has_other_pages %}
+        <div class="pagination-container">
+            <div class="pagination-info">
+                <span class="info-text">
+                    Показано <strong>{{ page_obj.start_index }}–{{ page_obj.end_index }}</strong> из <strong>{{ page_obj.paginator.count }}</strong>
+                </span>
+            </div>
+            
+            <nav class="pagination-nav">
+                <div class="pagination-buttons">
+                    {% if page_obj.has_previous %}
+                        <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page=1" class="page-btn first-btn" title="Первая страница">
+                            <i class="bi bi-chevron-double-left"></i>
+                        </a>
+                        <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.previous_page_number }}" class="page-btn prev-btn" title="Предыдущая">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <span class="page-btn current">{{ num }}</span>
+                        {% elif num >= page_obj.number|add:"-3" and num <= page_obj.number|add:"3" %}
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ num }}" class="page-btn">{{ num }}</a>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                        <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.next_page_number }}" class="page-btn next-btn" title="Следующая">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                        <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.paginator.num_pages }}" class="page-btn last-btn" title="Последняя страница">
+                            <i class="bi bi-chevron-double-right"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            </nav>
+        </div>
+    {% endif %}
+    {% else %}
+        <!-- Пустое состояние -->
+        <div class="empty-state">
+            <div class="empty-illustration">
+                <i class="bi bi-building"></i>
+            </div>
+            <h2 class="empty-title">Факультеты не найдены</h2>
+            <p class="empty-description">
+                {% if search or status_filter %}
+                    Попробуйте изменить критерии поиска или фильтры.
+                {% else %}
+                    Создайте первый факультет для начала работы с системой.
+                {% endif %}
+            </p>
+            <div class="empty-actions">
+                {% if search or status_filter %}
+                    <a href="{% url 'admin_faculties' %}" class="empty-btn secondary">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        Сбросить фильтры
+                    </a>
+                {% endif %}
+                <button class="empty-btn primary" onclick="addSingleFaculty()">
+                    <i class="bi bi-building-add"></i>
+                    Создать факультет
+                </button>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/admin_panel.js' %}"></script>
+<script>
+// Глобальные переменные для факультетов
+window.FACULTY_CREATE_URL = "{% url 'admin_faculty_create' %}";
+window.FACULTY_IMPORT_URL = "{% url 'admin_faculty_import' %}";
+window.FACULTY_EDIT_URL = "/admin/faculties/{id}/edit/";
+window.FACULTY_VIEW_URL = "/admin/faculties/{id}/";
+window.FACULTY_DELETE_URL = "/admin/faculties/{id}/delete/";
+window.FACULTY_TOGGLE_STATUS_URL = "/admin/faculties/{id}/toggle-status/";
+window.FACULTY_BULK_ACTIVATE_URL = "/admin/faculties/bulk-activate/";
+window.FACULTY_BULK_DEACTIVATE_URL = "/admin/faculties/bulk-deactivate/";
+window.FACULTY_BULK_DELETE_URL = "/admin/faculties/bulk-delete/";
+window.FACULTY_EXPORT_URL = "/admin/faculties/export/";
+
+window.TOTAL_FACULTIES = {% if page_obj %}{{ page_obj.paginator.count|default:0 }}{% else %}0{% endif %};
+window.CURRENT_FILTERS = {
+    search: "{{ search|default:"" }}",
+    status: "{{ status_filter|default:"" }}"
+};
+
+let allFacultiesSelected = false;
+let selectedFacultiesIds = new Set();
+
+// CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+// Показать уведомление
+function showNotification(message, type = 'success') {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Автоматическое скрытие через 5 секунд
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 5000);
+}
+
+// Показать загрузку
+function showLoading(message = 'Загрузка...') {
+    const loading = document.createElement('div');
+    loading.id = 'loadingOverlay';
+    loading.className = 'position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center';
+    loading.style.cssText = 'background: rgba(0,0,0,0.5); z-index: 9999;';
+    loading.innerHTML = `
+        <div class="bg-white p-4 rounded shadow">
+            <div class="d-flex align-items-center">
+                <div class="spinner-border text-primary me-3" role="status"></div>
+                <span>${message}</span>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(loading);
+}
+
+// Скрыть загрузку
+function hideLoading() {
+    const loading = document.getElementById('loadingOverlay');
+    if (loading) loading.remove();
+}
+
+// ====================================
+// ИНИЦИАЛИЗАЦИЯ
+// ====================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Faculties page loaded');
+    
+    const selectAllCheckbox = document.getElementById('selectAllFaculties');
+    
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            if (this.checked) {
+                selectAllFaculties();
+            } else {
+                deselectAllFaculties();
+            }
+        });
+    }
+    
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('faculty-checkbox')) {
+            const facultyId = parseInt(e.target.value);
+            
+            if (e.target.checked) {
+                selectedFacultiesIds.add(facultyId);
+            } else {
+                selectedFacultiesIds.delete(facultyId);
+                allFacultiesSelected = false;
+            }
+            
+            updateFacultySelectionState();
+        }
+    });
+    
+    initializeDropdowns();
+});
+
+// ====================================
+// DROPDOWN МЕНЮ
+// ====================================
+
+function initializeDropdowns() {
+    // ЭКСПОРТ DROPDOWN
+    const exportTrigger = document.getElementById('exportTrigger');
+    const exportMenu = document.getElementById('exportMenu');
+    
+    if (exportTrigger && exportMenu) {
+        exportMenu.classList.remove('active');
+        exportMenu.style.display = 'none';
+        
+        exportTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+                if (menu !== exportMenu) {
+                    menu.classList.remove('active');
+                    menu.style.display = 'none';
+                }
+            });
+            
+            const isCurrentlyVisible = exportMenu.style.display === 'block';
+            
+            if (isCurrentlyVisible) {
+                exportMenu.classList.remove('active');
+                exportMenu.style.display = 'none';
+            } else {
+                exportMenu.classList.add('active');
+                exportMenu.style.display = 'block';
+                exportMenu.style.opacity = '1';
+                exportMenu.style.visibility = 'visible';
+                exportMenu.style.transform = 'translateY(0)';
+                exportMenu.style.position = 'absolute';
+                exportMenu.style.top = '100%';
+                exportMenu.style.right = '0';
+                exportMenu.style.zIndex = '1000';
+            }
+        });
+        
+        exportMenu.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+    
+    // ДОБАВИТЬ ФАКУЛЬТЕТ DROPDOWN
+    const addFacultyTrigger = document.getElementById('addFacultyTrigger');
+    const addFacultyMenu = document.getElementById('addFacultyMenu');
+    
+    if (addFacultyTrigger && addFacultyMenu) {
+        addFacultyMenu.classList.remove('active');
+        addFacultyMenu.style.display = 'none';
+        
+        addFacultyTrigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                if (menu !== addFacultyMenu) {
+                    menu.classList.remove('active');
+                    menu.style.display = 'none';
+                }
+            });
+            
+            if (addFacultyMenu.classList.contains('active')) {
+                addFacultyMenu.classList.remove('active');
+                addFacultyMenu.style.display = 'none';
+            } else {
+                addFacultyMenu.classList.add('active');
+                addFacultyMenu.style.display = 'block';
+            }
+        });
+        
+        addFacultyMenu.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+    
+    // Закрытие dropdown при клике вне
+    document.addEventListener('click', function(e) {
+        const isInsideDropdown = e.target.closest('.dropdown-action');
+        if (!isInsideDropdown) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.remove('active');
+                menu.style.display = 'none';
+            });
+        }
+    });
+}
+
+function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.classList.remove('active');
+        menu.style.display = 'none';
+    });
+}
+
+// ====================================
+// ФУНКЦИИ ВЫБОРА ФАКУЛЬТЕТОВ
+// ====================================
+
+function selectAllFaculties() {
+    allFacultiesSelected = true;
+    selectedFacultiesIds.clear();
+    
+    document.querySelectorAll('.faculty-checkbox').forEach(cb => {
+        cb.checked = true;
+        selectedFacultiesIds.add(parseInt(cb.value));
+    });
+    
+    updateFacultySelectionState();
+}
+
+function deselectAllFaculties() {
+    allFacultiesSelected = false;
+    selectedFacultiesIds.clear();
+    
+    document.querySelectorAll('.faculty-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    
+    updateFacultySelectionState();
+}
+
+function updateFacultySelectionState() {
+    const checkboxes = document.querySelectorAll('.faculty-checkbox');
+    const checkedBoxes = document.querySelectorAll('.faculty-checkbox:checked');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedInfo = document.getElementById('selectedInfo');
+    const selectAllCheckbox = document.getElementById('selectAllFaculties');
+    
+    if (!bulkActions || !selectedInfo || !selectAllCheckbox) return;
+    
+    const totalSelected = selectedFacultiesIds.size;
+    
+    if (totalSelected === 0 && !allFacultiesSelected) {
+        bulkActions.style.display = 'none';
+        selectAllCheckbox.checked = false;
+        allFacultiesSelected = false;
+    } else if (allFacultiesSelected) {
+        bulkActions.style.display = 'flex';
+        selectedInfo.textContent = `Выбрано: ВСЕ ${window.TOTAL_FACULTIES || 0} факультетов`;
+        selectAllCheckbox.checked = true;
+    } else {
+        bulkActions.style.display = 'flex';
+        selectedInfo.textContent = `Выбрано: ${totalSelected}`;
+        
+        if (checkedBoxes.length === checkboxes.length && checkboxes.length > 0) {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = true;
+        } else if (checkedBoxes.length > 0 || totalSelected > 0) {
+            selectAllCheckbox.indeterminate = true;
+            selectAllCheckbox.checked = false;
+        } else {
+            selectAllCheckbox.indeterminate = false;
+            selectAllCheckbox.checked = false;
+        }
+    }
+    
+    updateExportMenu();
+}
+
+function updateExportMenu() {
+    const selectedCount = selectedFacultiesIds.size;
+    const exportSelectedHeader = document.getElementById('exportSelectedHeader');
+    const exportSelectedExcel = document.getElementById('exportSelectedExcel');
+    
+    if (selectedCount > 0) {
+        if (exportSelectedHeader) exportSelectedHeader.style.display = 'block';
+        if (exportSelectedExcel) {
+            exportSelectedExcel.style.display = 'block';
+            exportSelectedExcel.innerHTML = `<i class="bi bi-file-earmark-spreadsheet text-success"></i> ${selectedCount} в Excel`;
+        }
+    } else {
+        if (exportSelectedHeader) exportSelectedHeader.style.display = 'none';
+        if (exportSelectedExcel) exportSelectedExcel.style.display = 'none';
+    }
+}
+
+// ====================================
+// ОСНОВНЫЕ ДЕЙСТВИЯ
+// ====================================
+
+function addSingleFaculty() {
+    console.log('addSingleFaculty called');
+    closeAllDropdowns();
+    window.location.href = window.FACULTY_CREATE_URL;
+}
+
+function bulkImportFaculties() {
+    console.log('bulkImportFaculties called');
+    closeAllDropdowns();
+    window.location.href = window.FACULTY_IMPORT_URL;
+}
+
+// ====================================
+// ПРОСМОТР ФАКУЛЬТЕТА
+// ====================================
+
+function viewFaculty(id) {
+    console.log('viewFaculty called:', id);
+    showLoading('Загрузка информации о факультете...');
+    
+    const url = window.FACULTY_VIEW_URL.replace('{id}', id);
+    window.location.href = url;
+}
+
+// ====================================
+// РЕДАКТИРОВАНИЕ ФАКУЛЬТЕТА
+// ====================================
+
+function editFaculty(id) {
+    console.log('editFaculty called:', id);
+    showLoading('Открытие формы редактирования...');
+    
+    const url = window.FACULTY_EDIT_URL.replace('{id}', id);
+    window.location.href = url;
+}
+
+// ====================================
+// УДАЛЕНИЕ ФАКУЛЬТЕТА
+// ====================================
+
+function deleteFaculty(id) {
+    console.log('deleteFaculty called:', id);
+    
+    // Получаем название факультета для подтверждения
+    const row = document.querySelector(`[data-id="${id}"]`);
+    const facultyName = row ? row.querySelector('.user-name').textContent : 'факультет';
+    
+    if (!confirm(`Вы уверены, что хотите удалить факультет "${facultyName}"?\n\nВНИМАНИЕ: Если к факультету привязаны группы или студенты, удаление может быть невозможно.`)) {
+        return;
+    }
+    
+    showLoading('Удаление факультета...');
+    
+    const url = window.FACULTY_DELETE_URL.replace('{id}', id);
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => {
+        hideLoading();
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Удаляем строку из таблицы с анимацией
+            if (row) {
+                row.style.transform = 'translateX(100%)';
+                row.style.opacity = '0';
+                row.style.transition = 'all 0.3s ease';
+                
+                setTimeout(() => {
+                    row.remove();
+                    updateFacultyStats();
+                    showNotification(data.message || 'Факультет успешно удален', 'success');
+                }, 300);
+            }
+            
+            // Убираем из выбранных
+            selectedFacultiesIds.delete(id);
+            updateFacultySelectionState();
+            
+        } else {
+            showNotification(data.message || 'Ошибка при удалении факультета', 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при удалении факультета', 'danger');
+    });
+}
+
+// ====================================
+// ПЕРЕКЛЮЧЕНИЕ СТАТУСА ФАКУЛЬТЕТА
+// ====================================
+
+function toggleFacultyStatus(id) {
+    console.log('toggleFacultyStatus called:', id);
+    
+    const row = document.querySelector(`[data-id="${id}"]`);
+    const statusPill = row ? row.querySelector('.status-pill') : null;
+    const facultyName = row ? row.querySelector('.user-name').textContent : 'факультет';
+    
+    if (!statusPill) return;
+    
+    const isCurrentlyActive = statusPill.classList.contains('status-active');
+    const newStatus = !isCurrentlyActive;
+    const actionText = newStatus ? 'активировать' : 'деактивировать';
+    
+    if (!confirm(`Вы уверены, что хотите ${actionText} факультет "${facultyName}"?`)) {
+        return;
+    }
+    
+    showLoading(`${newStatus ? 'Активация' : 'Деактивация'} факультета...`);
+    
+    const url = window.FACULTY_TOGGLE_STATUS_URL.replace('{id}', id);
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ is_active: newStatus })
+    })
+    .then(response => {
+        hideLoading();
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Обновляем статус в таблице
+            updateFacultyStatusInTable(id, data.is_active);
+            showNotification(data.message || `Статус факультета успешно изменен`, 'success');
+        } else {
+            showNotification(data.message || 'Ошибка при изменении статуса факультета', 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при изменении статуса факультета', 'danger');
+    });
+}
+
+function updateFacultyStatusInTable(id, isActive) {
+    const row = document.querySelector(`[data-id="${id}"]`);
+    if (!row) return;
+    
+    const statusPill = row.querySelector('.status-pill');
+    const statusSpan = statusPill.querySelector('span');
+    
+    if (isActive) {
+        statusPill.className = 'status-pill status-active';
+        statusSpan.textContent = 'Активный';
+    } else {
+        statusPill.className = 'status-pill status-inactive';
+        statusSpan.textContent = 'Неактивный';
+    }
+}
+
+// ====================================
+// МАССОВЫЕ ОПЕРАЦИИ
+// ====================================
+
+function bulkActivateFaculties() {
+    const selected = Array.from(selectedFacultiesIds);
+    if (selected.length === 0) {
+        showNotification('Выберите факультеты для активации', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Вы уверены, что хотите активировать ${selected.length} факультетов?`)) {
+        return;
+    }
+    
+    performBulkStatusUpdate(selected, true, 'активация');
+}
+
+function bulkDeactivateFaculties() {
+    const selected = Array.from(selectedFacultiesIds);
+    if (selected.length === 0) {
+        showNotification('Выберите факультеты для деактивации', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Вы уверены, что хотите деактивировать ${selected.length} факультетов?`)) {
+        return;
+    }
+    
+    performBulkStatusUpdate(selected, false, 'деактивация');
+}
+
+function performBulkStatusUpdate(facultyIds, isActive, actionName) {
+    showLoading(`Массовая ${actionName} факультетов...`);
+    
+    const url = isActive ? window.FACULTY_BULK_ACTIVATE_URL : window.FACULTY_BULK_DEACTIVATE_URL;
+    
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ faculty_ids: facultyIds })
+    })
+    .then(response => {
+        hideLoading();
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Обновляем статусы в таблице
+            facultyIds.forEach(id => {
+                updateFacultyStatusInTable(id, isActive);
+            });
+            
+            // Очищаем выбор
+            deselectAllFaculties();
+            
+            showNotification(data.message || `Массовая ${actionName} выполнена успешно`, 'success');
+        } else {
+            showNotification(data.message || `Ошибка при массовой ${actionName} факультетов`, 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        showNotification(`Произошла ошибка при массовой ${actionName} факультетов`, 'danger');
+    });
+}
+
+function bulkDeleteFaculties() {
+    const selected = Array.from(selectedFacultiesIds);
+    if (selected.length === 0) {
+        showNotification('Выберите факультеты для удаления', 'warning');
+        return;
+    }
+    
+    // Получаем названия факультетов для подтверждения
+    const facultyNames = selected.slice(0, 3).map(id => {
+        const row = document.querySelector(`[data-id="${id}"]`);
+        return row ? row.querySelector('.user-name').textContent : `ID ${id}`;
+    }).join(', ');
+    
+    const displayNames = selected.length > 3 ? facultyNames + ' и др.' : facultyNames;
+    
+    if (!confirm(`Вы уверены, что хотите удалить ${selected.length} факультетов?\n\n${displayNames}\n\nВНИМАНИЕ: Факультеты со связанными группами и студентами не будут удалены.`)) {
+        return;
+    }
+    
+    showLoading('Массовое удаление факультетов...');
+    
+    fetch(window.FACULTY_BULK_DELETE_URL, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken'),
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ faculty_ids: selected })
+    })
+    .then(response => {
+        hideLoading();
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // Удаляем строки из таблицы с анимацией
+            data.deleted_ids.forEach((id, index) => {
+                const row = document.querySelector(`[data-id="${id}"]`);
+                if (row) {
+                    setTimeout(() => {
+                        row.style.transform = 'translateX(100%)';
+                        row.style.opacity = '0';
+                        row.style.transition = 'all 0.3s ease';
+                        
+                        setTimeout(() => {
+                            row.remove();
+                        }, 300);
+                    }, index * 100);
+                }
+            });
+            
+            // Очищаем выбор
+            setTimeout(() => {
+                deselectAllFaculties();
+                updateFacultyStats();
+            }, data.deleted_ids.length * 100 + 300);
+            
+            showNotification(data.message || 'Массовое удаление выполнено успешно', 'success');
+        } else {
+            showNotification(data.message || 'Ошибка при массовом удалении факультетов', 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при массовом удалении факультетов', 'danger');
+    });
+}
+
+// ====================================
+// ЭКСПОРТ
+// ====================================
+
+function exportAllToExcel() {
+    console.log('exportAllToExcel called');
+    closeAllDropdowns();
+    
+    showLoading('Подготовка экспорта...');
+    
+    const params = new URLSearchParams(window.CURRENT_FILTERS || {});
+    const url = window.FACULTY_EXPORT_URL + '?' + params.toString();
+    
+    // Создаем ссылку для скачивания
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `faculties_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    hideLoading();
+    showNotification('Экспорт начат. Файл будет загружен автоматически.', 'success');
+}
+
+function exportSelectedToExcel() {
+    console.log('exportSelectedToExcel called');
+    closeAllDropdowns();
+    
+    const selected = Array.from(selectedFacultiesIds);
+    if (selected.length === 0) {
+        showNotification('Выберите факультеты для экспорта', 'warning');
+        return;
+    }
+    
+    showLoading('Подготовка экспорта выбранных факультетов...');
+    
+    const params = new URLSearchParams(window.CURRENT_FILTERS || {});
+    params.set('selected', selected.join(','));
+    
+    const url = window.FACULTY_EXPORT_URL + '?' + params.toString();
+    
+    // Создаем ссылку для скачивания
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `selected_faculties_${new Date().toISOString().split('T')[0]}.xlsx`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    hideLoading();
+    showNotification(`Экспорт ${selected.length} выбранных факультетов начат`, 'success');
+}
+
+// ====================================
+// ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+// ====================================
+
+function updateFacultyStats() {
+    // Обновляем счетчик факультетов
+    const rows = document.querySelectorAll('.data-row').length;
+    const statItem = document.querySelector('.panel-stats .stat-item');
+    
+    if (statItem && rows > 0) {
+        statItem.innerHTML = `<i class="bi bi-building"></i> ${rows} факультета`;
+        window.TOTAL_FACULTIES = rows;
+    } else if (statItem) {
+        statItem.innerHTML = '<span class="stat-item empty">Нет данных</span>';
+        window.TOTAL_FACULTIES = 0;
+        
+        // Если факультетов не осталось, показываем пустое состояние
+        if (rows === 0) {
+            setTimeout(() => {
+                location.reload();
+            }, 1000);
+        }
+    }
+}
+
+function clearSearch() {
+    const searchField = document.querySelector('.search-field');
+    if (searchField) {
+        searchField.value = '';
+        document.querySelector('.search-form').submit();
+    }
+}
+
+console.log('✅ Faculties script loaded successfully!');
+</script>
+
+<style>
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.empty-illustration {
+    font-size: 4rem;
+    color: #e5e7eb;
+    margin-bottom: 24px;
+}
+
+.empty-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 12px;
+}
+
+.empty-description {
+    color: #6b7280;
+    margin-bottom: 32px;
+    line-height: 1.6;
+}
+
+.empty-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.empty-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.empty-btn.primary {
+    background: #3b82f6;
+    color: white;
+}
+
+.empty-btn.primary:hover {
+    background: #2563eb;
+}
+
+.empty-btn.secondary {
+    background: #f3f4f6;
+    color: #374151;
+    border: 1px solid #d1d5db;
+}
+
+.empty-btn.secondary:hover {
+    background: #e5e7eb;
+}
+
+/* Анимации для строк */
+.data-row {
+    transition: all 0.3s ease;
+}
+
+.data-row:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+/* Стили для уведомлений */
+.alert {
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+</style>
+{% endblock %}

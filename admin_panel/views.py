@@ -1188,3 +1188,739 @@ def generate_pdf_export(students):
     
     temp_file.close()
     return temp_file.name
+
+
+
+# views.py (добавляем к существующим views)
+
+def faculties_list_view(request):
+    """Список факультетов"""
+    # Простая проверка доступности моделей
+    try:
+        Faculty.objects.all()[:1]
+    except Exception as e:
+        messages.error(request, f'Модели недоступны: {str(e)}')
+        return redirect('admin_dashboard')
+    
+    try:
+        # Поиск и фильтры
+        search = request.GET.get('search', '').strip()
+        status_filter = request.GET.get('status', '')
+        
+        # Базовый queryset
+        faculties = Faculty.objects.all()
+        
+        # Применяем поиск
+        if search:
+            faculties = faculties.filter(
+                Q(name__icontains=search) |
+                Q(code__icontains=search) |
+                Q(description__icontains=search)
+            )
+        
+        # Применяем фильтры
+        if status_filter == 'active':
+            faculties = faculties.filter(is_active=True)
+        elif status_filter == 'inactive':
+            faculties = faculties.filter(is_active=False)
+        
+        # Сортировка
+        faculties = faculties.order_by('name')
+        
+        # ИСПРАВЛЕНО: Создаем список словарей вместо изменения объектов
+        faculty_list = []
+        for faculty in faculties:
+            try:
+                # Считаем группы (безопасно)
+                groups_count = 0
+                students_count = 0
+                active_students_count = 0
+                
+                # Если есть связь с группами
+                if hasattr(faculty, 'group_set'):
+                    groups_count = faculty.group_set.count()
+                    
+                    # Считаем студентов через группы
+                    students_count = Student.objects.filter(group__faculty=faculty).count()
+                    active_students_count = Student.objects.filter(
+                        group__faculty=faculty, 
+                        study_status='active'
+                    ).count()
+                
+                # Создаем объект для шаблона с дополнительными атрибутами
+                faculty_data = {
+                    'object': faculty,
+                    'id': faculty.id,
+                    'name': faculty.name,
+                    'code': faculty.code,
+                    'description': faculty.description,
+                    'is_active': faculty.is_active,
+                    'created_at': faculty.created_at,
+                    'groups_count': groups_count,
+                    'students_count': students_count,
+                    'active_students_count': active_students_count,
+                }
+                
+                faculty_list.append(faculty_data)
+                
+            except Exception as e:
+                # Если ошибка с конкретным факультетом, добавляем с нулевыми значениями
+                faculty_data = {
+                    'object': faculty,
+                    'id': faculty.id,
+                    'name': faculty.name,
+                    'code': faculty.code,
+                    'description': getattr(faculty, 'description', ''),
+                    'is_active': faculty.is_active,
+                    'created_at': faculty.created_at,
+                    'groups_count': 0,
+                    'students_count': 0,
+                    'active_students_count': 0,
+                }
+                faculty_list.append(faculty_data)
+        
+        # Общая статистика
+        total_faculties = len(faculty_list)
+        
+        # Пагинация
+        paginator = Paginator(faculty_list, 20)
+        page_number = request.GET.get('page', 1)
+        
+        try:
+            page_obj = paginator.get_page(page_number)
+        except Exception:
+            page_obj = paginator.get_page(1)
+        
+        context = {
+            'page_obj': page_obj,
+            'search': search,
+            'status_filter': status_filter,
+            'total_faculties': total_faculties,
+            'current_filters': {
+                'search': search,
+                'status': status_filter,
+            },
+        }
+        
+        return render(request, 'admin_panel/faculity/faculties_list.html', context)
+        
+    except Exception as e:
+        messages.error(request, f'Ошибка при загрузке факультетов: {str(e)}')
+        # Создаем пустой контекст для отображения пустой страницы
+        context = {
+            'page_obj': None,
+            'search': '',
+            'status_filter': '',
+            'total_faculties': 0,
+            'current_filters': {
+                'search': '',
+                'status': '',
+            },
+        }
+        return render(request, 'admin_panel/faculity/faculties_list.html', context)
+
+   
+
+def faculty_create_view(request):
+    """Создание нового факультета"""
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели недоступны. Обратитесь к администратору.')
+        return redirect('admin_dashboard')
+    
+    if request.method == 'POST':
+        try:
+            # Получаем данные из формы
+            name = request.POST.get('name', '').strip()
+            code = request.POST.get('code', '').strip().upper()
+            description = request.POST.get('description', '').strip()
+            is_active = request.POST.get('is_active') == 'on'  # checkbox
+            
+            # Валидация
+            errors = {}
+            
+            if not name:
+                errors['name'] = 'Название факультета обязательно'
+            elif len(name) > 200:
+                errors['name'] = 'Название слишком длинное (максимум 200 символов)'
+            
+            if not code:
+                errors['code'] = 'Код факультета обязателен'
+            elif len(code) > 10:
+                errors['code'] = 'Код слишком длинный (максимум 10 символов)'
+            elif Faculty.objects.filter(code=code).exists():
+                errors['code'] = f'Факультет с кодом "{code}" уже существует'
+            
+            if description and len(description) > 500:
+                errors['description'] = 'Описание слишком длинное (максимум 500 символов)'
+            
+            # Если есть ошибки, возвращаем их
+            if errors:
+                return JsonResponse({
+                    'success': False,
+                    'errors': errors,
+                    'message': 'Исправьте ошибки в форме'
+                })
+            
+            # Создаем факультет
+            with transaction.atomic():
+                created_by = request.user if request.user.is_authenticated else None
+                
+                faculty = Faculty.objects.create(
+                    name=name,
+                    code=code,
+                    description=description,
+                    is_active=is_active,
+                    created_by=created_by
+                )
+                
+                # Возвращаем успешный ответ
+                return JsonResponse({
+                    'success': True,
+                    'message': f'Факультет "{faculty.name}" успешно создан!',
+                    'redirect_url': reverse('admin_faculties'),
+                    'faculty_id': faculty.id
+                })
+                
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Ошибка при создании факультета: {str(e)}'
+            })
+    
+    # GET запрос - показываем форму создания
+    context = {}
+    return render(request, 'admin_panel/faculity/faculty_create.html', context)
+
+def faculty_edit_view(request, pk):
+    """Редактирование факультета"""
+    try:
+        faculty = Faculty.objects.get(pk=pk)
+    except Faculty.DoesNotExist:
+        messages.error(request, 'Факультет не найден')
+        return redirect('admin_faculties')
+    
+    if request.method == 'POST':
+        try:
+            # Получаем данные из формы
+            name = request.POST.get('name', '').strip()
+            code = request.POST.get('code', '').strip().upper()
+            description = request.POST.get('description', '').strip()
+            is_active = request.POST.get('is_active') == 'on'
+            
+            # Валидация
+            errors = {}
+            if not name:
+                errors['name'] = 'Название факультета обязательно'
+            if not code:
+                errors['code'] = 'Код факультета обязателен'
+            elif len(code) > 10:
+                errors['code'] = 'Код не должен превышать 10 символов'
+            elif Faculty.objects.filter(code=code).exclude(pk=pk).exists():
+                errors['code'] = 'Факультет с таким кодом уже существует'
+            
+            if errors:
+                return JsonResponse({
+                    'success': False,
+                    'errors': errors,
+                    'message': 'Исправьте ошибки в форме'
+                })
+            
+            # Обновляем данные
+            faculty.name = name
+            faculty.code = code
+            faculty.description = description
+            faculty.is_active = is_active
+            faculty.save()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Факультет "{faculty.name}" успешно обновлен',
+                'redirect_url': reverse('admin_faculties')
+            })
+            
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Ошибка при обновлении факультета: {str(e)}'
+            })
+    
+    # GET запрос - показываем форму
+    context = {
+        'faculty': faculty
+    }
+    return render(request, 'admin_panel/faculity/faculty_edit.html', context)
+
+def faculty_delete_view(request, pk):
+    """Удаление факультета"""
+    if request.method == 'POST':
+        try:
+            faculty = Faculty.objects.get(pk=pk)
+            
+            # Проверяем связанные данные
+            groups_count = faculty.group_set.count()
+            students_count = Student.objects.filter(group__faculty=faculty).count()
+            
+            if groups_count > 0 or students_count > 0:
+                return JsonResponse({
+                    'success': False,
+                    'message': f'Нельзя удалить факультет. К нему привязано {groups_count} групп и {students_count} студентов. Сначала переведите их на другие факультеты.'
+                })
+            
+            # Удаляем факультет
+            faculty_name = faculty.name
+            faculty.delete()
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Факультет "{faculty_name}" успешно удален'
+            })
+            
+        except Faculty.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Факультет не найден'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Ошибка при удалении факультета: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Неверный метод запроса'})
+
+def faculty_toggle_status_view(request, pk):
+    """Переключение статуса активности факультета"""
+    if request.method == 'POST':
+        try:
+            faculty = Faculty.objects.get(pk=pk)
+            
+            # Переключаем статус
+            faculty.is_active = not faculty.is_active
+            faculty.save()
+            
+            status_text = "активирован" if faculty.is_active else "деактивирован"
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'Факультет "{faculty.name}" {status_text}',
+                'is_active': faculty.is_active
+            })
+            
+        except Faculty.DoesNotExist:
+            return JsonResponse({
+                'success': False,
+                'message': 'Факультет не найден'
+            })
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Ошибка при изменении статуса: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Неверный метод запроса'})
+
+@require_http_methods(["POST"])
+def faculties_bulk_delete_view(request):
+    """Массовое удаление факультетов"""
+    try:
+        data = json.loads(request.body)
+        faculty_ids = data.get('faculty_ids', [])
+        
+        if not faculty_ids:
+            return JsonResponse({
+                'success': False,
+                'message': 'Не выбраны факультеты для удаления'
+            })
+        
+        # Получаем факультеты
+        faculties = Faculty.objects.filter(id__in=faculty_ids)
+        
+        # Проверяем связанные данные
+        protected_faculties = []
+        for faculty in faculties:
+            groups_count = faculty.group_set.count()
+            students_count = Student.objects.filter(group__faculty=faculty).count()
+            if groups_count > 0 or students_count > 0:
+                protected_faculties.append({
+                    'name': faculty.name,
+                    'groups': groups_count,
+                    'students': students_count
+                })
+        
+        if protected_faculties:
+            message = "Следующие факультеты нельзя удалить:\n"
+            for faculty in protected_faculties:
+                message += f"• {faculty['name']}: {faculty['groups']} групп, {faculty['students']} студентов\n"
+            message += "Сначала переведите связанные данные на другие факультеты."
+            
+            return JsonResponse({
+                'success': False,
+                'message': message
+            })
+        
+        # Удаляем факультеты
+        deleted_count = len(faculties)
+        faculties.delete()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Удалено факультетов: {deleted_count}'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Ошибка при массовом удалении: {str(e)}'
+        })
+
+@require_http_methods(["POST"])
+def faculties_bulk_update_status_view(request):
+    """Массовое изменение статуса факультетов"""
+    try:
+        data = json.loads(request.body)
+        faculty_ids = data.get('faculty_ids', [])
+        action = data.get('action')
+        
+        if not faculty_ids:
+            return JsonResponse({
+                'success': False,
+                'message': 'Не выбраны факультеты для изменения статуса'
+            })
+        
+        if action not in ['activate', 'deactivate']:
+            return JsonResponse({
+                'success': False,
+                'message': 'Неверное действие'
+            })
+        
+        # Обновляем статус
+        is_active = action == 'activate'
+        updated_count = Faculty.objects.filter(id__in=faculty_ids).update(is_active=is_active)
+        
+        action_text = "активированы" if is_active else "деактивированы"
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Факультеты {action_text}: {updated_count}'
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Ошибка при массовом изменении статуса: {str(e)}'
+        })
+
+def faculty_detail_view(request, pk):
+    """Детальная информация о факультете"""
+    try:
+        faculty = Faculty.objects.get(pk=pk)
+        
+        # Получаем группы факультета
+        groups = faculty.group_set.all().order_by('name')
+        
+        # Получаем статистику
+        total_groups = groups.count()
+        total_students = Student.objects.filter(group__faculty=faculty).count()
+        active_students = Student.objects.filter(group__faculty=faculty, study_status='active').count()
+        
+        # Получаем преподавателей (если модель Teacher уже создана)
+        # teachers = Teacher.objects.filter(faculty=faculty)
+        
+        context = {
+            'faculty': faculty,
+            'groups': groups,
+            'total_groups': total_groups,
+            'total_students': total_students,
+            'active_students': active_students,
+            # 'teachers': teachers,
+        }
+        
+        return render(request, 'admin_panel/faculty_detail.html', context)
+        
+    except Faculty.DoesNotExist:
+        messages.error(request, 'Факультет не найден')
+        return redirect('admin_faculties')
+
+def faculties_export_view(request):
+    """Экспорт списка факультетов в Excel"""
+    try:
+        # Получаем те же фильтры что и в списке
+        search = request.GET.get('search', '')
+        status_filter = request.GET.get('status', '')
+        
+        # Базовый queryset
+        faculties = Faculty.objects.all()
+        
+        # Применяем фильтры
+        if search:
+            faculties = faculties.filter(
+                Q(name__icontains=search) |
+                Q(code__icontains=search) |
+                Q(description__icontains=search)
+            )
+        
+        if status_filter == 'active':
+            faculties = faculties.filter(is_active=True)
+        elif status_filter == 'inactive':
+            faculties = faculties.filter(is_active=False)
+        
+        faculties = faculties.order_by('name')
+        
+        # Создаем DataFrame
+        data = []
+        for faculty in faculties:
+            groups_count = faculty.group_set.count()
+            students_count = Student.objects.filter(group__faculty=faculty).count()
+            active_students_count = Student.objects.filter(
+                group__faculty=faculty, 
+                study_status='active'
+            ).count()
+            
+            data.append({
+                'Название': faculty.name,
+                'Код': faculty.code,
+                'Описание': faculty.description or '',
+                'Статус': 'Активный' if faculty.is_active else 'Неактивный',
+                'Количество групп': groups_count,
+                'Всего студентов': students_count,
+                'Активных студентов': active_students_count,
+                'Дата создания': faculty.created_at.strftime('%d.%m.%Y %H:%M') if faculty.created_at else '',
+            })
+        
+        df = pd.DataFrame(data)
+        
+        # Создаем Excel файл в памяти
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Факультеты', index=False)
+            
+            # Автоширина колонок
+            worksheet = writer.sheets['Факультеты']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        # Возвращаем файл
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = f'attachment; filename="faculties_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f'Ошибка при экспорте: {str(e)}')
+        return redirect('admin_faculties')
+
+def faculty_import_view(request):
+    """Импорт факультетов из Excel файла"""
+    if request.method == 'POST' and request.FILES.get('excel_file'):
+        try:
+            excel_file = request.FILES['excel_file']
+            
+            # Проверяем формат файла
+            if excel_file.name.endswith('.xlsx') or excel_file.name.endswith('.xls'):
+                df = pd.read_excel(excel_file)
+            else:
+                messages.error(request, 'Поддерживаются только файлы .xlsx и .xls')
+                return redirect('admin_faculty_import')
+            
+            # Проверяем наличие обязательных столбцов
+            required_columns = ['Название', 'Код']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            
+            if missing_columns:
+                messages.error(request, f'Отсутствуют обязательные столбцы: {", ".join(missing_columns)}')
+                return redirect('admin_faculty_import')
+            
+            # Обрабатываем данные
+            errors = []
+            faculties_data = []
+            
+            for index, row in df.iterrows():
+                row_num = index + 2  # Учитываем заголовок
+                
+                # Проверяем обязательные поля
+                if pd.isna(row['Название']) or not str(row['Название']).strip():
+                    errors.append(f'Строка {row_num}: отсутствует название факультета')
+                    continue
+                
+                if pd.isna(row['Код']) or not str(row['Код']).strip():
+                    errors.append(f'Строка {row_num}: отсутствует код факультета')
+                    continue
+                
+                # Собираем данные факультета
+                faculty_data = {
+                    'name': str(row['Название']).strip(),
+                    'code': str(row['Код']).strip().upper(),
+                    'description': str(row['Описание']).strip() if not pd.isna(row.get('Описание')) else '',
+                    'is_active': True,  # По умолчанию активный
+                    'row_num': row_num
+                }
+                
+                # Обрабатываем статус если есть
+                if 'Активный' in row and not pd.isna(row['Активный']):
+                    status_str = str(row['Активный']).lower().strip()
+                    faculty_data['is_active'] = status_str in ['да', 'yes', 'true', '1', 'активный']
+                
+                # Валидация
+                if len(faculty_data['name']) > 200:
+                    errors.append(f'Строка {row_num}: название слишком длинное (максимум 200 символов)')
+                    continue
+                
+                if len(faculty_data['code']) > 10:
+                    errors.append(f'Строка {row_num}: код слишком длинный (максимум 10 символов)')
+                    continue
+                
+                # Проверяем уникальность кода
+                if Faculty.objects.filter(code=faculty_data['code']).exists():
+                    errors.append(f'Строка {row_num}: факультет с кодом "{faculty_data["code"]}" уже существует')
+                    continue
+                
+                faculties_data.append(faculty_data)
+            
+            # Если есть ошибки, показываем первые 10
+            if errors:
+                for error in errors[:10]:
+                    messages.error(request, error)
+                if len(errors) > 10:
+                    messages.error(request, f'И еще {len(errors) - 10} ошибок...')
+                return redirect('admin_faculty_import')
+            
+            # Если нет данных для импорта
+            if not faculties_data:
+                messages.error(request, 'Нет данных для импорта')
+                return redirect('admin_faculty_import')
+            
+            # Создаем факультеты
+            with transaction.atomic():
+                created_count = 0
+                duplicate_count = 0
+                
+                for faculty_data in faculties_data:
+                    try:
+                        # Проверяем еще раз на дубликаты (может появиться между операциями)
+                        if Faculty.objects.filter(code=faculty_data['code']).exists():
+                            duplicate_count += 1
+                            continue
+                        
+                        # Создаем факультет
+                        created_by = request.user if request.user.is_authenticated else None
+                        Faculty.objects.create(
+                            name=faculty_data['name'],
+                            code=faculty_data['code'],
+                            description=faculty_data['description'],
+                            is_active=faculty_data['is_active'],
+                            created_by=created_by
+                        )
+                        created_count += 1
+                        
+                    except Exception as e:
+                        messages.error(request, f'Строка {faculty_data["row_num"]}: ошибка создания - {str(e)}')
+                
+                # Результаты импорта
+                if created_count > 0:
+                    messages.success(request, f'Успешно создано факультетов: {created_count}')
+                if duplicate_count > 0:
+                    messages.warning(request, f'Пропущено дубликатов: {duplicate_count}')
+                
+                return JsonResponse({
+                    'success': True,
+                    'created': created_count,
+                    'duplicates': duplicate_count,
+                    'errors': [],
+                    'errors_count': 0
+                })
+                
+        except Exception as e:
+            messages.error(request, f'Ошибка при обработке файла: {str(e)}')
+            return redirect('admin_faculty_import')
+    
+    # GET запрос - показываем форму импорта
+    context = {
+        'sample_data': [
+            {'Название': 'Информационных технологий', 'Код': 'ИТ', 'Описание': 'Факультет информационных технологий', 'Активный': 'да'},
+            {'Название': 'Экономический', 'Код': 'ЭК', 'Описание': 'Экономический факультет', 'Активный': 'да'},
+            {'Название': 'Механический', 'Код': 'МЕХ', 'Описание': 'Механический факультет', 'Активный': 'нет'},
+        ]
+    }
+    return render(request, 'admin_panel/faculity/faculty_import.html', context)
+
+
+def download_faculty_sample_excel(request):
+    """Скачивание образца Excel файла для импорта факультетов"""
+    try:
+        # Создаем DataFrame с примером данных
+        sample_data = {
+            'Название': [
+                'Информационных технологий',
+                'Экономический', 
+                'Механический'
+            ],
+            'Код': [
+                'ИТ',
+                'ЭК',
+                'МЕХ'
+            ],
+            'Описание': [
+                'Факультет информационных технологий и компьютерных наук',
+                'Экономический факультет',
+                'Механический факультет'
+            ],
+            'Активный': [
+                'да',
+                'да',
+                'нет'
+            ]
+        }
+        
+        df = pd.DataFrame(sample_data)
+        
+        # Создаем Excel файл в памяти
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Факультеты', index=False)
+            
+            # Автоширина колонок
+            worksheet = writer.sheets['Факультеты']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        # Возвращаем файл
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="faculty_import_sample.xlsx"'
+        
+        return response
+        
+    except Exception as e:
+        messages.error(request, f'Ошибка при создании файла: {str(e)}')
+        return redirect('admin_faculties')
