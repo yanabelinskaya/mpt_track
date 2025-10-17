@@ -1,0 +1,610 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Резервные копии - МПТ Журнал{% endblock %}
+{% block page_title %}Управление резервными копиями{% endblock %}
+{% block mobile_title %}Бэкапы{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tables.css' %}">
+<link rel="stylesheet" href="{% static 'css/modals.css' %}">
+<style>
+.backup-container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--card-shadow);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--bs-primary);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--bs-secondary);
+    font-weight: 500;
+}
+
+.stat-icon {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--bs-primary);
+}
+
+.backup-actions {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.backup-table {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.table-header {
+    background: var(--nav-link-hover);
+    padding: 1rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 120px;
+    gap: 1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.backup-row {
+    padding: 1rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr 120px;
+    gap: 1rem;
+    align-items: center;
+    transition: background-color 0.2s;
+}
+
+.backup-row:hover {
+    background: var(--nav-link-hover);
+}
+
+.backup-row:last-child {
+    border-bottom: none;
+}
+
+.backup-name {
+    font-weight: 500;
+    color: var(--bs-body-color);
+}
+
+.backup-meta {
+    font-size: 0.85rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-align: center;
+}
+
+.status-completed {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-failed {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-creating {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.status-deleted {
+    background: #f3f4f6;
+    color: #6b7280;
+}
+
+.backup-actions-cell {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    padding: 0.5rem;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.download-btn {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.download-btn:hover {
+    background: var(--primary-color);
+}
+
+.delete-btn {
+    background: #ef4444;
+    color: white;
+}
+
+.delete-btn:hover {
+    background: #dc2626;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: var(--bs-secondary);
+}
+
+.empty-state i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.create-backup-form {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 500;
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    transition: border-color 0.2s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: 8px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-primary {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+/* Темная тема */
+[data-bs-theme="dark"] .status-completed {
+    background: #064e3b;
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .status-failed {
+    background: #7f1d1d;
+    color: #fca5a5;
+}
+
+[data-bs-theme="dark"] .status-creating {
+    background: #78350f;
+    color: #fbbf24;
+}
+
+@media (max-width: 768px) {
+    .table-header,
+    .backup-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .backup-actions-cell {
+        justify-content: flex-start;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="backup-container">
+    <!-- Статистика -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-hdd-stack"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_backups|default:0 }}</div>
+            <div class="stat-label">Всего бэкапов</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-check-circle"></i>
+            </div>
+            <div class="stat-number">{{ stats.completed_backups|default:0 }}</div>
+            <div class="stat-label">Завершено</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-x-circle"></i>
+            </div>
+            <div class="stat-number">{{ stats.failed_backups|default:0 }}</div>
+            <div class="stat-label">Ошибок</div>
+        </div>
+        
+        <div class="stat-card">
+            <div class="stat-icon">
+                <i class="bi bi-file-earmark-zip"></i>
+            </div>
+            <div class="stat-number">{{ stats.total_size_mb|default:0 }}</div>
+            <div class="stat-label">МБ общий размер</div>
+        </div>
+    </div>
+
+    <!-- Форма создания бэкапа -->
+    <div class="create-backup-form">
+        <h3 style="margin-bottom: 1rem; color: var(--bs-body-color);">
+            <i class="bi bi-plus-circle"></i>
+            Создать резервную копию
+        </h3>
+        
+        <form method="post" action="{% url 'admin_backup_create' %}">
+            {% csrf_token %}
+            <div class="form-group">
+                <label class="form-label" for="description">Описание (необязательно)</label>
+                <input type="text" class="form-control" id="description" name="description" 
+                       placeholder="Например: Резервная копия перед обновлением">
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-hdd-stack"></i>
+                Создать резервную копию
+            </button>
+        </form>
+    </div>
+
+    <!-- Таблица бэкапов -->
+    <div class="backup-table">
+        <div class="table-header">
+            <div>Название</div>
+            <div>Тип</div>
+            <div>Размер</div>
+            <div>Статус</div>
+            <div>Дата создания</div>
+            <div>Действия</div>
+        </div>
+        
+        {% if page_obj %}
+            {% for backup in page_obj %}
+            <div class="backup-row">
+                <div>
+                    <div class="backup-name">{{ backup.name }}</div>
+                    {% if backup.description %}
+                    <div class="backup-meta">{{ backup.description }}</div>
+                    {% endif %}
+                    <div class="backup-meta">
+                        {% if backup.tables_count %}
+                            {{ backup.tables_count }} таблиц, {{ backup.records_count }} записей
+                        {% endif %}
+                        {% if backup.duration %}
+                            • {{ backup.duration|floatformat:1 }}с
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div>{{ backup.get_backup_type_display }}</div>
+                
+                <div>
+                    {% if backup.file_size_mb > 0 %}
+                        {{ backup.file_size_mb }} МБ
+                    {% else %}
+                        —
+                    {% endif %}
+                </div>
+                
+                <div>
+                    <span class="status-badge status-{{ backup.status }}">
+                        {{ backup.get_status_display }}
+                    </span>
+                </div>
+                
+                <div>{{ backup.created_at|date:"d.m.Y H:i" }}</div>
+                
+                <div class="backup-actions-cell">
+                    {% if backup.status == 'completed' and backup.file_exists %}
+                    <a href="{% url 'admin_backup_download' backup.id %}" 
+                       class="action-btn download-btn" title="Скачать">
+                        <i class="bi bi-download"></i>
+                    </a>
+                    {% endif %}
+                    
+                    {% if backup.status != 'creating' %}
+                    <button class="action-btn delete-btn" 
+                            onclick="deleteBackup({{ backup.id }}, '{{ backup.name|escapejs }}')" 
+                            title="Удалить">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="bi bi-hdd-stack"></i>
+                <h3>Резервных копий пока нет</h3>
+                <p>Создайте первую резервную копию с помощью формы выше</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Пагинация -->
+    {% if page_obj.has_other_pages %}
+    <div class="pagination-container" style="margin-top: 2rem;">
+        <div class="pagination-info">
+            <span class="info-text">
+                Показано <strong>{{ page_obj.start_index }}—{{ page_obj.end_index }}</strong> 
+                из <strong>{{ page_obj.paginator.count }}</strong>
+            </span>
+        </div>
+        
+        <nav class="pagination-nav">
+            <div class="pagination-buttons">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1" class="page-btn first-btn" title="Первая страница">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                    <a href="?page={{ page_obj.previous_page_number }}" class="page-btn prev-btn" title="Предыдущая страница">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <span class="page-btn current">{{ num }}</span>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <a href="?page={{ num }}" class="page-btn">{{ num }}</a>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}" class="page-btn next-btn" title="Следующая страница">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                    <a href="?page={{ page_obj.paginator.num_pages }}" class="page-btn last-btn" title="Последняя страница">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                {% endif %}
+            </div>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Модальное окно удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Удаление резервной копии</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-danger">
+                    <i class="bi bi-trash"></i>
+                </div>
+                <p><strong>Удалить резервную копию?</strong></p>
+                <p class="text-muted" id="deleteModalText">Это действие нельзя отменить!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">
+                    <i class="bi bi-trash"></i>
+                    Удалить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+let currentBackupId = null;
+let currentBackupName = null;
+
+// Показать уведомление
+function showNotification(message, type = 'success') {
+    const alertClass = type === 'error' || type === 'danger' ? 'alert-danger' : 'alert-success';
+    const icon = type === 'error' || type === 'danger' ? 'bi-exclamation-triangle' : 'bi-check-circle';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert" 
+             style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            <i class="bi ${icon} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+    
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        if (alerts.length > 0) {
+            alerts[alerts.length - 1].remove();
+        }
+    }, 5000);
+}
+
+// Показать модальное окно удаления
+function deleteBackup(backupId, backupName) {
+    currentBackupId = backupId;
+    currentBackupName = backupName;
+    
+    const modalText = document.getElementById('deleteModalText');
+    if (modalText) {
+        modalText.innerHTML = `Резервная копия "<strong>${backupName}</strong>" будет удалена безвозвратно!`;
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+// Обработчик подтверждения удаления
+// ИСПРАВЛЕННЫЙ JavaScript код:
+
+// Обработчик подтверждения удаления
+document.getElementById('confirmDelete').addEventListener('click', function() {
+    if (!currentBackupId) return;
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+    modal.hide();
+    
+    // ПРАВИЛЬНЫЙ URL без префикса admin-panel
+    fetch(`/backups/${currentBackupId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Резервная копия удалена');
+            setTimeout(() => {
+                window.location.reload();
+            }, 1500);
+        } else {
+            showNotification(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при удалении', 'danger');
+    });
+});
+
+// Исправление проблемы с aria-hidden для модальных окон
+document.addEventListener('show.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+});
+
+document.addEventListener('hidden.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+    currentBackupId = null;
+    currentBackupName = null;
+});
+
+// Автообновление статуса создающихся бэкапов
+function checkBackupStatus() {
+    const creatingRows = document.querySelectorAll('.status-creating');
+    if (creatingRows.length > 0) {
+        setTimeout(() => {
+            window.location.reload();
+        }, 5000); // Обновляем страницу каждые 5 секунд если есть создающиеся бэкапы
+    }
+}
+
+// Запускаем проверку при загрузке страницы
+document.addEventListener('DOMContentLoaded', checkBackupStatus);
+</script>
+{% endblock %}

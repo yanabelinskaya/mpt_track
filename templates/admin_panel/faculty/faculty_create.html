@@ -1,0 +1,579 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Создать факультет - МПТ Журнал{% endblock %}
+{% block page_title %}Создание факультета{% endblock %}
+{% block mobile_title %}Создать{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<style>
+.form-container {
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+.form-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-row.single {
+    grid-template-columns: 1fr;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 500;
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+}
+
+.form-label.required::after {
+    content: ' *';
+    color: var(--bs-danger);
+    margin-left: 4px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-control.is-invalid {
+    border-color: var(--bs-danger);
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1);
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+}
+
+.info-card {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-card .info-title {
+    font-weight: 600;
+    color: var(--bs-primary);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.info-card ul {
+    margin-bottom: 0;
+    padding-left: 1rem;
+}
+
+.info-card li {
+    color: var(--bs-body-color);
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-primary:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-secondary {
+    background: var(--sidebar-bg);
+    color: var(--nav-link-color);
+    border: 1px solid var(--sidebar-border);
+}
+
+.btn-secondary:hover {
+    background: var(--nav-link-hover);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.error-message {
+    color: var(--bs-danger);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+}
+
+.toggle-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.toggle-input {
+    display: none;
+}
+
+.toggle-label {
+    position: relative;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    gap: 0.75rem;
+}
+
+.toggle-label::before {
+    content: '';
+    width: 44px;
+    height: 24px;
+    background: var(--sidebar-border);
+    border-radius: 12px;
+    transition: all 0.2s ease;
+}
+
+.toggle-label::after {
+    content: '';
+    position: absolute;
+    left: 2px;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+}
+
+.toggle-input:checked + .toggle-label::before {
+    background: var(--bs-primary);
+}
+
+.toggle-input:checked + .toggle-label::after {
+    transform: translateX(20px);
+}
+
+.char-counter {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* Стили для профессий */
+.professions-preview {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    min-height: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.profession-tag {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.profession-count {
+    color: var(--bs-primary);
+    font-weight: 600;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .form-card {
+        padding: 1.5rem;
+        margin: 0 0.5rem 1rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+    }
+    
+    .btn {
+        width: 100%;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <!-- Информационная карточка -->
+    <div class="info-card">
+        <div class="info-title">
+            <i class="bi bi-info-circle"></i>
+            Создание новой специальности
+        </div>
+        <ul>
+            <li><strong>Название</strong> - полное название специальности</li>
+            <li><strong>Код</strong> - код специальности в формате XX.XX.XX</li>
+            <li><strong>Профессии</strong> - список профессий для студентов</li>
+            <li>После создания можно будет добавить группы и студентов</li>
+            <li>Студенты смогут выбирать профессии из указанного списка</li>
+        </ul>
+    </div>
+
+    <!-- Отображение ошибок Django -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" id="createFacultyForm">
+        {% csrf_token %}
+        
+        <!-- Основная информация -->
+        <div class="form-card">
+            <div class="section-title">
+                <i class="bi bi-building"></i>
+                Основная информация
+            </div>
+            
+            <div class="form-row single">
+                <div class="form-group">
+                    <label class="form-label required" for="name">Название специальности</label>
+                    <input type="text" class="form-control" id="name" name="name" 
+                           required placeholder="Например: Информационные системы и программирование" 
+                           maxlength="200" value="{{ form_data.name|default:'' }}">
+                    <div class="error-message" id="name-error"></div>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required" for="code">Код специальности</label>
+                    <input type="text" class="form-control" id="code" name="code" 
+                           required maxlength="8" 
+                           pattern="\d{2}\.\d{2}\.\d{2}" 
+                           placeholder="09.02.07" value="{{ form_data.code|default:'' }}">
+                    <div class="form-text">Код специальности в формате XX.XX.XX (например: 09.02.07)</div>
+                    <div class="error-message" id="code-error"></div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label" for="is_active">Статус</label>
+                    <div class="toggle-wrapper">
+                        <input type="checkbox" id="is_active" name="is_active" class="toggle-input" 
+                               {% if form_data.is_active or not form_data %}checked{% endif %}>
+                        <label for="is_active" class="toggle-label">
+                            <span class="toggle-text">Активная специальность</span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-row single">
+                <div class="form-group">
+                    <label class="form-label" for="description">Описание</label>
+                    <textarea class="form-control" id="description" name="description" 
+                              rows="3" placeholder="Краткое описание специальности (необязательно)" 
+                              maxlength="500">{{ form_data.description|default:'' }}</textarea>
+                    <div class="char-counter">
+                        <span id="desc-counter">0</span>/500
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- НОВАЯ СЕКЦИЯ: Профессии -->
+        <div class="form-card">
+            <div class="section-title">
+                <i class="bi bi-briefcase"></i>
+                Профессии специальности
+            </div>
+            
+            <div class="info-card">
+                <div class="info-title">
+                    <i class="bi bi-lightbulb"></i>
+                    Как добавить профессии
+                </div>
+                <ul>
+                    <li>Введите каждую профессию с новой строки</li>
+                    <li>Примеры: Программист, Администратор баз данных, Web-разработчик</li>
+                    <li>Можно добавить до 20 профессий</li>
+                </ul>
+            </div>
+            
+            <div class="form-row single">
+                <div class="form-group">
+                    <label class="form-label required" for="professions_input">Список профессий</label>
+                    <textarea class="form-control" id="professions_input" name="professions_input" 
+                              rows="6" placeholder="Введите профессии, каждую с новой строки:&#10;Программист&#10;Администратор баз данных&#10;Web-разработчик&#10;Системный администратор" 
+                              maxlength="2000" required>{{ form_data.professions_input|default:'' }}</textarea>
+                    <div class="form-text">
+                        <i class="bi bi-info-circle"></i>
+                        Каждая профессия с новой строки. Минимум одна профессия обязательна.
+                    </div>
+                    <div class="char-counter">
+                        <span class="profession-count">Профессий: <span id="prof-count">0</span></span>
+                        <span><span id="prof-counter">0</span>/2000</span>
+                    </div>
+                    <div class="error-message" id="professions-error"></div>
+                </div>
+            </div>
+            
+            <!-- Предварительный просмотр профессий -->
+            <div id="professionsPreview" class="professions-preview" style="display: none;">
+                <strong>Предварительный просмотр:</strong>
+                <div id="professionTags" style="display: flex;flex-direction: column;"></div>
+            </div>
+        </div>
+
+        <!-- Кнопки действий -->
+        <div class="form-actions">
+            <a href="{% url 'admin_faculties' %}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i>
+                Отмена
+            </a>
+            <button type="submit" class="btn btn-primary" id="submitBtn">
+                <i class="bi bi-building-add" id="submitIcon"></i>
+                <span class="btn-text">Создать специальность</span>
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('createFacultyForm');
+    const submitBtn = document.getElementById('submitBtn');
+    const submitIcon = document.getElementById('submitIcon');
+    const descCounter = document.getElementById('desc-counter');
+    const descTextarea = document.getElementById('description');
+    const profCounter = document.getElementById('prof-counter');
+    const profCountDisplay = document.getElementById('prof-count');
+    const profTextarea = document.getElementById('professions_input');
+    const professionsPreview = document.getElementById('professionsPreview');
+    const professionTags = document.getElementById('professionTags');
+    
+    // Инициализация счетчиков
+    updateCharCounter();
+    updateProfCounter();
+    
+    // Обработчики событий
+    descTextarea.addEventListener('input', updateCharCounter);
+    profTextarea.addEventListener('input', updateProfCounter);
+    
+    function updateCharCounter() {
+        const count = descTextarea.value.length;
+        descCounter.textContent = count;
+        
+        if (count > 450) {
+            descCounter.style.color = 'var(--bs-danger)';
+        } else {
+            descCounter.style.color = 'var(--bs-secondary)';
+        }
+    }
+    
+    function updateProfCounter() {
+        const count = profTextarea.value.length;
+        profCounter.textContent = count;
+        
+        // Подсчитываем количество профессий (строк)
+        const lines = profTextarea.value.split('\n').filter(line => line.trim() !== '');
+        const profCount = lines.length;
+        
+        profCountDisplay.textContent = profCount;
+        
+        // Показываем/скрываем предварительный просмотр
+        if (profCount > 0) {
+            professionsPreview.style.display = 'block';
+            
+            // Создаем теги профессий
+            professionTags.innerHTML = '';
+            lines.slice(0, 10).forEach(profession => { // Показываем первые 10
+                if (profession.trim()) {
+                    const tag = document.createElement('span');
+                    tag.className = 'profession-tag';
+                    tag.textContent = profession.trim();
+                    professionTags.appendChild(tag);
+                }
+            });
+            
+            // Если больше 10, показываем "+N еще"
+            if (lines.length > 10) {
+                const moreTag = document.createElement('span');
+                moreTag.className = 'profession-tag';
+                moreTag.style.background = 'var(--bs-secondary)';
+                moreTag.textContent = `+${lines.length - 10} еще`;
+                professionTags.appendChild(moreTag);
+            }
+        } else {
+            professionsPreview.style.display = 'none';
+        }
+        
+        // Цвет счетчика символов
+        if (count > 1800) {
+            profCounter.style.color = 'var(--bs-danger)';
+        } else {
+            profCounter.style.color = 'var(--bs-secondary)';
+        }
+        
+        // Цвет счетчика профессий
+        if (profCount === 0) {
+            profCountDisplay.style.color = 'var(--bs-danger)';
+        } else if (profCount > 20) {
+            profCountDisplay.style.color = 'var(--bs-warning)';
+        } else {
+            profCountDisplay.style.color = 'var(--bs-success)';
+        }
+    }
+    
+    // Форматирование кода специальности
+    const codeInput = document.getElementById('code');
+    codeInput.addEventListener('input', function() {
+        // Удаляем все кроме цифр
+        let digits = this.value.replace(/[^\d]/g, '');
+        
+        // Обрезаем до 6 цифр максимум
+        digits = digits.substring(0, 6);
+        
+        // Форматируем
+        let formatted = '';
+        if (digits.length > 0) {
+            formatted += digits.substring(0, Math.min(2, digits.length));
+            
+            if (digits.length > 2) {
+                formatted += '.' + digits.substring(2, Math.min(4, digits.length));
+            }
+            
+            if (digits.length > 4) {
+                formatted += '.' + digits.substring(4, 6);
+            }
+        }
+        
+        this.value = formatted;
+    });
+
+    // Разрешаем только цифры при вводе
+    codeInput.addEventListener('keypress', function(e) {
+        // Разрешаем только цифры
+        if (!/\d/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Enter'].includes(e.key)) {
+            e.preventDefault();
+        }
+    });
+    
+    // Обработка отправки формы
+    form.addEventListener('submit', function(e) {
+        // Проверяем, что есть хотя бы одна профессия
+        const lines = profTextarea.value.split('\n').filter(line => line.trim() !== '');
+        if (lines.length === 0) {
+            e.preventDefault();
+            document.getElementById('professions-error').textContent = 'Добавьте хотя бы одну профессию';
+            profTextarea.classList.add('is-invalid');
+            profTextarea.focus();
+            return;
+        }
+        
+        // Блокируем кнопку отправки
+        submitBtn.disabled = true;
+        submitIcon.className = 'bi bi-arrow-repeat spin';
+    });
+    
+    // Автоматическое закрытие уведомлений
+    setTimeout(function() {
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(alert => {
+            if (alert.classList.contains('show')) {
+                alert.classList.remove('show');
+                setTimeout(() => alert.remove(), 300);
+            }
+        });
+    }, 5000);
+});
+</script>
+{% endblock %}

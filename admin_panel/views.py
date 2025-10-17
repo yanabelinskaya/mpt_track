@@ -3,7 +3,7 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Q, Count, F, Sum
 from django.http import JsonResponse, HttpResponse, FileResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -17,10 +17,14 @@ import secrets
 import string
 import pandas as pd
 import io
+import re
 import uuid
 from datetime import datetime
 import tempfile
 import os
+from django.contrib.auth.decorators import login_required, user_passes_test
+from admin_panel.services.backup_service import BackupService
+from admin_panel.models import Backup
 
 # Безопасная проверка импорта моделей
 try:
@@ -29,31 +33,65 @@ try:
 except:
     MODELS_AVAILABLE = False
 
+def is_admin_user(user):
+    """Проверка, является ли пользователь администратором"""
+    return user.is_authenticated and (user.is_staff or user.is_superuser)
+
 # ====================================
 # ОСНОВНЫЕ VIEWS
 # ====================================
-
 def dashboard_view(request):
-    """Главная страница админки"""
+    """Главная страница - перенаправление по ролям"""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    # Если администратор или персонал - показываем админ-панель
+    if request.user.is_staff or request.user.is_superuser:
+        return admin_dashboard_view(request)
+    
+    # Если студент - перенаправляем в студенческий кабинет
+    try:
+        student = request.user.student_profile
+        return redirect('student_dashboard')
+    except AttributeError:
+        pass
+    
+    # Если обычный пользователь без роли
+    messages.warning(request, 'У вас нет назначенной роли в системе. Обратитесь к администратору.')
+    return redirect('login')
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def admin_dashboard_view(request):
+    """Админ-панель - только для администраторов"""
+    print(f"=== admin_dashboard_view вызван ===")
+    print(f"Пользователь: {request.user.username}")
+    print(f"MODELS_AVAILABLE: {MODELS_AVAILABLE}")
+    
     students_count = 0
     groups_count = 0
+    faculties_count = 0
     
     if MODELS_AVAILABLE:
         try:
             students_count = Student.objects.count()
             groups_count = Group.objects.filter(is_active=True).count()
-        except:
+            faculties_count = Faculty.objects.filter(is_active=True).count()
+        except Exception as e:
+            print(f"Ошибка получения статистики: {str(e)}")
             students_count = 0
             groups_count = 0
+            faculties_count = 0
     
     context = {
         'students_count': students_count,
-        'teachers_count': 0,
         'groups_count': groups_count,
-        'subjects_count': 0,
+        'faculties_count': faculties_count,
     }
+    
     return render(request, 'admin_panel/dashboard.html', context)
 
+@login_required
 def students_list_view(request):
     """Список студентов с фильтрацией и поиском"""
     if not MODELS_AVAILABLE:
@@ -81,6 +119,7 @@ def students_list_view(request):
         
         # Поиск по имени, фамилии, email, студенческому билету
         if search:
+            search_lower = search.lower()
             students = students.filter(
                 Q(first_name__icontains=search) |
                 Q(last_name__icontains=search) |
@@ -152,7 +191,7 @@ def students_list_view(request):
 # ====================================
 # СТУДЕНТЫ - HTML СТРАНИЦЫ
 # ====================================
-
+@login_required
 def student_detail_view(request, student_id):
     """Детальная информация о студенте - HTML страница"""
     if not MODELS_AVAILABLE:
@@ -173,7 +212,7 @@ def student_detail_view(request, student_id):
         messages.error(request, f'Ошибка при загрузке информации о студенте: {str(e)}')
         return redirect('admin_students')
 
-
+@login_required
 def student_edit_view(request, student_id):
     """Редактирование студента - HTML страница"""
     print(f"=== student_edit_view вызван для студента ID: {student_id} ===")
@@ -444,7 +483,7 @@ def student_edit_view(request, student_id):
         messages.error(request, error_message)
         return redirect('admin_students')
 
-
+@login_required
 def student_create_view(request):
     """Создание нового студента"""
     print(f"=== student_create_view вызван ===")
@@ -665,7 +704,7 @@ def student_create_view(request):
     print("Рендерим шаблон создания...")
     return render(request, 'admin_panel/students/student_create.html', context)
 
-
+@login_required
 def download_sample_excel(request):
     """Скачивание образца Excel файла для импорта студентов"""
     try:
@@ -747,7 +786,7 @@ def download_sample_excel(request):
         messages.error(request, f'Ошибка при создании файла: {str(e)}')
         return redirect('admin_students')
 
-
+@login_required
 def student_import_view(request):
     """Массовый импорт студентов из Excel"""
     print(f"=== student_import_view вызван ===")
@@ -1027,6 +1066,7 @@ def student_import_view(request):
     print("=== Обработка GET запроса ===")
     return render(request, 'admin_panel/students/student_import.html')
 
+@login_required
 def student_bulk_delete_view(request):
     """Массовое удаление студентов с подробным логированием"""
     print(f"=== student_bulk_delete_view вызван ===")
@@ -1206,7 +1246,7 @@ def student_bulk_delete_view(request):
         'message': error_msg
     }, status=405)
 
-
+@login_required
 def student_bulk_activate_view(request):
     """Массовая активация студентов с подробным логированием"""
     print(f"=== student_bulk_activate_view вызван ===")
@@ -1363,7 +1403,7 @@ def student_bulk_activate_view(request):
         'message': error_msg
     }, status=405)
 
-
+@login_required
 def student_bulk_deactivate_view(request):
     """Массовая деактивация студентов с подробным логированием"""
     print(f"=== student_bulk_deactivate_view вызван ===")
@@ -1520,7 +1560,7 @@ def student_bulk_deactivate_view(request):
         'message': error_msg
     }, status=405)
 
-
+@login_required
 def student_bulk_create_access_view(request):
     """Массовое создание доступа для студентов с подробным логированием"""
     print(f"=== student_bulk_create_access_view вызван ===")
@@ -1676,7 +1716,7 @@ def student_bulk_create_access_view(request):
         'message': error_msg
     }, status=405)
 
-
+@login_required
 def student_export_view(request):
     """Экспорт студентов в Excel"""
     print(f"=== student_export_view вызван ===")
@@ -1697,6 +1737,7 @@ def student_export_view(request):
         export_all = request.GET.get('export_all', '').strip()
         
         if search:
+            search_lower = search.lower()
             print(f"Применяем поиск: '{search}'")
             students = students.filter(
                 Q(first_name__icontains=search) |
@@ -1820,31 +1861,61 @@ def student_export_view(request):
             'message': f'Ошибка при экспорте: {str(e)}',
             'error_type': type(e).__name__
         }, status=500)
+@login_required   
+def student_redirect_view(request, student_id):
+    """Редирект с уведомлением"""
+    messages.info(request, 'Функция просмотра/редактирования студентов в разработке')
+    return redirect('admin_students')
 
+# Добавьте в admin_panel/views.py
 
+@login_required
+def student_dashboard_view(request):
+    """Личный кабинет студента"""
+    # Проверяем, является ли пользователь студентом
+    try:
+        student = request.user.student_profile
+    except AttributeError:
+        # Если у пользователя нет профиля студента
+        messages.error(request, 'У вас нет доступа к личному кабинету студента')
+        return redirect('login')
+    
+    # Получаем информацию о студенте
+    context = {
+        'student': student,
+        'group': student.group,
+        'faculty': student.group.faculty if student.group else None,
+    }
+    
+    return render(request, 'student/dashboard.html', context)
 
-# ====================================
-# ЗАГЛУШКИ ДЛЯ ФАКУЛЬТЕТОВ
-# ====================================
+def redirect_user_after_login(request):
+    """Перенаправление пользователя в зависимости от его роли"""
+    if not request.user.is_authenticated:
+        return redirect('login')
+    
+    # Если администратор или персонал
+    if request.user.is_staff or request.user.is_superuser:
+        return redirect('admin_dashboard')
+    
+    # Если студент
+    try:
+        student = request.user.student_profile
+        return redirect('student_dashboard')
+    except AttributeError:
+        pass
+    
+    # Если обычный пользователь без роли
+    messages.warning(request, 'У вас нет назначенной роли в системе. Обратитесь к администратору.')
+    return redirect('login')
 
-def faculties_list_view(request):
-    """Список факультетов"""
-    return HttpResponse("<h1>Страница факультетов в разработке</h1><a href='/'>← На главную</a>")
-
-def faculty_create_view(request):
-    """Создание факультета"""
-    return HttpResponse("<h1>Создание факультета в разработке</h1><a href='/'>← На главную</a>")
-
-def faculty_import_view(request):
-    """Импорт факультетов"""
-    return HttpResponse("<h1>Импорт факультетов в разработке</h1><a href='/'>← На главную</a>")
 
 
 
 # ====================================
 # УТИЛИТЫ
 # ====================================
-
+@login_required
 def generate_username(first_name, last_name):
     """Генерация уникального username"""
     base = f"{first_name.lower()}.{last_name.lower()}"
@@ -1867,12 +1938,13 @@ def generate_username(first_name, last_name):
         counter += 1
     
     return username
-
+@login_required
 def generate_password(length=8):
     """Генерация случайного пароля"""
     characters = string.ascii_letters + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
 
+@login_required
 def send_credentials_email(student, username, password):
     """Отправка учетных данных студенту"""
     try:
@@ -1906,26 +1978,75 @@ def send_credentials_email(student, username, password):
 
 
 
-# views.py (добавляем к существующим views)
+# views.py (добавляем к существующим views
 
+
+def validate_faculty_code(code, faculty_id=None):
+    """Валидация кода факультета в формате XX.XX.XX"""
+    if not code:
+        return 'Код специальности обязателен'
+    
+    code = code.strip()
+    
+    if len(code) > 8:
+        return 'Код не может быть длиннее 8 символов'
+    
+    # Проверяем формат XX.XX.XX
+    if not re.match(r'^\d{2}\.\d{2}\.\d{2}$', code):
+        return 'Код должен быть в формате XX.XX.XX (например: 09.02.07)'
+    
+    # Проверяем уникальность
+    existing_query = Faculty.objects.filter(code=code)
+    if faculty_id:
+        existing_query = existing_query.exclude(id=faculty_id)
+    
+    if existing_query.exists():
+        return f'Факультет с кодом "{code}" уже существует'
+    
+    return None
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
 def faculties_list_view(request):
     """Список факультетов"""
-    # Простая проверка доступности моделей
-    try:
-        Faculty.objects.all()[:1]
-    except Exception as e:
-        messages.error(request, f'Модели недоступны: {str(e)}')
+    print(f"=== faculties_list_view вызван ===")
+    print(f"Метод запроса: {request.method}")
+    print(f"MODELS_AVAILABLE: {MODELS_AVAILABLE}")
+    
+    if not MODELS_AVAILABLE:
+        error_msg = 'Модели недоступны. Обратитесь к администратору.'
+        print(f"Ошибка: {error_msg}")
+        messages.error(request, error_msg)
         return redirect('admin_dashboard')
     
     try:
-        # Поиск и фильтры
+        print("Получаем параметры фильтрации...")
+        
+        # Параметры фильтрации и поиска
         search = request.GET.get('search', '').strip()
         status_filter = request.GET.get('status', '')
         
-        # Базовый queryset
+        print(f"Поиск: '{search}'")
+        print(f"Фильтр статуса: '{status_filter}'")
+        
+        # Выбранные факультеты для массовых операций
+        selected_faculties = request.GET.get('selected', '').strip()
+        selected_ids = []
+        if selected_faculties:
+            try:
+                selected_ids = [int(x) for x in selected_faculties.split(',') if x.strip()]
+            except ValueError:
+                selected_ids = []
+        
+        print(f"Выбранные ID: {selected_ids}")
+        
+        # Базовый queryset БЕЗ аннотаций (так как они уже есть как @property)
         faculties = Faculty.objects.all()
         
-        # Применяем поиск
+        print("Применяем фильтры...")
+        
+        # Поиск по названию, коду или описанию
         if search:
             faculties = faculties.filter(
                 Q(name__icontains=search) |
@@ -1933,7 +2054,7 @@ def faculties_list_view(request):
                 Q(description__icontains=search)
             )
         
-        # Применяем фильтры
+        # Фильтр по статусу
         if status_filter == 'active':
             faculties = faculties.filter(is_active=True)
         elif status_filter == 'inactive':
@@ -1942,234 +2063,383 @@ def faculties_list_view(request):
         # Сортировка
         faculties = faculties.order_by('name')
         
-        # ИСПРАВЛЕНО: Создаем список словарей вместо изменения объектов
-        faculty_list = []
-        for faculty in faculties:
-            try:
-                # Считаем группы (безопасно)
-                groups_count = 0
-                students_count = 0
-                active_students_count = 0
-                
-                # Если есть связь с группами
-                if hasattr(faculty, 'group_set'):
-                    groups_count = faculty.group_set.count()
-                    
-                    # Считаем студентов через группы
-                    students_count = Student.objects.filter(group__faculty=faculty).count()
-                    active_students_count = Student.objects.filter(
-                        group__faculty=faculty, 
-                        study_status='active'
-                    ).count()
-                
-                # Создаем объект для шаблона с дополнительными атрибутами
-                faculty_data = {
-                    'object': faculty,
-                    'id': faculty.id,
-                    'name': faculty.name,
-                    'code': faculty.code,
-                    'description': faculty.description,
-                    'is_active': faculty.is_active,
-                    'created_at': faculty.created_at,
-                    'groups_count': groups_count,
-                    'students_count': students_count,
-                    'active_students_count': active_students_count,
-                }
-                
-                faculty_list.append(faculty_data)
-                
-            except Exception as e:
-                # Если ошибка с конкретным факультетом, добавляем с нулевыми значениями
-                faculty_data = {
-                    'object': faculty,
-                    'id': faculty.id,
-                    'name': faculty.name,
-                    'code': faculty.code,
-                    'description': getattr(faculty, 'description', ''),
-                    'is_active': faculty.is_active,
-                    'created_at': faculty.created_at,
-                    'groups_count': 0,
-                    'students_count': 0,
-                    'active_students_count': 0,
-                }
-                faculty_list.append(faculty_data)
+        # Подсчет общего количества
+        total_faculties = faculties.count()
         
-        # Общая статистика
-        total_faculties = len(faculty_list)
+        print(f"Общее количество факультетов: {total_faculties}")
         
         # Пагинация
-        paginator = Paginator(faculty_list, 20)
+        paginator = Paginator(faculties, 20)
         page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
         
-        try:
-            page_obj = paginator.get_page(page_number)
-        except Exception:
-            page_obj = paginator.get_page(1)
+        print(f"Страница: {page_obj.number} из {paginator.num_pages}")
         
         context = {
             'page_obj': page_obj,
             'search': search,
             'status_filter': status_filter,
             'total_faculties': total_faculties,
+            'selected_faculties': selected_ids,
             'current_filters': {
                 'search': search,
                 'status': status_filter,
             },
         }
         
-        return render(request, 'admin_panel/faculity/faculties_list.html', context)
+        print("Рендерим шаблон...")
+        return render(request, 'admin_panel/faculty/faculties_list.html', context)
         
     except Exception as e:
         messages.error(request, f'Ошибка при загрузке факультетов: {str(e)}')
-        # Создаем пустой контекст для отображения пустой страницы
-        context = {
-            'page_obj': None,
-            'search': '',
-            'status_filter': '',
-            'total_faculties': 0,
-            'current_filters': {
-                'search': '',
-                'status': '',
-            },
-        }
-        return render(request, 'admin_panel/faculity/faculties_list.html', context)
+        print(f"Ошибка: {str(e)}")
+        return redirect('admin_dashboard')
 
-   
 
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
 def faculty_create_view(request):
     """Создание нового факультета"""
+    print(f"=== faculty_create_view вызван ===")
+    print(f"Метод запроса: {request.method}")
+    print(f"MODELS_AVAILABLE: {MODELS_AVAILABLE}")
+    
+    if not MODELS_AVAILABLE:
+        error_msg = 'Модели недоступны. Обратитесь к администратору.'
+        print(f"Ошибка: {error_msg}")
+        messages.error(request, error_msg)
+        return redirect('admin_dashboard')
+    
+    if request.method == 'POST':
+        print("Обработка POST запроса...")
+        
+        try:
+            print("Получаем данные из формы...")
+            
+            # Получаем основные данные из формы
+            name = request.POST.get('name', '').strip()
+            code = request.POST.get('code', '').strip()
+            description = request.POST.get('description', '').strip()
+            is_active = bool(request.POST.get('is_active'))
+            
+            # НОВОЕ: Получаем профессии
+            professions_input = request.POST.get('professions_input', '').strip()
+            
+            print(f"Название: '{name}'")
+            print(f"Код: '{code}'")
+            print(f"Описание: '{description}'")
+            print(f"Активен: {is_active}")
+            print(f"Профессии (текст): '{professions_input}'")
+            
+            # ОБРАБАТЫВАЕМ ПРОФЕССИИ:
+            professions_list = []
+            if professions_input:
+                # Разбиваем по строкам и очищаем
+                lines = professions_input.split('\n')
+                for line in lines:
+                    profession_name = line.strip()
+                    if profession_name and len(profession_name) >= 2:
+                        # Проверяем на дубликаты
+                        existing_names = [p.lower() for p in professions_list]
+                        if profession_name.lower() not in existing_names:
+                            professions_list.append(profession_name)
+            
+            print(f"Обработанные профессии: {professions_list}")
+            
+            # Валидация
+            print("Валидация данных...")
+            errors = {}
+            
+            if not name:
+                errors['name'] = 'Название обязательно'
+            elif len(name) < 2:
+                errors['name'] = 'Название должно содержать минимум 2 символа'
+            elif len(name) > 200:
+                errors['name'] = 'Название не может быть длиннее 200 символов'
+            
+            # Валидация кода с новой функцией
+            code_error = validate_faculty_code(code)
+            if code_error:
+                errors['code'] = code_error
+            
+            if description and len(description) > 500:
+                errors['description'] = 'Описание не может быть длиннее 500 символов'
+            
+            # ВАЛИДАЦИЯ ПРОФЕССИЙ:
+            if not professions_list:
+                errors['professions_input'] = 'Добавьте хотя бы одну профессию'
+            elif len(professions_list) > 20:
+                errors['professions_input'] = 'Максимум 20 профессий'
+            
+            # Проверяем длину названий профессий
+            for prof in professions_list:
+                if len(prof) > 150:
+                    errors['professions_input'] = f'Название профессии "{prof[:30]}..." слишком длинное (максимум 150 символов)'
+                    break
+            
+            print(f"Ошибки валидации: {errors}")
+            
+            if errors:
+                # Сохраняем данные формы для повторного отображения
+                for field, error in errors.items():
+                    messages.error(request, f'{field}: {error}')
+                
+                context = {
+                    'form_data': {
+                        'name': name,
+                        'code': code,
+                        'description': description,
+                        'professions_input': professions_input,
+                        'is_active': is_active,
+                    }
+                }
+                return render(request, 'admin_panel/faculty/faculty_create.html', context)
+            
+            # Создаем факультет
+            print("Создаем новый факультет...")
+            
+            faculty_data = {
+                'name': name,
+                'code': code,
+                'description': description,
+                'professions': professions_list,  # JSON поле
+                'is_active': is_active,
+                'created_by': request.user
+            }
+            
+            print(f"Данные факультета: {faculty_data}")
+            
+            # Создаем объект
+            faculty = Faculty.objects.create(**faculty_data)
+            print(f"Создан факультет с {len(professions_list)} профессиями! ID: {faculty.id}")
+            
+            messages.success(request, f'Специальность "{faculty.name}" создана с {len(professions_list)} профессиями')
+            return redirect('admin_faculties')
+                
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"ОШИБКА при создании факультета:")
+            print(f"Тип ошибки: {type(e).__name__}")
+            print(f"Сообщение: {str(e)}")
+            print(f"Traceback:\n{error_details}")
+            
+            error_message = f'Ошибка при создании факультета: {str(e)}'
+            messages.error(request, error_message)
+            
+            context = {
+                'form_data': request.POST
+            }
+            return render(request, 'admin_panel/faculty/faculty_create.html', context)
+    
+    # GET запрос - показываем форму
+    print("GET запрос - показываем форму создания...")
+    context = {}
+    return render(request, 'admin_panel/faculty/faculty_create.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def faculty_detail_view(request, faculty_id):
+    """Детальный просмотр факультета - HTML страница"""
+    print(f"=== faculty_detail_view вызван для ID: {faculty_id} ===")
+    
     if not MODELS_AVAILABLE:
         messages.error(request, 'Модели недоступны. Обратитесь к администратору.')
         return redirect('admin_dashboard')
     
-    if request.method == 'POST':
-        try:
-            # Получаем данные из формы
-            name = request.POST.get('name', '').strip()
-            code = request.POST.get('code', '').strip().upper()
-            description = request.POST.get('description', '').strip()
-            is_active = request.POST.get('is_active') == 'on'  # checkbox
-            
-            # Валидация
-            errors = {}
-            
-            if not name:
-                errors['name'] = 'Название факультета обязательно'
-            elif len(name) > 200:
-                errors['name'] = 'Название слишком длинное (максимум 200 символов)'
-            
-            if not code:
-                errors['code'] = 'Код факультета обязателен'
-            elif len(code) > 10:
-                errors['code'] = 'Код слишком длинный (максимум 10 символов)'
-            elif Faculty.objects.filter(code=code).exists():
-                errors['code'] = f'Факультет с кодом "{code}" уже существует'
-            
-            if description and len(description) > 500:
-                errors['description'] = 'Описание слишком длинное (максимум 500 символов)'
-            
-            # Если есть ошибки, возвращаем их
-            if errors:
-                return JsonResponse({
-                    'success': False,
-                    'errors': errors,
-                    'message': 'Исправьте ошибки в форме'
-                })
-            
-            # Создаем факультет
-            with transaction.atomic():
-                created_by = request.user if request.user.is_authenticated else None
-                
-                faculty = Faculty.objects.create(
-                    name=name,
-                    code=code,
-                    description=description,
-                    is_active=is_active,
-                    created_by=created_by
-                )
-                
-                # Возвращаем успешный ответ
-                return JsonResponse({
-                    'success': True,
-                    'message': f'Факультет "{faculty.name}" успешно создан!',
-                    'redirect_url': reverse('admin_faculties'),
-                    'faculty_id': faculty.id
-                })
-                
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': f'Ошибка при создании факультета: {str(e)}'
-            })
-    
-    # GET запрос - показываем форму создания
-    context = {}
-    return render(request, 'admin_panel/faculity/faculty_create.html', context)
-
-def faculty_edit_view(request, pk):
-    """Редактирование факультета"""
     try:
-        faculty = Faculty.objects.get(pk=pk)
-    except Faculty.DoesNotExist:
-        messages.error(request, 'Факультет не найден')
+        faculty = get_object_or_404(Faculty, id=faculty_id)
+        print(f"Найден факультет: {faculty.name}")
+        print(f"Профессий: {faculty.get_professions_count()}")
+        
+        # Получаем группы факультета с количеством студентов
+        groups = faculty.group_set.annotate(
+            students_count=Count('students')
+        ).order_by('name')
+        
+        # НЕ присваиваем атрибуты, используем готовые @property
+        # faculty.groups_count - уже есть как свойство
+        # faculty.students_count - уже есть как свойство  
+        # faculty.active_students_count - уже есть как свойство
+        
+        context = {
+            'faculty': faculty,
+            'groups': groups,
+        }
+        
+        return render(request, 'admin_panel/faculty/faculty_detail.html', context)
+        
+    except Exception as e:
+        messages.error(request, f'Ошибка при загрузке факультета: {str(e)}')
+        print(f"Ошибка: {str(e)}")
         return redirect('admin_faculties')
-    
-    if request.method == 'POST':
-        try:
-            # Получаем данные из формы
-            name = request.POST.get('name', '').strip()
-            code = request.POST.get('code', '').strip().upper()
-            description = request.POST.get('description', '').strip()
-            is_active = request.POST.get('is_active') == 'on'
-            
-            # Валидация
-            errors = {}
-            if not name:
-                errors['name'] = 'Название факультета обязательно'
-            if not code:
-                errors['code'] = 'Код факультета обязателен'
-            elif len(code) > 10:
-                errors['code'] = 'Код не должен превышать 10 символов'
-            elif Faculty.objects.filter(code=code).exclude(pk=pk).exists():
-                errors['code'] = 'Факультет с таким кодом уже существует'
-            
-            if errors:
-                return JsonResponse({
-                    'success': False,
-                    'errors': errors,
-                    'message': 'Исправьте ошибки в форме'
-                })
-            
-            # Обновляем данные
-            faculty.name = name
-            faculty.code = code
-            faculty.description = description
-            faculty.is_active = is_active
-            faculty.save()
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Факультет "{faculty.name}" успешно обновлен',
-                'redirect_url': reverse('admin_faculties')
-            })
-            
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': f'Ошибка при обновлении факультета: {str(e)}'
-            })
-    
-    # GET запрос - показываем форму
-    context = {
-        'faculty': faculty
-    }
-    return render(request, 'admin_panel/faculity/faculty_edit.html', context)
 
-def faculty_delete_view(request, pk):
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def faculty_edit_view(request, faculty_id):
+    """Редактирование факультета - HTML страница"""
+    print(f"=== faculty_edit_view вызван для ID: {faculty_id} ===")
+    print(f"Метод запроса: {request.method}")
+    print(f"MODELS_AVAILABLE: {MODELS_AVAILABLE}")
+    
+    if not MODELS_AVAILABLE:
+        error_msg = 'Модели недоступны. Обратитесь к администратору.'
+        print(f"Ошибка: {error_msg}")
+        messages.error(request, error_msg)
+        return redirect('admin_dashboard')
+    
+    try:
+        print(f"Ищем факультет с ID: {faculty_id}")
+        faculty = get_object_or_404(Faculty, id=faculty_id)
+        print(f"Найден факультет: {faculty.name}")
+        print(f"Профессий: {faculty.get_professions_count()}")
+        
+        # НЕ присваиваем атрибуты статистики - используем готовые @property
+        # faculty.groups_count - уже есть
+        # faculty.students_count - уже есть
+        # faculty.active_students_count - уже есть
+        
+        if request.method == 'POST':
+            print("Обработка POST запроса...")
+            
+            try:
+                print("Получаем данные из формы...")
+                
+                # Получаем основные данные из формы
+                name = request.POST.get('name', '').strip()
+                code = request.POST.get('code', '').strip()
+                description = request.POST.get('description', '').strip()
+                is_active = request.POST.get('is_active') == 'true'
+                
+                # НОВОЕ: Получаем профессии
+                professions_input = request.POST.get('professions_input', '').strip()
+                
+                print(f"Название: '{name}'")
+                print(f"Код: '{code}'")
+                print(f"Описание: '{description}'")
+                print(f"Активен: {is_active}")
+                print(f"Профессии (текст): '{professions_input}'")
+                
+                # ОБРАБАТЫВАЕМ ПРОФЕССИИ:
+                professions_list = []
+                if professions_input:
+                    # Разбиваем по строкам и очищаем
+                    lines = professions_input.split('\n')
+                    for line in lines:
+                        profession_name = line.strip()
+                        if profession_name and len(profession_name) >= 2:
+                            # Проверяем на дубликаты
+                            existing_names = [p.lower() for p in professions_list]
+                            if profession_name.lower() not in existing_names:
+                                professions_list.append(profession_name)
+                
+                print(f"Обработанные профессии: {professions_list}")
+                
+                # Валидация
+                print("Валидация данных...")
+                errors = {}
+                
+                if not name:
+                    errors['name'] = 'Название обязательно'
+                elif len(name) < 2:
+                    errors['name'] = 'Название должно содержать минимум 2 символа'
+                elif len(name) > 200:
+                    errors['name'] = 'Название не может быть длиннее 200 символов'
+                
+                # Валидация кода с новой функцией
+                code_error = validate_faculty_code(code, faculty.id)
+                if code_error:
+                    errors['code'] = code_error
+                
+                if description and len(description) > 500:
+                    errors['description'] = 'Описание не может быть длиннее 500 символов'
+                
+                # ВАЛИДАЦИЯ ПРОФЕССИЙ:
+                if not professions_list:
+                    errors['professions_input'] = 'Добавьте хотя бы одну профессию'
+                elif len(professions_list) > 20:
+                    errors['professions_input'] = 'Максимум 20 профессий'
+                
+                # Проверяем длину названий профессий
+                for prof in professions_list:
+                    if len(prof) > 150:
+                        errors['professions_input'] = f'Название профессии "{prof[:30]}..." слишком длинное (максимум 150 символов)'
+                        break
+                
+                print(f"Ошибки валидации: {errors}")
+                
+                if errors:
+                    for field, error in errors.items():
+                        messages.error(request, f'{field}: {error}')
+                    # Не перенаправляем, показываем форму с ошибками
+                
+                else:
+                    # Обновляем факультет
+                    print("Обновляем факультет...")
+                    
+                    faculty.name = name
+                    faculty.code = code
+                    faculty.description = description
+                    faculty.professions = professions_list  # Обновляем профессии
+                    faculty.is_active = is_active
+                    faculty.save()
+                    
+                    print(f"Факультет обновлен: {faculty.name}, профессий: {len(professions_list)}")
+                    
+                    messages.success(request, f'Специальность "{faculty.name}" успешно обновлена')
+                    return redirect('admin_faculty_detail', faculty_id=faculty.id)
+                        
+            except Exception as e:
+                import traceback
+                error_details = traceback.format_exc()
+                print(f"ОШИБКА при обновлении факультета:")
+                print(f"Тип ошибки: {type(e).__name__}")
+                print(f"Сообщение: {str(e)}")
+                print(f"Traceback:\n{error_details}")
+                
+                error_message = f'Ошибка при обновлении: {str(e)}'
+                messages.error(request, error_message)
+        
+        # GET запрос или POST с ошибками - показываем форму
+        print("Показываем форму редактирования...")
+        
+        context = {
+            'faculty': faculty,
+        }
+        
+        return render(request, 'admin_panel/faculty/faculty_edit.html', context)
+        
+    except Faculty.DoesNotExist:
+        error_msg = 'Факультет не найден'
+        messages.error(request, error_msg)
+        return redirect('admin_faculties')
+    except Exception as e:
+        error_msg = f'Ошибка: {str(e)}'
+        print(f"Общая ошибка: {error_msg}")
+        messages.error(request, error_msg)
+        return redirect('admin_faculties')
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def faculty_delete_view(request, faculty_id):
     """Удаление факультета"""
+    print(f"=== faculty_delete_view вызван для ID: {faculty_id} ===")
+    
+    if not MODELS_AVAILABLE:
+        return JsonResponse({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=500)
+    
     if request.method == 'POST':
         try:
-            faculty = Faculty.objects.get(pk=pk)
+            faculty = get_object_or_404(Faculty, id=faculty_id)
+            faculty_name = faculty.name
+            
+            print(f"Найден факультет: {faculty_name}")
             
             # Проверяем связанные данные
             groups_count = faculty.group_set.count()
@@ -2178,470 +2448,262 @@ def faculty_delete_view(request, pk):
             if groups_count > 0 or students_count > 0:
                 return JsonResponse({
                     'success': False,
-                    'message': f'Нельзя удалить факультет. К нему привязано {groups_count} групп и {students_count} студентов. Сначала переведите их на другие факультеты.'
+                    'message': f'Нельзя удалить специальность "{faculty_name}". '
+                              f'К ней привязано групп: {groups_count}, студентов: {students_count}. '
+                              f'Сначала удалите или переместите связанные данные.',
+                    'groups_count': groups_count,
+                    'students_count': students_count
                 })
             
             # Удаляем факультет
-            faculty_name = faculty.name
             faculty.delete()
+            print(f"Специальность удалена: {faculty_name}")
             
             return JsonResponse({
                 'success': True,
-                'message': f'Факультет "{faculty_name}" успешно удален'
+                'message': f'Специальность "{faculty_name}" успешно удалена'
             })
-            
+                
         except Faculty.DoesNotExist:
             return JsonResponse({
                 'success': False,
-                'message': 'Факультет не найден'
-            })
+                'message': 'Специальность не найдена'
+            }, status=404)
         except Exception as e:
+            print(f"ОШИБКА при удалении специальности {faculty_id}: {str(e)}")
             return JsonResponse({
                 'success': False,
-                'message': f'Ошибка при удалении факультета: {str(e)}'
-            })
+                'message': f'Ошибка при удалении: {str(e)}'
+            }, status=500)
     
-    return JsonResponse({'success': False, 'message': 'Неверный метод запроса'})
+    return JsonResponse({
+        'success': False,
+        'message': 'Метод не разрешен'
+    }, status=405)
 
-def faculty_toggle_status_view(request, pk):
-    """Переключение статуса активности факультета"""
-    if request.method == 'POST':
-        try:
-            faculty = Faculty.objects.get(pk=pk)
-            
-            # Переключаем статус
-            faculty.is_active = not faculty.is_active
-            faculty.save()
-            
-            status_text = "активирован" if faculty.is_active else "деактивирован"
-            
-            return JsonResponse({
-                'success': True,
-                'message': f'Факультет "{faculty.name}" {status_text}',
-                'is_active': faculty.is_active
-            })
-            
-        except Faculty.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'message': 'Факультет не найден'
-            })
-        except Exception as e:
-            return JsonResponse({
-                'success': False,
-                'message': f'Ошибка при изменении статуса: {str(e)}'
-            })
+
+# admin_panel/views.py - добавьте в конец файла
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def backups_list_view(request):
+    """Список резервных копий"""
+    print("=== backups_list_view вызван ===")
     
-    return JsonResponse({'success': False, 'message': 'Неверный метод запроса'})
-
-@require_http_methods(["POST"])
-def faculties_bulk_delete_view(request):
-    """Массовое удаление факультетов"""
     try:
-        data = json.loads(request.body)
-        faculty_ids = data.get('faculty_ids', [])
+        # Получаем все бэкапы
+        backups = Backup.objects.all().order_by('-created_at')
         
-        if not faculty_ids:
-            return JsonResponse({
-                'success': False,
-                'message': 'Не выбраны факультеты для удаления'
-            })
+        # Пагинация
+        paginator = Paginator(backups, 20)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
         
-        # Получаем факультеты
-        faculties = Faculty.objects.filter(id__in=faculty_ids)
-        
-        # Проверяем связанные данные
-        protected_faculties = []
-        for faculty in faculties:
-            groups_count = faculty.group_set.count()
-            students_count = Student.objects.filter(group__faculty=faculty).count()
-            if groups_count > 0 or students_count > 0:
-                protected_faculties.append({
-                    'name': faculty.name,
-                    'groups': groups_count,
-                    'students': students_count
-                })
-        
-        if protected_faculties:
-            message = "Следующие факультеты нельзя удалить:\n"
-            for faculty in protected_faculties:
-                message += f"• {faculty['name']}: {faculty['groups']} групп, {faculty['students']} студентов\n"
-            message += "Сначала переведите связанные данные на другие факультеты."
-            
-            return JsonResponse({
-                'success': False,
-                'message': message
-            })
-        
-        # Удаляем факультеты
-        deleted_count = len(faculties)
-        faculties.delete()
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Удалено факультетов: {deleted_count}'
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Ошибка при массовом удалении: {str(e)}'
-        })
-
-@require_http_methods(["POST"])
-def faculties_bulk_update_status_view(request):
-    """Массовое изменение статуса факультетов"""
-    try:
-        data = json.loads(request.body)
-        faculty_ids = data.get('faculty_ids', [])
-        action = data.get('action')
-        
-        if not faculty_ids:
-            return JsonResponse({
-                'success': False,
-                'message': 'Не выбраны факультеты для изменения статуса'
-            })
-        
-        if action not in ['activate', 'deactivate']:
-            return JsonResponse({
-                'success': False,
-                'message': 'Неверное действие'
-            })
-        
-        # Обновляем статус
-        is_active = action == 'activate'
-        updated_count = Faculty.objects.filter(id__in=faculty_ids).update(is_active=is_active)
-        
-        action_text = "активированы" if is_active else "деактивированы"
-        
-        return JsonResponse({
-            'success': True,
-            'message': f'Факультеты {action_text}: {updated_count}'
-        })
-        
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'message': f'Ошибка при массовом изменении статуса: {str(e)}'
-        })
-
-def faculty_detail_view(request, pk):
-    """Детальная информация о факультете"""
-    try:
-        faculty = Faculty.objects.get(pk=pk)
-        
-        # Получаем группы факультета
-        groups = faculty.group_set.all().order_by('name')
-        
-        # Получаем статистику
-        total_groups = groups.count()
-        total_students = Student.objects.filter(group__faculty=faculty).count()
-        active_students = Student.objects.filter(group__faculty=faculty, study_status='active').count()
-        
-        # Получаем преподавателей (если модель Teacher уже создана)
-        # teachers = Teacher.objects.filter(faculty=faculty)
+        # Статистика
+        backup_service = BackupService()
+        stats = backup_service.get_backup_statistics()
         
         context = {
-            'faculty': faculty,
-            'groups': groups,
-            'total_groups': total_groups,
-            'total_students': total_students,
-            'active_students': active_students,
-            # 'teachers': teachers,
+            'page_obj': page_obj,
+            'stats': stats,
         }
         
-        return render(request, 'admin_panel/faculty_detail.html', context)
-        
-    except Faculty.DoesNotExist:
-        messages.error(request, 'Факультет не найден')
-        return redirect('admin_faculties')
-
-def faculties_export_view(request):
-    """Экспорт списка факультетов в Excel"""
-    try:
-        # Получаем те же фильтры что и в списке
-        search = request.GET.get('search', '')
-        status_filter = request.GET.get('status', '')
-        
-        # Базовый queryset
-        faculties = Faculty.objects.all()
-        
-        # Применяем фильтры
-        if search:
-            faculties = faculties.filter(
-                Q(name__icontains=search) |
-                Q(code__icontains=search) |
-                Q(description__icontains=search)
-            )
-        
-        if status_filter == 'active':
-            faculties = faculties.filter(is_active=True)
-        elif status_filter == 'inactive':
-            faculties = faculties.filter(is_active=False)
-        
-        faculties = faculties.order_by('name')
-        
-        # Создаем DataFrame
-        data = []
-        for faculty in faculties:
-            groups_count = faculty.group_set.count()
-            students_count = Student.objects.filter(group__faculty=faculty).count()
-            active_students_count = Student.objects.filter(
-                group__faculty=faculty, 
-                study_status='active'
-            ).count()
-            
-            data.append({
-                'Название': faculty.name,
-                'Код': faculty.code,
-                'Описание': faculty.description or '',
-                'Статус': 'Активный' if faculty.is_active else 'Неактивный',
-                'Количество групп': groups_count,
-                'Всего студентов': students_count,
-                'Активных студентов': active_students_count,
-                'Дата создания': faculty.created_at.strftime('%d.%m.%Y %H:%M') if faculty.created_at else '',
-            })
-        
-        df = pd.DataFrame(data)
-        
-        # Создаем Excel файл в памяти
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='Факультеты', index=False)
-            
-            # Автоширина колонок
-            worksheet = writer.sheets['Факультеты']
-            for column in worksheet.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-                
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                
-                adjusted_width = min(max_length + 2, 50)
-                worksheet.column_dimensions[column_letter].width = adjusted_width
-        
-        output.seek(0)
-        
-        # Возвращаем файл
-        response = HttpResponse(
-            output.read(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        response['Content-Disposition'] = f'attachment; filename="faculties_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx"'
-        
-        return response
+        return render(request, 'admin_panel/backups/backups_list.html', context)
         
     except Exception as e:
-        messages.error(request, f'Ошибка при экспорте: {str(e)}')
-        return redirect('admin_faculties')
+        messages.error(request, f'Ошибка при загрузке резервных копий: {str(e)}')
+        return redirect('admin_dashboard')
 
-def faculty_import_view(request):
-    """Импорт факультетов из Excel файла"""
-    if request.method == 'POST' and request.FILES.get('excel_file'):
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def backup_create_view(request):
+    """Создание резервной копии"""
+    print("=== backup_create_view вызван ===")
+    
+    if request.method == 'POST':
         try:
-            excel_file = request.FILES['excel_file']
+            description = request.POST.get('description', '').strip()
             
-            # Проверяем формат файла
-            if excel_file.name.endswith('.xlsx') or excel_file.name.endswith('.xls'):
-                df = pd.read_excel(excel_file)
+            backup_service = BackupService()
+            backup = backup_service.create_backup(
+                backup_type='manual',
+                user=request.user,
+                description=description
+            )
+            
+            if backup:
+                messages.success(request, f'Резервная копия "{backup.name}" создана успешно')
             else:
-                messages.error(request, 'Поддерживаются только файлы .xlsx и .xls')
-                return redirect('admin_faculty_import')
+                messages.error(request, 'Ошибка при создании резервной копии')
+                
+        except Exception as e:
+            messages.error(request, f'Ошибка: {str(e)}')
+    
+    return redirect('admin_backups')
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def backup_delete_view(request, backup_id):
+    """Удаление резервной копии"""
+    print(f"=== backup_delete_view вызван для ID: {backup_id} ===")
+    
+    if request.method == 'POST':
+        try:
+            backup_service = BackupService()
             
-            # Проверяем наличие обязательных столбцов
-            required_columns = ['Название', 'Код']
-            missing_columns = [col for col in required_columns if col not in df.columns]
-            
-            if missing_columns:
-                messages.error(request, f'Отсутствуют обязательные столбцы: {", ".join(missing_columns)}')
-                return redirect('admin_faculty_import')
-            
-            # Обрабатываем данные
-            errors = []
-            faculties_data = []
-            
-            for index, row in df.iterrows():
-                row_num = index + 2  # Учитываем заголовок
-                
-                # Проверяем обязательные поля
-                if pd.isna(row['Название']) or not str(row['Название']).strip():
-                    errors.append(f'Строка {row_num}: отсутствует название факультета')
-                    continue
-                
-                if pd.isna(row['Код']) or not str(row['Код']).strip():
-                    errors.append(f'Строка {row_num}: отсутствует код факультета')
-                    continue
-                
-                # Собираем данные факультета
-                faculty_data = {
-                    'name': str(row['Название']).strip(),
-                    'code': str(row['Код']).strip().upper(),
-                    'description': str(row['Описание']).strip() if not pd.isna(row.get('Описание')) else '',
-                    'is_active': True,  # По умолчанию активный
-                    'row_num': row_num
-                }
-                
-                # Обрабатываем статус если есть
-                if 'Активный' in row and not pd.isna(row['Активный']):
-                    status_str = str(row['Активный']).lower().strip()
-                    faculty_data['is_active'] = status_str in ['да', 'yes', 'true', '1', 'активный']
-                
-                # Валидация
-                if len(faculty_data['name']) > 200:
-                    errors.append(f'Строка {row_num}: название слишком длинное (максимум 200 символов)')
-                    continue
-                
-                if len(faculty_data['code']) > 10:
-                    errors.append(f'Строка {row_num}: код слишком длинный (максимум 10 символов)')
-                    continue
-                
-                # Проверяем уникальность кода
-                if Faculty.objects.filter(code=faculty_data['code']).exists():
-                    errors.append(f'Строка {row_num}: факультет с кодом "{faculty_data["code"]}" уже существует')
-                    continue
-                
-                faculties_data.append(faculty_data)
-            
-            # Если есть ошибки, показываем первые 10
-            if errors:
-                for error in errors[:10]:
-                    messages.error(request, error)
-                if len(errors) > 10:
-                    messages.error(request, f'И еще {len(errors) - 10} ошибок...')
-                return redirect('admin_faculty_import')
-            
-            # Если нет данных для импорта
-            if not faculties_data:
-                messages.error(request, 'Нет данных для импорта')
-                return redirect('admin_faculty_import')
-            
-            # Создаем факультеты
-            with transaction.atomic():
-                created_count = 0
-                duplicate_count = 0
-                
-                for faculty_data in faculties_data:
-                    try:
-                        # Проверяем еще раз на дубликаты (может появиться между операциями)
-                        if Faculty.objects.filter(code=faculty_data['code']).exists():
-                            duplicate_count += 1
-                            continue
-                        
-                        # Создаем факультет
-                        created_by = request.user if request.user.is_authenticated else None
-                        Faculty.objects.create(
-                            name=faculty_data['name'],
-                            code=faculty_data['code'],
-                            description=faculty_data['description'],
-                            is_active=faculty_data['is_active'],
-                            created_by=created_by
-                        )
-                        created_count += 1
-                        
-                    except Exception as e:
-                        messages.error(request, f'Строка {faculty_data["row_num"]}: ошибка создания - {str(e)}')
-                
-                # Результаты импорта
-                if created_count > 0:
-                    messages.success(request, f'Успешно создано факультетов: {created_count}')
-                if duplicate_count > 0:
-                    messages.warning(request, f'Пропущено дубликатов: {duplicate_count}')
-                
+            if backup_service.delete_backup(backup_id):
                 return JsonResponse({
                     'success': True,
-                    'created': created_count,
-                    'duplicates': duplicate_count,
-                    'errors': [],
-                    'errors_count': 0
+                    'message': 'Резервная копия удалена'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Ошибка при удалении'
                 })
                 
         except Exception as e:
-            messages.error(request, f'Ошибка при обработке файла: {str(e)}')
-            return redirect('admin_faculty_import')
+            return JsonResponse({
+                'success': False,
+                'message': f'Ошибка: {str(e)}'
+            })
     
-    # GET запрос - показываем форму импорта
-    context = {
-        'sample_data': [
-            {'Название': 'Информационных технологий', 'Код': 'ИТ', 'Описание': 'Факультет информационных технологий', 'Активный': 'да'},
-            {'Название': 'Экономический', 'Код': 'ЭК', 'Описание': 'Экономический факультет', 'Активный': 'да'},
-            {'Название': 'Механический', 'Код': 'МЕХ', 'Описание': 'Механический факультет', 'Активный': 'нет'},
-        ]
-    }
-    return render(request, 'admin_panel/faculity/faculty_import.html', context)
+    return JsonResponse({'success': False, 'message': 'Метод не разрешен'})
 
 
-def download_faculty_sample_excel(request):
-    """Скачивание образца Excel файла для импорта факультетов"""
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def backup_download_view(request, backup_id):
+    """Скачивание резервной копии"""
     try:
-        # Создаем DataFrame с примером данных
-        sample_data = {
-            'Название': [
-                'Информационных технологий',
-                'Экономический', 
-                'Механический'
-            ],
-            'Код': [
-                'ИТ',
-                'ЭК',
-                'МЕХ'
-            ],
-            'Описание': [
-                'Факультет информационных технологий и компьютерных наук',
-                'Экономический факультет',
-                'Механический факультет'
-            ],
-            'Активный': [
-                'да',
-                'да',
-                'нет'
-            ]
+        backup = get_object_or_404(Backup, id=backup_id)
+        
+        if not backup.file_exists:
+            messages.error(request, 'Файл резервной копии не найден')
+            return redirect('admin_backups')
+        
+        # Отдаем файл для скачивания
+        with open(backup.file_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type='application/gzip')
+            response['Content-Disposition'] = f'attachment; filename="{backup.name}"'
+            return response
+            
+    except Exception as e:
+        messages.error(request, f'Ошибка при скачивании: {str(e)}')
+        return redirect('admin_backups')
+# admin_panel/views.py - добавьте в конец файла
+
+from admin_panel.services.backup_service import BackupService
+from admin_panel.models import Backup
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def backups_list_view(request):
+    """Список резервных копий"""
+    print("=== backups_list_view вызван ===")
+    
+    try:
+        # Получаем все бэкапы
+        backups = Backup.objects.all().order_by('-created_at')
+        
+        # Пагинация
+        paginator = Paginator(backups, 20)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+        
+        # Статистика
+        backup_service = BackupService()
+        stats = backup_service.get_backup_statistics()
+        
+        context = {
+            'page_obj': page_obj,
+            'stats': stats,
         }
         
-        df = pd.DataFrame(sample_data)
-        
-        # Создаем Excel файл в памяти
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, sheet_name='Факультеты', index=False)
-            
-            # Автоширина колонок
-            worksheet = writer.sheets['Факультеты']
-            for column in worksheet.columns:
-                max_length = 0
-                column_letter = column[0].column_letter
-                
-                for cell in column:
-                    try:
-                        if len(str(cell.value)) > max_length:
-                            max_length = len(str(cell.value))
-                    except:
-                        pass
-                
-                adjusted_width = min(max_length + 2, 50)
-                worksheet.column_dimensions[column_letter].width = adjusted_width
-        
-        output.seek(0)
-        
-        # Возвращаем файл
-        response = HttpResponse(
-            output.read(),
-            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-        response['Content-Disposition'] = 'attachment; filename="faculty_import_sample.xlsx"'
-        
-        return response
+        return render(request, 'admin_panel/backups/backups_list.html', context)
         
     except Exception as e:
-        messages.error(request, f'Ошибка при создании файла: {str(e)}')
-        return redirect('admin_faculties')
+        messages.error(request, f'Ошибка при загрузке резервных копий: {str(e)}')
+        return redirect('admin_dashboard')
 
 
-def student_redirect_view(request, student_id):
-    """Редирект с уведомлением"""
-    messages.info(request, 'Функция просмотра/редактирования студентов в разработке')
-    return redirect('admin_students')
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def backup_create_view(request):
+    """Создание резервной копии"""
+    print("=== backup_create_view вызван ===")
+    
+    if request.method == 'POST':
+        try:
+            description = request.POST.get('description', '').strip()
+            
+            backup_service = BackupService()
+            backup = backup_service.create_backup(
+                backup_type='manual',
+                user=request.user,
+                description=description
+            )
+            
+            if backup:
+                messages.success(request, f'Резервная копия "{backup.name}" создана успешно')
+            else:
+                messages.error(request, 'Ошибка при создании резервной копии')
+                
+        except Exception as e:
+            messages.error(request, f'Ошибка: {str(e)}')
+    
+    return redirect('admin_backups')
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def backup_delete_view(request, backup_id):
+    """Удаление резервной копии"""
+    print(f"=== backup_delete_view вызван для ID: {backup_id} ===")
+    
+    if request.method == 'POST':
+        try:
+            backup_service = BackupService()
+            
+            if backup_service.delete_backup(backup_id):
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Резервная копия удалена'
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Ошибка при удалении'
+                })
+                
+        except Exception as e:
+            return JsonResponse({
+                'success': False,
+                'message': f'Ошибка: {str(e)}'
+            })
+    
+    return JsonResponse({'success': False, 'message': 'Метод не разрешен'})
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def backup_download_view(request, backup_id):
+    """Скачивание резервной копии"""
+    try:
+        backup = get_object_or_404(Backup, id=backup_id)
+        
+        if not backup.file_exists:
+            messages.error(request, 'Файл резервной копии не найден')
+            return redirect('admin_backups')
+        
+        # Отдаем файл для скачивания
+        with open(backup.file_path, 'rb') as f:
+            response = HttpResponse(f.read(), content_type='application/gzip')
+            response['Content-Disposition'] = f'attachment; filename="{backup.name}"'
+            return response
+            
+    except Exception as e:
+        messages.error(request, f'Ошибка при скачивании: {str(e)}')
+        return redirect('admin_backups')

@@ -4,6 +4,12 @@ from django.urls import path, include
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 from rest_framework import permissions
+from django.http import HttpResponse
+from django.views.decorators.http import require_GET
+
+@require_GET
+def favicon_view(request):
+    return HttpResponse(status=204)
 
 # Swagger настройки
 schema_view = get_schema_view(

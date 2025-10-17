@@ -46,7 +46,6 @@
                 <a class="nav-link {% if 'students' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_students' %}">
                     <i class="bi bi-mortarboard"></i>
                     <span>Студенты</span>
-                    <div class="nav-badge">{{ total_students|default:"0" }}</div>
                 </a>
             </div>
             
@@ -54,7 +53,6 @@
                 <a class="nav-link {% if 'teachers' in request.resolver_match.url_name %}active{% endif %}" href="#">
                     <i class="bi bi-person-workspace"></i>
                     <span>Преподаватели</span>
-                    <div class="nav-badge">{{ total_teachers|default:"0" }}</div>
                 </a>
             </div>
             
@@ -67,7 +65,7 @@
             <div class="nav-item">
                 <a class="nav-link {% if 'faculties' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_faculties' %}">
                     <i class="bi bi-building"></i>
-                    <span>Факультеты</span>
+                    <span>Специальности</span>
                 </a>
             </div>
             
@@ -75,7 +73,6 @@
                 <a class="nav-link {% if 'groups' in request.resolver_match.url_name %}active{% endif %}" href="#">
                     <i class="bi bi-collection"></i>
                     <span>Группы</span>
-                    <div class="nav-badge">{{ total_groups|default:"0" }}</div>
                 </a>
             </div>
             
@@ -113,13 +110,6 @@
                 </a>
             </div>
             
-            <div class="nav-item">
-                <a class="nav-link {% if 'reports' in request.resolver_match.url_name %}active{% endif %}" href="#">
-                    <i class="bi bi-file-earmark-bar-graph"></i>
-                    <span>Отчеты</span>
-                </a>
-            </div>
-            
             <!-- Настройки системы -->
             <div class="nav-section-title">
                 <i class="bi bi-gear"></i>
@@ -127,7 +117,7 @@
             </div>
             
             <div class="nav-item">
-                <a class="nav-link {% if 'backups' in request.resolver_match.url_name %}active{% endif %}" href="#">
+                <a class="nav-link {% if 'backups' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_backups' %}">
                     <i class="bi bi-hdd-stack"></i>
                     <span>Резервные копии</span>
                 </a>
@@ -154,16 +144,20 @@
             </div>
         </div>
         
-        <!-- Нижняя часть сайдбара -->
-        <div class="sidebar-footer">
-            
-            <div class="nav-item">
-                <a class="nav-link text-danger" href="#">
-                    <i class="bi bi-box-arrow-right"></i>
-                    <span>Выйти</span>
-                </a>
-            </div>
-        </div>
+        <!-- В вашем шаблоне base.html в сайдбаре -->
+<div class="sidebar-footer">
+    <div class="nav-item">
+        <form method="post" action="{% url 'logout' %}" style="display: inline;">
+            {% csrf_token %}
+            <button type="submit" class="nav-link text-danger" style="background: none; border: none; cursor: pointer; width: 100%; text-align: left; padding: 0.75rem 1rem;">
+                <i class="bi bi-box-arrow-right"></i>
+                <span>Выйти</span>
+            </button>
+        </form>
+    </div>
+</div>
+
+
     </nav>
     
     <!-- Main Content -->
@@ -182,11 +176,6 @@
                 <button class="theme-toggle" id="themeToggle" title="Переключить тему">
                     <i class="bi bi-sun" id="themeIcon"></i>
                 </button>
-                
-                <!-- User Profile -->
-                <div class="d-flex align-items-center">
-                    <span>Администратор</span>
-                </div>
             </div>
         </header>
         

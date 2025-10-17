@@ -1,0 +1,117 @@
+<!-- templates/student/dashboard.html -->
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личный кабинет - МПТ Журнал</title>
+    
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Используем ваши CSS стили -->
+</head>
+<body>
+    <div class="welcome-container">
+        <div class="welcome-header">
+            <div class="welcome-info">
+                <h1>Добро пожаловать, {{ student.get_full_name }}!</h1>
+                <p>Личный кабинет студента</p>
+            </div>
+            
+            <div class="user-actions">
+                <form method="post" action="{% url 'logout' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline">
+                        <i class="bi bi-box-arrow-right"></i>
+                        Выйти
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-icon students">
+                    <i class="bi bi-person-badge"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-number">{{ student.student_id }}</div>
+                    <div class="stat-label">Студенческий билет</div>
+                </div>
+            </div>
+
+            {% if student.group %}
+            <div class="stat-card">
+                <div class="stat-icon groups">
+                    <i class="bi bi-people"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-number">{{ student.group.name }}</div>
+                    <div class="stat-label">Группа</div>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if faculty %}
+            <div class="stat-card">
+                <div class="stat-icon subjects">
+                    <i class="bi bi-building"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-number">{{ faculty.name }}</div>
+                    <div class="stat-label">Факультет</div>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="stat-card">
+                <div class="stat-icon teachers">
+                    <i class="bi bi-mortarboard"></i>
+                </div>
+                <div class="stat-info">
+                    <div class="stat-number">{{ student.course }}</div>
+                    <div class="stat-label">Курс</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <div class="quick-actions">
+                <h3>Мои данные</h3>
+                <div class="student-info">
+                    <p><strong>Email:</strong> {{ student.email }}</p>
+                    {% if student.phone %}
+                        <p><strong>Телефон:</strong> {{ student.phone }}</p>
+                    {% endif %}
+                    {% if student.date_of_birth %}
+                        <p><strong>Дата рождения:</strong> {{ student.date_of_birth|date:"d.m.Y" }}</p>
+                    {% endif %}
+                    <p><strong>Статус обучения:</strong> {{ student.get_study_status_display }}</p>
+                </div>
+            </div>
+
+            <div class="recent-activity">
+                <h3>Полезная информация</h3>
+                <div class="info-list">
+                    <div class="info-item">
+                        <i class="bi bi-info-circle text-info"></i>
+                        <span>Для изменения личных данных обратитесь в деканат</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="bi bi-book text-success"></i>
+                        <span>Расписание занятий доступно на информационных стендах</span>
+                    </div>
+                    <div class="info-item">
+                        <i class="bi bi-calendar text-warning"></i>
+                        <span>Следите за объявлениями о важных событиях</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

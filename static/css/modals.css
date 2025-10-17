@@ -1,17 +1,24 @@
-/* Добавьте эти стили к существующим в блоке {% block extra_css %} */
+/* static/css/modals.css */
 
 /* ====================================
-   УЛУЧШЕННЫЕ СТИЛИ МОДАЛЬНЫХ ОКОН
+   СТИЛИ МОДАЛЬНЫХ ОКОН
    ==================================== */
 
-
+/* Общие стили для всех модальных окон */
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    background: var(--sidebar-bg);
+}
 
 .modal-header {
-    background: linear-gradient(135deg, var(--surface-hover), var(--surface-active));
+    background: linear-gradient(135deg, var(--sidebar-bg), var(--sidebar-border));
     border-top-left-radius: 16px;
     border-top-right-radius: 16px;
     padding: 2rem 2rem 1rem;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--sidebar-border);
     position: relative;
 }
 
@@ -19,15 +26,15 @@
     padding: 1.5rem 2rem 2rem;
     font-size: 1.1rem;
     line-height: 1.6;
-    background: var(--surface);
-    color: var(--text-primary);
+    background: var(--sidebar-bg);
+    color: var(--bs-body-color);
 }
 
 .modal-footer {
-    background: var(--surface-hover);
+    background: var(--sidebar-bg);
     border-bottom-left-radius: 16px;
     border-bottom-right-radius: 16px;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--sidebar-border);
     padding: 1.5rem 2rem;
     display: flex;
     gap: 1rem;
@@ -38,7 +45,7 @@
     font-size: 1.5rem;
     font-weight: 600;
     margin: 0;
-    color: var(--text-primary);
+    color: var(--bs-body-color);
     text-align: center;
     width: 100%;
 }
@@ -135,6 +142,7 @@
     font-size: 0.95rem;
     min-width: 120px;
     justify-content: center;
+    border: none;
 }
 
 .modal .btn:hover {
@@ -144,7 +152,6 @@
 
 .modal .btn-danger {
     background: linear-gradient(135deg, #ef4444, #dc2626);
-    border: none;
     color: white;
 }
 
@@ -155,7 +162,6 @@
 
 .modal .btn-success {
     background: linear-gradient(135deg, #10b981, #059669);
-    border: none;
     color: white;
 }
 
@@ -166,7 +172,6 @@
 
 .modal .btn-warning {
     background: linear-gradient(135deg, #f59e0b, #d97706);
-    border: none;
     color: white;
 }
 
@@ -176,15 +181,15 @@
 }
 
 .modal .btn-outline-secondary {
-    border: 2px solid var(--border);
-    color: var(--text-secondary);
-    background: var(--surface);
+    border: 2px solid var(--sidebar-border);
+    color: var(--bs-secondary);
+    background: var(--sidebar-bg);
 }
 
 .modal .btn-outline-secondary:hover {
-    background: var(--surface-hover);
-    border-color: var(--text-secondary);
-    color: var(--text-primary);
+    background: var(--sidebar-border);
+    border-color: var(--bs-secondary);
+    color: var(--bs-body-color);
 }
 
 /* Backdrop улучшенный */
@@ -193,52 +198,46 @@
     backdrop-filter: blur(4px);
 }
 
-/* Стили для списков в модальных окнах */
-.student-list {
-    max-height: 200px;
-    overflow-y: auto;
-    background: var(--surface-hover);
+/* Превью элементов */
+.item-preview {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
     border-radius: 8px;
-    padding: 12px;
-    margin: 16px 0;
-    border: 1px solid var(--border);
+    padding: 1rem;
+    margin-top: 1rem;
+    max-height: 150px;
+    overflow-y: auto;
+    text-align: left;
 }
 
-.student-item {
+.item-preview-item {
     display: flex;
     align-items: center;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border);
-}
-
-.student-item:last-child {
-    border-bottom: none;
-}
-
-.student-avatar-small {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), #8b5cf6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 0.8rem;
-    font-weight: 600;
-    margin-right: 12px;
-}
-
-.student-name {
-    font-weight: 500;
-    color: var(--text-primary);
+    gap: 8px;
+    padding: 4px 0;
     font-size: 0.9rem;
+    color: var(--bs-body-color);
 }
 
-/* Бейджи для подсчета */
+.item-preview-item i {
+    color: var(--bs-primary);
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.item-preview-item .item-name {
+    font-weight: 500;
+}
+
+.item-preview-item .item-meta {
+    color: var(--bs-secondary);
+    font-size: 0.8rem;
+}
+
+/* Счетчики */
 .count-badge {
     display: inline-block;
-    background: linear-gradient(135deg, var(--primary), #2563eb);
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
     color: white;
     padding: 4px 12px;
     border-radius: 12px;
@@ -247,41 +246,56 @@
     margin: 0 4px;
 }
 
-.all-students-badge {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    color: white;
-    padding: 6px 16px;
-    border-radius: 20px;
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 0 8px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-}
-
-/* Информационные блоки в модальных окнах */
-.modal-info-section {
-    background: var(--surface-active);
-    border: 1px solid var(--border);
+/* Списки в модальных окнах */
+.modal-list {
+    max-height: 200px;
+    overflow-y: auto;
     border-radius: 8px;
-    padding: 1rem;
-    margin: 1rem 0;
+    padding: 12px;
+    margin: 16px 0;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
 }
 
-.modal-info-title {
-    font-size: 0.85rem;
+.modal-list-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 0;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal-list-item:last-child {
+    border-bottom: none;
+}
+
+.modal-list-item .item-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--bs-primary), #1d4ed8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.8rem;
     font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 8px;
+    margin-right: 12px;
+    flex-shrink: 0;
 }
 
-.modal-info-text {
-    color: var(--text-primary);
-    line-height: 1.5;
-    margin: 0;
+.modal-list-item .item-info {
+    flex: 1;
+}
+
+.modal-list-item .item-name {
+    font-weight: 500;
+    color: var(--bs-body-color);
+    margin-bottom: 2px;
+}
+
+.modal-list-item .item-meta {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
 }
 
 /* Темная тема для модальных окон */
@@ -305,63 +319,18 @@
     color: #93c5fd;
 }
 
-[data-bs-theme="dark"] .student-list {
+[data-bs-theme="dark"] .item-preview {
     background: #1e293b;
     border-color: #334155;
 }
 
-[data-bs-theme="dark"] .modal-info-section {
+[data-bs-theme="dark"] .modal-list {
     background: #1e293b;
     border-color: #334155;
 }
 
-/* Адаптивность для мобильных */
-@media (max-width: 768px) {
-    .modal-dialog {
-        margin: 1rem;
-        max-width: calc(100vw - 2rem);
-    }
-    
-    .modal-header,
-    .modal-body,
-    .modal-footer {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-    
-    .modal-footer {
-        flex-direction: column;
-        gap: 0.75rem;
-    }
-    
-    .modal .btn {
-        width: 100%;
-        margin: 0;
-    }
-    
-    .modal-icon-danger,
-    .modal-icon-success,
-    .modal-icon-warning,
-    .modal-icon-info {
-        width: 60px;
-        height: 60px;
-        font-size: 1.5rem;
-        margin-bottom: 1rem;
-    }
-    
-    .student-list {
-        max-height: 150px;
-    }
-}
-
-/* Анимация появления модальных окон */
-.modal.fade .modal-dialog {
-    transition: transform 0.3s ease-out;
-    transform: translate(0, -50px);
-}
-
-.modal.show .modal-dialog {
-    transform: none;
+[data-bs-theme="dark"] .modal-list-item {
+    border-bottom-color: #475569;
 }
 
 /* Стили для уведомлений */
@@ -419,53 +388,66 @@
     color: #93c5fd;
 }
 
-/* Загрузочная анимация */
-#loadingOverlay {
-    background: rgba(0, 0, 0, 0.6) !important;
-    backdrop-filter: blur(4px) !important;
+/* Адаптивность для модальных окон */
+@media (max-width: 768px) {
+    .modal-dialog {
+        margin: 1rem;
+        max-width: calc(100vw - 2rem);
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .modal .btn {
+        width: 100%;
+        margin: 0;
+    }
+    
+    .modal-icon-danger,
+    .modal-icon-success,
+    .modal-icon-warning,
+    .modal-icon-info {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+    
+    .modal-title {
+        font-size: 1.2rem;
+    }
+    
+    .modal-body {
+        font-size: 1rem;
+    }
 }
 
-#loadingOverlay .bg-white {
-    background: var(--surface) !important;
-    color: var(--text-primary) !important;
-    border: 1px solid var(--border) !important;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+/* Улучшения для доступности */
+.modal .btn:focus-visible {
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
 }
 
-#loadingOverlay .spinner-border {
-    color: var(--primary) !important;
+/* Анимации для строк таблицы */
+.data-row {
+    transition: all 0.3s ease;
 }
 
-/* Дополнительные стили для улучшенного UX */
-.modal-content {
-    max-height: 90vh;
-    overflow-y: auto;
+.data-row:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
 }
 
-.modal-body {
-    max-height: 60vh;
-    overflow-y: auto;
-}
-
-/* Скроллбар для модальных окон */
-.modal-body::-webkit-scrollbar,
-.student-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-.modal-body::-webkit-scrollbar-track,
-.student-list::-webkit-scrollbar-track {
-    background: var(--surface-hover);
-    border-radius: 3px;
-}
-
-.modal-body::-webkit-scrollbar-thumb,
-.student-list::-webkit-scrollbar-thumb {
-    background: var(--border);
-    border-radius: 3px;
-}
-
-.modal-body::-webkit-scrollbar-thumb:hover,
-.student-list::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
+.data-row.removing {
+    transform: translateX(-100%);
+    opacity: 0;
+    transition: all 0.3s ease;
 }

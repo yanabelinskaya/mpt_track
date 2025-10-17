@@ -1,5 +1,6 @@
 from django.contrib import admin
 from .models import Faculty, Group, Student
+from admin_panel.models import Backup
 
 @admin.register(Faculty)
 class FacultyAdmin(admin.ModelAdmin):
@@ -176,3 +177,16 @@ class StudentAdmin(admin.ModelAdmin):
         
         self.message_user(request, f'Создан доступ для {count} студентов.')
     create_system_access.short_description = "Создать доступ к системе"
+
+
+@admin.register(Backup)
+class BackupAdmin(admin.ModelAdmin):
+    list_display = ['name', 'backup_type', 'status', 'file_size_mb', 'created_at', 'created_by']
+    list_filter = ['status', 'backup_type', 'created_at']
+    search_fields = ['name', 'description']
+    readonly_fields = ['name', 'file_path', 'file_size', 'tables_count', 'records_count', 
+                      'created_at', 'completed_at', 'created_by']
+    
+    def file_size_mb(self, obj):
+        return f"{obj.file_size_mb} МБ"
+    file_size_mb.short_description = 'Размер файла'

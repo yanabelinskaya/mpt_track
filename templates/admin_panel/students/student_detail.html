@@ -8,8 +8,9 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/forms.css' %}">
 <style>
+/* Ваши существующие стили остаются без изменений */
 .profile-container {
-    max-width: 1000px;
+    max-width: 1200px; /* Немного увеличил для большего контента */
     margin: 0 auto;
     display: grid;
     grid-template-columns: 1fr;
@@ -79,6 +80,16 @@
     color: var(--bs-secondary);
     font-size: 0.9rem;
     margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+
+.student-meta > span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .status-pill {
@@ -120,7 +131,7 @@
 
 .info-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
 }
 
@@ -147,6 +158,62 @@
 .info-value.empty {
     color: var(--bs-secondary);
     font-style: italic;
+}
+
+.badge-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.badge-status.active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.badge-status.academic_leave {
+    background: #fef3c7;
+    color: #d97706;
+}
+
+.badge-status.expelled {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.badge-status.graduated {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.badge-status.transferred {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.gender-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.gender-badge.male {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.gender-badge.female {
+    background: #fce7f3;
+    color: #be185d;
 }
 
 .access-section {
@@ -305,239 +372,39 @@
     color: #fca5a5;
 }
 
-/* ====================================
-   СТИЛИ МОДАЛЬНЫХ ОКОН
-   ==================================== */
-
-/* Общие стили для всех модальных окон */
-.modal-content {
-    border: none;
-    border-radius: 16px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(10px);
-    background: var(--sidebar-bg);
-}
-
-.modal-header {
-    background: linear-gradient(135deg, var(--sidebar-bg), var(--sidebar-border));
-    border-top-left-radius: 16px;
-    border-top-right-radius: 16px;
-    padding: 2rem 2rem 1rem;
-    border-bottom: 1px solid var(--sidebar-border);
-    position: relative;
-}
-
-.modal-body {
-    padding: 1.5rem 2rem 2rem;
-    font-size: 1.1rem;
-    line-height: 1.6;
-    background: var(--sidebar-bg);
-    color: var(--bs-body-color);
-}
-
-.modal-footer {
-    background: var(--sidebar-bg);
-    border-bottom-left-radius: 16px;
-    border-bottom-right-radius: 16px;
-    border-top: 1px solid var(--sidebar-border);
-    padding: 1.5rem 2rem;
-    display: flex;
-    gap: 1rem;
-    justify-content: center;
-}
-
-.modal-title {
-    font-size: 1.5rem;
-    font-weight: 600;
-    margin: 0;
-    color: var(--bs-body-color);
-    text-align: center;
-    width: 100%;
-}
-
-/* Иконки модальных окон */
-.modal-icon-danger {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #fee2e2, #fecaca);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1.5rem;
-    color: #dc2626;
-    font-size: 2rem;
-    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
-    animation: pulse 2s infinite;
-}
-
-.modal-icon-success {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1.5rem;
-    color: #16a34a;
-    font-size: 2rem;
-    box-shadow: 0 4px 20px rgba(22, 163, 74, 0.2);
-    animation: bounce 1s ease-out;
-}
-
-.modal-icon-warning {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #fef3c7, #fed7aa);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 auto 1.5rem;
-    color: #d97706;
-    font-size: 2rem;
-    box-shadow: 0 4px 20px rgba(217, 119, 6, 0.2);
-    animation: shake 0.5s ease-in-out;
-}
-
-/* Анимации для иконок */
-@keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-}
-
-@keyframes bounce {
-    0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
-    40%, 43% { transform: translate3d(0,-10px,0); }
-    70% { transform: translate3d(0,-5px,0); }
-    90% { transform: translate3d(0,-2px,0); }
-}
-
-@keyframes shake {
-    0%, 100% { transform: translateX(0); }
-    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
-    20%, 40%, 60%, 80% { transform: translateX(5px); }
-}
-
-/* Кнопки в модальных окнах */
-.modal .btn {
-    border-radius: 10px;
-    padding: 12px 24px;
-    font-weight: 500;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.95rem;
-    min-width: 120px;
-    justify-content: center;
-}
-
-.modal .btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
-}
-
-.modal .btn-danger {
-    background: linear-gradient(135deg, #ef4444, #dc2626);
-    border: none;
-    color: white;
-}
-
-.modal .btn-danger:hover {
-    background: linear-gradient(135deg, #dc2626, #b91c1c);
-    color: white;
-}
-
-.modal .btn-success {
-    background: linear-gradient(135deg, #10b981, #059669);
-    border: none;
-    color: white;
-}
-
-.modal .btn-success:hover {
-    background: linear-gradient(135deg, #059669, #047857);
-    color: white;
-}
-
-.modal .btn-warning {
-    background: linear-gradient(135deg, #f59e0b, #d97706);
-    border: none;
-    color: white;
-}
-
-.modal .btn-warning:hover {
-    background: linear-gradient(135deg, #d97706, #b45309);
-    color: white;
-}
-
-.modal .btn-outline-secondary {
-    border: 2px solid var(--sidebar-border);
-    color: var(--bs-secondary);
-    background: var(--sidebar-bg);
-}
-
-.modal .btn-outline-secondary:hover {
-    background: var(--sidebar-border);
-    border-color: var(--bs-secondary);
-    color: var(--bs-body-color);
-}
-
-/* Backdrop улучшенный */
-.modal-backdrop {
-    background-color: rgba(0, 0, 0, 0.6);
-    backdrop-filter: blur(4px);
-}
-
-/* Темная тема для модальных окон */
-[data-bs-theme="dark"] .modal-icon-danger {
-    background: linear-gradient(135deg, #7f1d1d, #991b1b);
-    color: #fca5a5;
-}
-
-[data-bs-theme="dark"] .modal-icon-success {
-    background: linear-gradient(135deg, #064e3b, #065f46);
+[data-bs-theme="dark"] .badge-status.active {
+    background: #064e3b;
     color: #6ee7b7;
 }
 
-[data-bs-theme="dark"] .modal-icon-warning {
-    background: linear-gradient(135deg, #78350f, #92400e);
+[data-bs-theme="dark"] .badge-status.academic_leave {
+    background: #78350f;
     color: #fbbf24;
 }
 
-/* Стили для уведомлений */
-.alert {
-    border-radius: 12px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-    backdrop-filter: blur(10px);
-    border: none;
-    padding: 1rem 1.5rem;
-    font-weight: 500;
-}
-
-.alert-success {
-    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
-    color: #065f46;
-    border-left: 4px solid #10b981;
-}
-
-.alert-danger {
-    background: linear-gradient(135deg, #fee2e2, #fecaca);
-    color: #7f1d1d;
-    border-left: 4px solid #ef4444;
-}
-
-/* Темная тема для уведомлений */
-[data-bs-theme="dark"] .alert-success {
-    background: linear-gradient(135deg, #064e3b, #065f46);
-    color: #6ee7b7;
-}
-
-[data-bs-theme="dark"] .alert-danger {
-    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+[data-bs-theme="dark"] .badge-status.expelled {
+    background: #7f1d1d;
     color: #fca5a5;
+}
+
+[data-bs-theme="dark"] .badge-status.graduated {
+    background: #1e3a8a;
+    color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .badge-status.transferred {
+    background: #374151;
+    color: #d1d5db;
+}
+
+[data-bs-theme="dark"] .gender-badge.male {
+    background: #1e3a8a;
+    color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .gender-badge.female {
+    background: #831843;
+    color: #f9a8d4;
 }
 
 /* Адаптивность */
@@ -571,28 +438,14 @@
         justify-content: center;
     }
     
-    .modal-dialog {
-        margin: 1rem;
-        max-width: calc(100vw - 2rem);
-    }
-    
-    .modal-header,
-    .modal-body,
-    .modal-footer {
-        padding-left: 1rem;
-        padding-right: 1rem;
-    }
-    
-    .modal-footer {
+    .student-meta {
         flex-direction: column;
-        gap: 0.75rem;
-    }
-    
-    .modal .btn {
-        width: 100%;
-        margin: 0;
+        align-items: flex-start;
+        gap: 0.5rem;
     }
 }
+
+/* Ваши существующие стили модальных окон остаются без изменений */
 </style>
 {% endblock %}
 
@@ -609,15 +462,24 @@
             <div class="student-info">
                 <h1 class="student-name">{{ student.get_full_name }}</h1>
                 <div class="student-meta">
-                    <i class="bi bi-envelope"></i> {{ student.email }}
+                    <span><i class="bi bi-envelope"></i> {{ student.email }}</span>
+                    {% if student.phone %}
+                        <span><i class="bi bi-telephone"></i> {{ student.phone }}</span>
+                    {% endif %}
+                    {% if student.student_id %}
+                        <span><i class="bi bi-card-text"></i> {{ student.student_id }}</span>
+                    {% endif %}
                     {% if student.group %}
-                        • <i class="bi bi-collection"></i> {{ student.group.name }}
+                        <span><i class="bi bi-collection"></i> {{ student.group.name }}</span>
+                    {% endif %}
+                    {% if student.age %}
+                        <span><i class="bi bi-calendar"></i> {{ student.age }} лет</span>
                     {% endif %}
                 </div>
                 
                 <div class="status-pill {% if student.is_active_account %}status-active{% else %}status-inactive{% endif %}">
                     <div class="status-dot"></div>
-                    {% if student.is_active_account %}Активен{% else %}Неактивен{% endif %}
+                    {% if student.is_active_account %}Активен в системе{% else %}Неактивен в системе{% endif %}
                 </div>
             </div>
         </div>
@@ -626,20 +488,49 @@
         <div class="info-section">
             <div class="section-title">
                 <i class="bi bi-person"></i>
-                Основная информация
+                Личная информация
             </div>
             
             <div class="info-grid">
                 <div class="info-item">
-                    <div class="info-label">ФИО</div>
-                    <div class="info-value">{{ student.get_full_name }}</div>
+                    <div class="info-label">Фамилия</div>
+                    <div class="info-value">{{ student.last_name }}</div>
                 </div>
                 
                 <div class="info-item">
-                    <div class="info-label">Email</div>
-                    <div class="info-value {% if not student.email %}empty{% endif %}">
-                        {% if student.email %}
-                            <a href="mailto:{{ student.email }}">{{ student.email }}</a>
+                    <div class="info-label">Имя</div>
+                    <div class="info-value">{{ student.first_name }}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Отчество</div>
+                    <div class="info-value {% if not student.middle_name %}empty{% endif %}">
+                        {{ student.middle_name|default:"Не указано" }}
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Дата рождения</div>
+                    <div class="info-value {% if not student.date_of_birth %}empty{% endif %}">
+                        {% if student.date_of_birth %}
+                            {{ student.date_of_birth|date:"d.m.Y" }}
+                            {% if student.age %}
+                                ({{ student.age }} лет)
+                            {% endif %}
+                        {% else %}
+                            Не указана
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Пол</div>
+                    <div class="info-value {% if not student.gender %}empty{% endif %}">
+                        {% if student.gender %}
+                            <span class="gender-badge {% if student.gender == 'M' %}male{% elif student.gender == 'F' %}female{% endif %}">
+                                <i class="bi bi-{% if student.gender == 'M' %}person{% elif student.gender == 'F' %}person-dress{% endif %}"></i>
+                                {{ student.get_gender_display }}
+                            </span>
                         {% else %}
                             Не указан
                         {% endif %}
@@ -647,22 +538,151 @@
                 </div>
                 
                 <div class="info-item">
-                    <div class="info-label">Группа</div>
-                    <div class="info-value {% if not student.group %}empty{% endif %}">
-                        {{ student.group.name|default:"Не назначена" }}
+                    <div class="info-label">Email</div>
+                    <div class="info-value">
+                        <a href="mailto:{{ student.email }}">{{ student.email }}</a>
                     </div>
                 </div>
                 
                 <div class="info-item">
-                    <div class="info-label">Статус в системе</div>
-                    <div class="info-value">
-                        {% if student.is_active_account %}
-                            <span style="color: #10b981;">Активен</span>
+                    <div class="info-label">Телефон</div>
+                    <div class="info-value {% if not student.phone %}empty{% endif %}">
+                        {% if student.phone %}
+                            <a href="tel:{{ student.phone }}">{{ student.phone }}</a>
                         {% else %}
-                            <span style="color: #ef4444;">Неактивен</span>
+                            Не указан
                         {% endif %}
                     </div>
                 </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Адрес</div>
+                    <div class="info-value {% if not student.address %}empty{% endif %}">
+                        {{ student.address|default:"Не указан" }}
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Город</div>
+                    <div class="info-value {% if not student.city %}empty{% endif %}">
+                        {{ student.city|default:"Не указан" }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Учебная информация -->
+        <div class="info-section">
+            <div class="section-title">
+                <i class="bi bi-mortarboard"></i>
+                Учебная информация
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Студенческий билет</div>
+                    <div class="info-value {% if not student.student_id %}empty{% endif %}">
+                        {{ student.student_id|default:"Не присвоен" }}
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Группа</div>
+                    <div class="info-value {% if not student.group %}empty{% endif %}">
+                        {% if student.group %}
+                            {{ student.group.name }}
+                            {% if student.group.faculty %}
+                                <br><small class="text-muted">{{ student.group.faculty.name }}</small>
+                            {% endif %}
+                        {% else %}
+                            Не назначена
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Курс</div>
+                    <div class="info-value">{{ student.get_course_display }}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Статус обучения</div>
+                    <div class="info-value">
+                        <span class="badge-status {{ student.study_status }}">
+                            <i class="bi bi-{% if student.study_status == 'active' %}check-circle{% elif student.study_status == 'academic_leave' %}pause-circle{% elif student.study_status == 'expelled' %}x-circle{% elif student.study_status == 'graduated' %}trophy{% elif student.study_status == 'transferred' %}arrow-right-circle{% endif %}"></i>
+                            {{ student.get_study_status_display }}
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Дата поступления</div>
+                    <div class="info-value {% if not student.enrollment_date %}empty{% endif %}">
+                        {% if student.enrollment_date %}
+                            {{ student.enrollment_date|date:"d.m.Y" }}
+                        {% else %}
+                            Не указана
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Дата выпуска</div>
+                    <div class="info-value {% if not student.graduation_date %}empty{% endif %}">
+                        {% if student.graduation_date %}
+                            {{ student.graduation_date|date:"d.m.Y" }}
+                        {% else %}
+                            Не указана
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Дополнительная информация -->
+        {% if student.notes %}
+        <div class="info-section">
+            <div class="section-title">
+                <i class="bi bi-sticky"></i>
+                Заметки
+            </div>
+            
+            <div class="info-item">
+                <div class="info-value" style="line-height: 1.6; white-space: pre-wrap;">{{ student.notes }}</div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Системная информация -->
+        <div class="info-section">
+            <div class="section-title">
+                <i class="bi bi-info-circle"></i>
+                Системная информация
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Дата создания записи</div>
+                    <div class="info-value">
+                        {{ student.created_at|date:"d.m.Y H:i" }}
+                    </div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Последнее обновление</div>
+                    <div class="info-value">
+                        {{ student.updated_at|date:"d.m.Y H:i" }}
+                    </div>
+                </div>
+                
+                {% if student.created_by %}
+                <div class="info-item">
+                    <div class="info-label">Создано пользователем</div>
+                    <div class="info-value">
+                        {{ student.created_by.get_full_name|default:student.created_by.username }}
+                    </div>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -690,6 +710,17 @@
                     <div class="info-item">
                         <div class="info-label">Логин</div>
                         <div class="info-value">{{ student.username }}</div>
+                    </div>
+                    
+                    <div class="info-item">
+                        <div class="info-label">Статус аккаунта</div>
+                        <div class="info-value">
+                            {% if student.is_active_account %}
+                                <span style="color: #10b981;">Активен</span>
+                            {% else %}
+                                <span style="color: #ef4444;">Заблокирован</span>
+                            {% endif %}
+                        </div>
                     </div>
                     
                     <div class="info-item">
@@ -766,7 +797,6 @@
     </div>
 </div>
 
-<!-- Модальные окна -->
 
 <!-- Модальное окно создания доступа -->
 <div class="modal fade" id="createAccessModal" tabindex="-1" aria-labelledby="createAccessModalLabel" aria-hidden="true">

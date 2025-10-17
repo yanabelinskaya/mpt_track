@@ -1,18 +1,27 @@
 # admin_panel/api_views.py
 from django.shortcuts import get_object_or_404
-from django.http import JsonResponse, HttpResponse
+from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.core.mail import send_mail
 from django.conf import settings
 from django.db.models import Q
+from django.core.paginator import Paginator
+from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-import json
 import secrets
 import string
 from datetime import datetime
+
+from .serializers import (
+    StudentSerializer, BulkOperationSerializer, CreateAccessSerializer,
+    PasswordResetSerializer, StudentListResponseSerializer, StudentListSerializer,
+    PaginationSerializer, FacultySerializer, FacultyCreateSerializer, 
+    FacultyListSerializer, FacultyBulkOperationSerializer, FacultyListResponseSerializer
+)
 
 # Безопасная проверка импорта моделей
 try:
@@ -115,6 +124,31 @@ def send_password_email(student, password):
         print(f"Ошибка отправки email: {e}")
         return False
 
+def apply_student_filters(queryset, filters):
+    """Применить фильтры к queryset студентов"""
+    search = filters.get('search', '').strip()
+    group_filter = filters.get('group', '').strip()
+    status_filter = filters.get('status', '').strip()
+    
+    if search:
+        search_lower = search.lower()
+        queryset = queryset.filter(
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search) |
+            Q(email__icontains=search)
+        )
+    
+    if group_filter:
+        queryset = queryset.filter(group_id=group_filter)
+    
+    if status_filter:
+        if status_filter == 'active':
+            queryset = queryset.filter(user__is_active=True)
+        elif status_filter == 'inactive':
+            queryset = queryset.filter(user__is_active=False)
+    
+    return queryset
+
 # ====================================
 # API ENDPOINTS ДЛЯ СТУДЕНТОВ
 # ====================================
@@ -123,13 +157,7 @@ def send_password_email(student, password):
     method='post',
     operation_description="Удалить студента по ID",
     responses={
-        200: openapi.Response('Студент успешно удален', openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                'message': openapi.Schema(type=openapi.TYPE_STRING)
-            }
-        )),
+        200: openapi.Response('Студент успешно удален', StudentSerializer),
         404: 'Студент не найден',
         500: 'Ошибка сервера'
     }
@@ -141,11 +169,16 @@ def student_delete_api(request, student_id):
     print(f"=== student_delete_api вызван для студента ID: {student_id} ===")
     
     if not MODELS_AVAILABLE:
-        return JsonResponse({'success': False, 'message': 'Модели не загружены'}, status=500)
+        return Response({
+            'success': False, 
+            'message': 'Модели не загружены'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     try:
         student = get_object_or_404(Student, id=student_id)
+        student_data = StudentSerializer(student).data
         student_name = student.get_full_name()
+        
         print(f"Найден студент: {student_name}")
         
         # Удаляем связанного пользователя если есть
@@ -158,36 +191,30 @@ def student_delete_api(request, student_id):
         student.delete()
         print(f"Студент удален: {student_name}")
         
-        return JsonResponse({
+        return Response({
             'success': True,
-            'message': f'Студент "{student_name}" успешно удален'
-        })
+            'message': f'Студент "{student_name}" успешно удален',
+            'deleted_student': student_data
+        }, status=status.HTTP_200_OK)
         
     except Student.DoesNotExist:
-        return JsonResponse({
+        return Response({
             'success': False,
             'message': 'Студент не найден'
-        }, status=404)
+        }, status=status.HTTP_404_NOT_FOUND)
         
     except Exception as e:
         print(f"ОШИБКА при удалении студента {student_id}: {str(e)}")
-        return JsonResponse({
+        return Response({
             'success': False,
             'message': f'Ошибка при удалении: {str(e)}'
-        }, status=500)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @swagger_auto_schema(
     method='post',
     operation_description="Переключить статус активности аккаунта студента",
     responses={
-        200: openapi.Response('Статус изменен', openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                'message': openapi.Schema(type=openapi.TYPE_STRING),
-                'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN)
-            }
-        )),
+        200: openapi.Response('Статус изменен', StudentSerializer),
         400: 'У студента нет аккаунта',
         404: 'Студент не найден',
         500: 'Ошибка сервера'
@@ -200,17 +227,20 @@ def student_toggle_status_api(request, student_id):
     print(f"=== student_toggle_status_api вызван для студента ID: {student_id} ===")
     
     if not MODELS_AVAILABLE:
-        return JsonResponse({'success': False, 'message': 'Модели не загружены'}, status=500)
+        return Response({
+            'success': False, 
+            'message': 'Модели не загружены'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     try:
         student = get_object_or_404(Student, id=student_id)
         print(f"Найден студент: {student.get_full_name()}")
         
         if not hasattr(student, 'user') or not student.user:
-            return JsonResponse({
+            return Response({
                 'success': False,
                 'message': 'У студента нет аккаунта для изменения статуса'
-            }, status=400)
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         # Переключаем статус
         old_status = student.user.is_active
@@ -221,40 +251,36 @@ def student_toggle_status_api(request, student_id):
         status_text = 'активирован' if new_status else 'деактивирован'
         print(f"Статус изменен: {old_status} -> {new_status}")
         
-        return JsonResponse({
+        # Возвращаем обновленные данные студента
+        student_data = StudentSerializer(student).data
+        
+        return Response({
             'success': True,
             'message': f'Студент "{student.get_full_name()}" {status_text}',
-            'is_active': new_status
-        })
+            'is_active': new_status,
+            'student': student_data
+        }, status=status.HTTP_200_OK)
         
     except Student.DoesNotExist:
-        return JsonResponse({
+        return Response({
             'success': False,
             'message': 'Студент не найден'
-        }, status=404)
+        }, status=status.HTTP_404_NOT_FOUND)
         
     except Exception as e:
         print(f"ОШИБКА при изменении статуса студента {student_id}: {str(e)}")
-        return JsonResponse({
+        return Response({
             'success': False,
             'message': f'Ошибка при изменении статуса: {str(e)}'
-        }, status=500)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @swagger_auto_schema(
     method='post',
+    request_body=CreateAccessSerializer,
     operation_description="Создать доступ к системе для студента",
     responses={
-        200: openapi.Response('Доступ создан', openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                'message': openapi.Schema(type=openapi.TYPE_STRING),
-                'username': openapi.Schema(type=openapi.TYPE_STRING),
-                'password': openapi.Schema(type=openapi.TYPE_STRING),
-                'email_sent': openapi.Schema(type=openapi.TYPE_BOOLEAN)
-            }
-        )),
-        400: 'Доступ уже существует',
+        200: openapi.Response('Доступ создан', StudentSerializer),
+        400: 'Доступ уже существует или ошибка валидации',
         404: 'Студент не найден',
         500: 'Ошибка сервера'
     }
@@ -264,17 +290,28 @@ def student_toggle_status_api(request, student_id):
 def student_create_access_api(request, student_id):
     """Создать доступ к системе для студента"""
     if not MODELS_AVAILABLE:
-        return JsonResponse({'success': False, 'message': 'Модели недоступны'}, status=500)
+        return Response({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     try:
         student = get_object_or_404(Student, id=student_id)
         
         # Проверяем что доступа еще нет
         if hasattr(student, 'user') and student.user:
-            return JsonResponse({
+            return Response({
                 'success': False,
                 'message': 'У студента уже есть доступ к системе'
-            }, status=400)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Валидируем входные данные
+        serializer = CreateAccessSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         # Создаем пользователя
         username = generate_username(student.first_name, student.last_name)
@@ -292,25 +329,40 @@ def student_create_access_api(request, student_id):
         student.user = user
         student.save()
         
-        # Отправляем данные на email
-        email_sent = send_credentials_email(student, username, password)
+        # Отправляем данные на email если нужно
+        email_sent = False
+        if serializer.validated_data.get('send_email', True):
+            email_sent = send_credentials_email(student, username, password)
         
-        return JsonResponse({
+        # Возвращаем обновленные данные студента
+        student_data = StudentSerializer(student).data
+        
+        return Response({
             'success': True,
-            'message': f'Доступ создан! {"Данные отправлены на email" if email_sent else "Сохраните данные"}',
-            'username': username,
-            'password': password,
+            'message': 'Доступ создан успешно',
+            'student': student_data,
+            'credentials': {
+                'username': username,
+                'password': password if not email_sent else None
+            },
             'email_sent': email_sent
-        })
+        }, status=status.HTTP_200_OK)
+        
+    except Student.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Студент не найден'
+        }, status=status.HTTP_404_NOT_FOUND)
         
     except Exception as e:
-        return JsonResponse({
+        return Response({
             'success': False,
             'message': f'Ошибка при создании доступа: {str(e)}'
-        }, status=500)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @swagger_auto_schema(
     method='post',
+    request_body=PasswordResetSerializer,
     operation_description="Сбросить пароль студента",
     responses={
         200: openapi.Response('Пароль сброшен', openapi.Schema(
@@ -332,38 +384,57 @@ def student_create_access_api(request, student_id):
 def student_reset_password_api(request, student_id):
     """Сбросить пароль студента"""
     if not MODELS_AVAILABLE:
-        return JsonResponse({'success': False, 'message': 'Модели недоступны'}, status=500)
+        return Response({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     try:
         student = get_object_or_404(Student, id=student_id)
         
         # Проверяем что у студента есть аккаунт
         if not hasattr(student, 'user') or not student.user:
-            return JsonResponse({
+            return Response({
                 'success': False,
                 'message': 'У студента нет доступа к системе'
-            }, status=400)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Валидируем входные данные
+        serializer = PasswordResetSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response({
+                'success': False,
+                'errors': serializer.errors
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         # Генерируем новый пароль
         new_password = generate_password()
         student.user.set_password(new_password)
         student.user.save()
         
-        # Отправляем на email
-        email_sent = send_password_email(student, new_password)
+        # Отправляем на email если нужно
+        email_sent = False
+        if serializer.validated_data.get('send_email', True):
+            email_sent = send_password_email(student, new_password)
         
-        return JsonResponse({
+        return Response({
             'success': True,
-            'message': f'Новый пароль {"отправлен на email" if email_sent else "сгенерирован"}: {new_password}',
-            'password': new_password,
+            'message': f'Новый пароль {"отправлен на email" if email_sent else "сгенерирован"}',
+            'password': new_password if not email_sent else None,
             'email_sent': email_sent
-        })
+        }, status=status.HTTP_200_OK)
+        
+    except Student.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Студент не найден'
+        }, status=status.HTTP_404_NOT_FOUND)
         
     except Exception as e:
-        return JsonResponse({
+        return Response({
             'success': False,
             'message': f'Ошибка при сбросе пароля: {str(e)}'
-        }, status=500)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # ====================================
 # МАССОВЫЕ ОПЕРАЦИИ
@@ -371,36 +442,18 @@ def student_reset_password_api(request, student_id):
 
 @swagger_auto_schema(
     method='post',
+    request_body=BulkOperationSerializer,
     operation_description="Массовая активация студентов",
-    request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'mode': openapi.Schema(type=openapi.TYPE_STRING, description='Режим: selected или all'),
-            'student_ids': openapi.Schema(
-                type=openapi.TYPE_ARRAY,
-                items=openapi.Schema(type=openapi.TYPE_INTEGER),
-                description='Список ID студентов (для режима selected)'
-            ),
-            'filters': openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                description='Фильтры (для режима all)',
-                properties={
-                    'search': openapi.Schema(type=openapi.TYPE_STRING),
-                    'group': openapi.Schema(type=openapi.TYPE_STRING),
-                    'status': openapi.Schema(type=openapi.TYPE_STRING)
-                }
-            )
-        }
-    ),
     responses={
         200: openapi.Response('Студенты активированы', openapi.Schema(
             type=openapi.TYPE_OBJECT,
             properties={
                 'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                'message': openapi.Schema(type=openapi.TYPE_STRING)
+                'message': openapi.Schema(type=openapi.TYPE_STRING),
+                'activated_count': openapi.Schema(type=openapi.TYPE_INTEGER)
             }
         )),
-        400: 'Не выбраны студенты',
+        400: 'Ошибка валидации',
         500: 'Ошибка сервера'
     }
 )
@@ -408,90 +461,239 @@ def student_reset_password_api(request, student_id):
 @permission_classes([AllowAny])
 def student_bulk_activate_api(request):
     """Массовая активация студентов"""
-    # Импорт функции из views.py
-    from .views import student_bulk_activate_view
-    return student_bulk_activate_view(request)
+    if not MODELS_AVAILABLE:
+        return Response({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    # Валидируем входные данные
+    serializer = BulkOperationSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        validated_data = serializer.validated_data
+        
+        # Получаем студентов в зависимости от режима
+        if validated_data['mode'] == 'all':
+            students = Student.objects.select_related('user').all()
+            filters = validated_data.get('filters', {})
+            students = apply_student_filters(students, filters)
+        else:
+            student_ids = validated_data['student_ids']
+            students = Student.objects.select_related('user').filter(id__in=student_ids)
+        
+        activated_count = 0
+        for student in students:
+            if hasattr(student, 'user') and student.user:
+                student.user.is_active = True
+                student.user.save()
+                activated_count += 1
+        
+        return Response({
+            'success': True,
+            'message': f'Активировано {activated_count} студентов',
+            'activated_count': activated_count
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Ошибка при массовой активации: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @swagger_auto_schema(
     method='post',
+    request_body=BulkOperationSerializer,
     operation_description="Массовая деактивация студентов",
-    request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'mode': openapi.Schema(type=openapi.TYPE_STRING, description='Режим: selected или all'),
-            'student_ids': openapi.Schema(
-                type=openapi.TYPE_ARRAY,
-                items=openapi.Schema(type=openapi.TYPE_INTEGER),
-                description='Список ID студентов (для режима selected)'
-            ),
-            'filters': openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                description='Фильтры (для режима all)'
-            )
-        }
-    ),
-    responses={200: 'Студенты деактивированы', 400: 'Не выбраны студенты', 500: 'Ошибка сервера'}
+    responses={200: 'Студенты деактивированы', 400: 'Ошибка валидации', 500: 'Ошибка сервера'}
 )
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def student_bulk_deactivate_api(request):
     """Массовая деактивация студентов"""
-    from .views import student_bulk_deactivate_view
-    return student_bulk_deactivate_view(request)
+    if not MODELS_AVAILABLE:
+        return Response({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    serializer = BulkOperationSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        validated_data = serializer.validated_data
+        
+        if validated_data['mode'] == 'all':
+            students = Student.objects.select_related('user').all()
+            filters = validated_data.get('filters', {})
+            students = apply_student_filters(students, filters)
+        else:
+            student_ids = validated_data['student_ids']
+            students = Student.objects.select_related('user').filter(id__in=student_ids)
+        
+        deactivated_count = 0
+        for student in students:
+            if hasattr(student, 'user') and student.user:
+                student.user.is_active = False
+                student.user.save()
+                deactivated_count += 1
+        
+        return Response({
+            'success': True,
+            'message': f'Деактивировано {deactivated_count} студентов',
+            'deactivated_count': deactivated_count
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Ошибка при массовой деактивации: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @swagger_auto_schema(
     method='post',
+    request_body=BulkOperationSerializer,
     operation_description="Массовое удаление студентов",
-    request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'mode': openapi.Schema(type=openapi.TYPE_STRING, description='Режим: selected или all'),
-            'student_ids': openapi.Schema(
-                type=openapi.TYPE_ARRAY,
-                items=openapi.Schema(type=openapi.TYPE_INTEGER),
-                description='Список ID студентов (для режима selected)'
-            ),
-            'filters': openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                description='Фильтры (для режима all)'
-            )
-        }
-    ),
-    responses={200: 'Студенты удалены', 400: 'Не выбраны студенты', 500: 'Ошибка сервера'}
+    responses={200: 'Студенты удалены', 400: 'Ошибка валидации', 500: 'Ошибка сервера'}
 )
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def student_bulk_delete_api(request):
     """Массовое удаление студентов"""
-    from .views import student_bulk_delete_view
-    return student_bulk_delete_view(request)
+    if not MODELS_AVAILABLE:
+        return Response({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    serializer = BulkOperationSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        validated_data = serializer.validated_data
+        
+        if validated_data['mode'] == 'all':
+            students = Student.objects.select_related('user').all()
+            filters = validated_data.get('filters', {})
+            students = apply_student_filters(students, filters)
+        else:
+            student_ids = validated_data['student_ids']
+            students = Student.objects.select_related('user').filter(id__in=student_ids)
+        
+        deleted_count = 0
+        deleted_students = []
+        
+        for student in students:
+            student_data = StudentSerializer(student).data
+            deleted_students.append(student_data)
+            
+            # Удаляем связанного пользователя
+            if hasattr(student, 'user') and student.user:
+                student.user.delete()
+            
+            student.delete()
+            deleted_count += 1
+        
+        return Response({
+            'success': True,
+            'message': f'Удалено {deleted_count} студентов',
+            'deleted_count': deleted_count,
+            'deleted_students': deleted_students[:10]  # Показываем первые 10 для экономии трафика
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Ошибка при массовом удалении: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @swagger_auto_schema(
     method='post',
+    request_body=BulkOperationSerializer,
     operation_description="Массовое создание доступа для студентов",
-    request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'mode': openapi.Schema(type=openapi.TYPE_STRING, description='Режим: selected или all'),
-            'student_ids': openapi.Schema(
-                type=openapi.TYPE_ARRAY,
-                items=openapi.Schema(type=openapi.TYPE_INTEGER),
-                description='Список ID студентов (для режима selected)'
-            ),
-            'filters': openapi.Schema(
-                type=openapi.TYPE_OBJECT,
-                description='Фильтры (для режима all)'
-            )
-        }
-    ),
-    responses={200: 'Доступ создан', 400: 'Не выбраны студенты', 500: 'Ошибка сервера'}
+    responses={200: 'Доступ создан', 400: 'Ошибка валидации', 500: 'Ошибка сервера'}
 )
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def student_bulk_create_access_api(request):
     """Массовое создание доступа для студентов"""
-    from .views import student_bulk_create_access_view
-    return student_bulk_create_access_view(request)
+    if not MODELS_AVAILABLE:
+        return Response({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    serializer = BulkOperationSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        validated_data = serializer.validated_data
+        
+        if validated_data['mode'] == 'all':
+            students = Student.objects.select_related('user').all()
+            filters = validated_data.get('filters', {})
+            students = apply_student_filters(students, filters)
+        else:
+            student_ids = validated_data['student_ids']
+            students = Student.objects.select_related('user').filter(id__in=student_ids)
+        
+        created_count = 0
+        for student in students:
+            # Проверяем что доступа еще нет
+            if hasattr(student, 'user') and student.user:
+                continue
+            
+            # Создаем пользователя
+            username = generate_username(student.first_name, student.last_name)
+            password = generate_password()
+            
+            user = User.objects.create_user(
+                username=username,
+                email=student.email,
+                first_name=student.first_name,
+                last_name=student.last_name,
+                password=password
+            )
+            
+            student.user = user
+            student.save()
+            
+            # Отправляем данные на email
+            send_credentials_email(student, username, password)
+            created_count += 1
+        
+        return Response({
+            'success': True,
+            'message': f'Создан доступ для {created_count} студентов',
+            'created_count': created_count
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Ошибка при массовом создании доступа: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+# ====================================
+# ЭКСПОРТ И СПИСКИ
+# ====================================
 
 @swagger_auto_schema(
     method='get',
@@ -517,86 +719,77 @@ def student_export_view(request):
     print(f"Параметры запроса: {dict(request.GET)}")
     
     if not MODELS_AVAILABLE:
-        return JsonResponse({'success': False, 'message': 'Модели не загружены'}, status=500)
+        return Response({
+            'success': False, 
+            'message': 'Модели не загружены'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     try:
         # Получаем студентов с учетом фильтров
         students = Student.objects.all().select_related('group', 'group__faculty', 'user')
         
-        # Применяем фильтры
-        search = request.GET.get('search', '').strip()
-        group_filter = request.GET.get('group', '').strip()
-        status_filter = request.GET.get('status', '').strip()
+        # Применяем фильтры из GET параметров
+        filters = {
+            'search': request.GET.get('search', '').strip(),
+            'group': request.GET.get('group', '').strip(),
+            'status': request.GET.get('status', '').strip(),
+        }
+        
+        students = apply_student_filters(students, filters)
+        
+        # Если выбраны конкретные студенты
         selected = request.GET.get('selected', '').strip()
         export_all = request.GET.get('export_all', '').strip()
         
-        if search:
-            print(f"Применяем поиск: '{search}'")
-            students = students.filter(
-                Q(first_name__icontains=search) |
-                Q(last_name__icontains=search) |
-                Q(email__icontains=search)
-            )
-        
-        if group_filter:
-            print(f"Применяем фильтр группы: {group_filter}")
-            students = students.filter(group_id=group_filter)
-        
-        if status_filter:
-            print(f"Применяем фильтр статуса: '{status_filter}'")
-            if status_filter == 'active':
-                students = students.filter(user__is_active=True)
-            elif status_filter == 'inactive':
-                students = students.filter(user__is_active=False)
-        
-        # Если выбраны конкретные студенты
         if selected and not export_all:
             try:
                 selected_ids = [int(id) for id in selected.split(',') if id.strip()]
                 print(f"Экспорт выбранных студентов: {selected_ids}")
                 students = students.filter(id__in=selected_ids)
             except ValueError:
-                print("Ошибка парсинга выбранных ID")
-                return JsonResponse({
+                return Response({
                     'success': False,
                     'message': 'Неверный формат выбранных студентов'
-                }, status=400)
+                }, status=status.HTTP_400_BAD_REQUEST)
         
         students_list = list(students.order_by('last_name', 'first_name'))
         print(f"Студентов для экспорта: {len(students_list)}")
         
         if not students_list:
-            return JsonResponse({
+            return Response({
                 'success': False,
                 'message': 'Нет студентов для экспорта'
-            }, status=400)
+            }, status=status.HTTP_400_BAD_REQUEST)
         
         # Создаем Excel файл
         try:
             import pandas as pd
             import io
-            from datetime import datetime
         except ImportError:
-            return JsonResponse({
+            return Response({
                 'success': False,
                 'message': 'Не установлены необходимые библиотеки для экспорта'
-            }, status=500)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+        # Используем serializer для консистентности данных
+        students_data = StudentSerializer(students_list, many=True).data
+        
+        # Преобразуем в формат для pandas
         data = []
-        for student in students_list:
+        for student_data in students_data:
             data.append({
-                'ID': student.id,
-                'Фамилия': student.last_name,
-                'Имя': student.first_name,
-                'Отчество': student.middle_name or '',
-                'Email': student.email,
-                'Телефон': getattr(student, 'phone', '') or '',
-                'Группа': student.group.name if student.group else '',
-                'Факультет': student.group.faculty.name if student.group and student.group.faculty else '',
-                'Статус': 'Активен' if (student.user and student.user.is_active) else 'Неактивен',
-                'Логин': student.user.username if student.user else '',
-                'Последний вход': student.user.last_login.strftime('%d.%m.%Y %H:%M') if (student.user and student.user.last_login) else '',
-                'Дата создания': student.created_at.strftime('%d.%m.%Y') if hasattr(student, 'created_at') else '',
+                'ID': student_data['id'],
+                'Фамилия': student_data['last_name'],
+                'Имя': student_data['first_name'],
+                'Отчество': student_data['middle_name'] or '',
+                'Email': student_data['email'],
+                'Телефон': student_data.get('phone', '') or '',
+                'Группа': student_data['group']['name'] if student_data['group'] else '',
+                'Факультет': student_data['group']['faculty']['name'] if student_data['group'] and student_data['group']['faculty'] else '',
+                'Статус': 'Активен' if student_data['is_active_account'] else 'Неактивен',
+                'Логин': student_data['username'] or '',
+                'Последний вход': student_data['last_login'] or '',
+                'Дата создания': student_data['created_at'][:10] if student_data['created_at'] else '',
             })
         
         df = pd.DataFrame(data)
@@ -649,12 +842,11 @@ def student_export_view(request):
         print(f"Сообщение: {str(e)}")
         print(f"Traceback:\n{error_details}")
         
-        return JsonResponse({
+        return Response({
             'success': False,
             'message': f'Ошибка при экспорте: {str(e)}',
             'error_type': type(e).__name__
-        }, status=500)
-
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @swagger_auto_schema(
     method='get',
@@ -664,27 +856,7 @@ def student_export_view(request):
         openapi.Parameter('page', openapi.IN_QUERY, description="Номер страницы", type=openapi.TYPE_INTEGER),
     ],
     responses={
-        200: openapi.Response('Список студентов', openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                'students': openapi.Schema(
-                    type=openapi.TYPE_ARRAY,
-                    items=openapi.Schema(
-                        type=openapi.TYPE_OBJECT,
-                        properties={
-                            'id': openapi.Schema(type=openapi.TYPE_INTEGER),
-                            'full_name': openapi.Schema(type=openapi.TYPE_STRING),
-                            'email': openapi.Schema(type=openapi.TYPE_STRING),
-                            'group': openapi.Schema(type=openapi.TYPE_STRING),
-                            'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                            'has_access': openapi.Schema(type=openapi.TYPE_BOOLEAN),
-                        }
-                    )
-                ),
-                'pagination': openapi.Schema(type=openapi.TYPE_OBJECT)
-            }
-        )),
+        200: StudentListResponseSerializer,
         500: 'Ошибка сервера'
     }
 )
@@ -693,14 +865,18 @@ def student_export_view(request):
 def student_list_api(request):
     """API для получения списка студентов (AJAX)"""
     if not MODELS_AVAILABLE:
-        return JsonResponse({'success': False, 'message': 'Модели недоступны'}, status=500)
+        return Response({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     try:
         students = Student.objects.select_related('user', 'group').all()
         
         # Фильтрация
-        search = request.GET.get('search', '').strip()
+        search = request.GET.get('search', '').strip() 
         if search:
+            search_lower = search.lower()
             students = students.filter(
                 Q(first_name__icontains=search) |
                 Q(last_name__icontains=search) |
@@ -708,83 +884,560 @@ def student_list_api(request):
             )
         
         # Пагинация
-        from django.core.paginator import Paginator
         paginator = Paginator(students, 20)
         page_number = request.GET.get('page', 1)
         page_obj = paginator.get_page(page_number)
         
-        # Сериализация
-        students_data = []
-        for student in page_obj:
-            students_data.append({
-                'id': student.id,
-                'full_name': student.get_full_name(),
-                'email': student.email,
-                'group': student.group.name if student.group else '',
-                'is_active': hasattr(student, 'user') and student.user and student.user.is_active,
-                'has_access': hasattr(student, 'user') and student.user is not None,
-            })
+        # Сериализация с использованием StudentListSerializer
+        students_data = StudentListSerializer(page_obj, many=True).data
         
-        return JsonResponse({
+        # Сериализация пагинации
+        pagination_data = {
+            'page': page_obj.number,
+            'pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'count': paginator.count,
+        }
+        
+        return Response({
             'success': True,
             'students': students_data,
-            'pagination': {
-                'page': page_obj.number,
-                'pages': paginator.num_pages,
-                'has_next': page_obj.has_next(),
-                'has_previous': page_obj.has_previous(),
-                'count': paginator.count,
-            }
-        })
+            'pagination': pagination_data
+        }, status=status.HTTP_200_OK)
         
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return Response({
+            'success': False, 
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-# ====================================
-# ЗАГЛУШКИ ДЛЯ ФАКУЛЬТЕТОВ
-# ====================================
 
+# Факультеты
 @swagger_auto_schema(
     method='post',
-    operation_description="Удалить факультет",
-    responses={200: 'Факультет удален', 400: 'Есть связанные группы', 500: 'Ошибка сервера'}
+    operation_description="Удалить факультет по ID",
+    responses={
+        200: openapi.Response('Факультет удален', FacultySerializer),
+        400: 'Есть связанные группы или студенты',
+        404: 'Факультет не найден',
+        500: 'Ошибка сервера'
+    }
 )
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def faculty_delete_api(request, faculty_id):
-    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)
+    """API для удаления факультета"""
+    print(f"=== faculty_delete_api вызван для факультета ID: {faculty_id} ===")
+    
+    if not MODELS_AVAILABLE:
+        return Response({
+            'success': False, 
+            'message': 'Модели не загружены'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    try:
+        faculty = get_object_or_404(Faculty, id=faculty_id)
+        faculty_data = FacultySerializer(faculty).data
+        faculty_name = faculty.name
+        
+        print(f"Найден факультет: {faculty_name}")
+        
+        # Проверяем связанные группы и студентов
+        groups_count = faculty.group_set.count()
+        students_count = Student.objects.filter(group__faculty=faculty).count()
+        
+        if groups_count > 0 or students_count > 0:
+            return Response({
+                'success': False,
+                'message': f'Нельзя удалить факультет "{faculty_name}". '
+                          f'К нему привязано групп: {groups_count}, студентов: {students_count}. '
+                          f'Сначала удалите или переместите связанные данные.',
+                'groups_count': groups_count,
+                'students_count': students_count
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Удаляем факультет
+        faculty.delete()
+        print(f"Факультет удален: {faculty_name}")
+        
+        return Response({
+            'success': True,
+            'message': f'Факультет "{faculty_name}" успешно удален',
+            'deleted_faculty': faculty_data
+        }, status=status.HTTP_200_OK)
+        
+    except Faculty.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Факультет не найден'
+        }, status=status.HTTP_404_NOT_FOUND)
+        
+    except Exception as e:
+        print(f"ОШИБКА при удалении факультета {faculty_id}: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'Ошибка при удалении: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @swagger_auto_schema(
     method='post',
-    operation_description="Переключить статус факультета",
-    request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        properties={
-            'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Новый статус')
-        }
-    )
+    operation_description="Переключить статус активности факультета",
+    responses={
+        200: openapi.Response('Статус изменен', FacultySerializer),
+        404: 'Факультет не найден',
+        500: 'Ошибка сервера'
+    }
 )
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def faculty_toggle_status_api(request, faculty_id):
-    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)
+    """API для изменения статуса факультета"""
+    print(f"=== faculty_toggle_status_api вызван для факультета ID: {faculty_id} ===")
+    
+    if not MODELS_AVAILABLE:
+        return Response({
+            'success': False, 
+            'message': 'Модели не загружены'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    try:
+        faculty = get_object_or_404(Faculty, id=faculty_id)
+        print(f"Найден факультет: {faculty.name}")
+        
+        # Переключаем статус
+        old_status = faculty.is_active
+        faculty.is_active = not old_status
+        faculty.save()
+        
+        new_status = faculty.is_active
+        status_text = 'активирован' if new_status else 'деактивирован'
+        print(f"Статус изменен: {old_status} -> {new_status}")
+        
+        # Возвращаем обновленные данные факультета
+        faculty_data = FacultySerializer(faculty).data
+        
+        return Response({
+            'success': True,
+            'message': f'Факультет "{faculty.name}" {status_text}',
+            'is_active': new_status,
+            'faculty': faculty_data
+        }, status=status.HTTP_200_OK)
+        
+    except Faculty.DoesNotExist:
+        return Response({
+            'success': False,
+            'message': 'Факультет не найден'
+        }, status=status.HTTP_404_NOT_FOUND)
+        
+    except Exception as e:
+        print(f"ОШИБКА при изменении статуса факультета {faculty_id}: {str(e)}")
+        return Response({
+            'success': False,
+            'message': f'Ошибка при изменении статуса: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@swagger_auto_schema(
+    method='post',
+    request_body=FacultyBulkOperationSerializer,
+    operation_description="Массовая активация факультетов",
+    responses={
+        200: openapi.Response('Факультеты активированы', openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                'message': openapi.Schema(type=openapi.TYPE_STRING),
+                'updated_count': openapi.Schema(type=openapi.TYPE_INTEGER)
+            }
+        )),
+        400: 'Ошибка валидации',
+        500: 'Ошибка сервера'
+    }
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def faculty_bulk_activate_api(request):
-    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)
+    """Массовая активация факультетов"""
+    if not MODELS_AVAILABLE:
+        return Response({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    serializer = FacultyBulkOperationSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        faculty_ids = serializer.validated_data['faculty_ids']
+        
+        # Получаем факультеты для обновления
+        faculties = Faculty.objects.filter(id__in=faculty_ids)
+        updated_count = faculties.update(is_active=True)
+        
+        return Response({
+            'success': True,
+            'message': f'Активировано {updated_count} факультетов',
+            'updated_count': updated_count
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Ошибка при массовой активации: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@swagger_auto_schema(
+    method='post',
+    request_body=FacultyBulkOperationSerializer,
+    operation_description="Массовая деактивация факультетов",
+    responses={200: 'Факультеты деактивированы', 400: 'Ошибка валидации', 500: 'Ошибка сервера'}
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def faculty_bulk_deactivate_api(request):
-    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)
+    """Массовая деактивация факультетов"""
+    if not MODELS_AVAILABLE:
+        return Response({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    serializer = FacultyBulkOperationSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        faculty_ids = serializer.validated_data['faculty_ids']
+        
+        faculties = Faculty.objects.filter(id__in=faculty_ids)
+        updated_count = faculties.update(is_active=False)
+        
+        return Response({
+            'success': True,
+            'message': f'Деактивировано {updated_count} факультетов',
+            'updated_count': updated_count
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Ошибка при массовой деактивации: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@swagger_auto_schema(
+    method='post',
+    request_body=FacultyBulkOperationSerializer,
+    operation_description="Массовое удаление факультетов",
+    responses={200: 'Факультеты удалены', 400: 'Ошибка валидации или есть связанные данные', 500: 'Ошибка сервера'}
+)
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def faculty_bulk_delete_api(request):
-    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)
+    """Массовое удаление факультетов"""
+    if not MODELS_AVAILABLE:
+        return Response({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    serializer = FacultyBulkOperationSerializer(data=request.data)
+    if not serializer.is_valid():
+        return Response({
+            'success': False,
+            'errors': serializer.errors
+        }, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        faculty_ids = serializer.validated_data['faculty_ids']
+        
+        # Проверяем связанные данные для каждого факультета
+        protected_faculties = []
+        faculties_to_delete = []
+        
+        for faculty in Faculty.objects.filter(id__in=faculty_ids):
+            groups_count = faculty.group_set.count()
+            students_count = Student.objects.filter(group__faculty=faculty).count()
+            
+            if groups_count > 0 or students_count > 0:
+                protected_faculties.append({
+                    'id': faculty.id,
+                    'name': faculty.name,
+                    'groups_count': groups_count,
+                    'students_count': students_count
+                })
+            else:
+                faculties_to_delete.append(faculty)
+        
+        if protected_faculties:
+            message = 'Следующие факультеты нельзя удалить из-за связанных данных:\n'
+            for faculty in protected_faculties:
+                message += f'• {faculty["name"]}: {faculty["groups_count"]} групп, {faculty["students_count"]} студентов\n'
+            message += 'Сначала удалите или переместите связанные данные.'
+            
+            return Response({
+                'success': False,
+                'message': message,
+                'protected_faculties': protected_faculties
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Удаляем факультеты
+        deleted_faculties = []
+        for faculty in faculties_to_delete:
+            faculty_data = FacultySerializer(faculty).data
+            deleted_faculties.append(faculty_data)
+            faculty.delete()
+        
+        deleted_count = len(deleted_faculties)
+        
+        return Response({
+            'success': True,
+            'message': f'Удалено {deleted_count} факультетов',
+            'deleted_count': deleted_count,
+            'deleted_faculties': deleted_faculties[:10]  # Показываем первые 10
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False,
+            'message': f'Ошибка при массовом удалении: {str(e)}'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@swagger_auto_schema(
+    method='get',
+    operation_description="Экспорт факультетов в Excel",
+    manual_parameters=[
+        openapi.Parameter('search', openapi.IN_QUERY, description="Поиск по названию/коду", type=openapi.TYPE_STRING),
+        openapi.Parameter('status', openapi.IN_QUERY, description="Фильтр по статусу", type=openapi.TYPE_STRING),
+        openapi.Parameter('selected', openapi.IN_QUERY, description="ID выбранных факультетов через запятую", type=openapi.TYPE_STRING),
+        openapi.Parameter('export_all', openapi.IN_QUERY, description="Экспортировать все", type=openapi.TYPE_STRING),
+    ],
+    responses={
+        200: openapi.Response('Excel файл', schema=openapi.Schema(type=openapi.TYPE_FILE)),
+        400: 'Нет факультетов для экспорта',
+        500: 'Ошибка сервера'
+    }
+)
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def faculty_export_view(request):
-    return JsonResponse({'success': False, 'message': 'Функция в разработке'}, status=501)
+    """Экспорт факультетов в Excel"""
+    print(f"=== faculty_export_view вызван ===")
+    print(f"Параметры запроса: {dict(request.GET)}")
+    
+    if not MODELS_AVAILABLE:
+        return Response({
+            'success': False, 
+            'message': 'Модели не загружены'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    try:
+        faculties = Faculty.objects.all()
+        
+        # Применяем фильтры из GET параметров
+        search = request.GET.get('search', '').strip()
+        status_filter = request.GET.get('status', '').strip()
+        selected = request.GET.get('selected', '').strip()
+        export_all = request.GET.get('export_all', '').strip()
+        
+        if search:
+            search_lower = search.lower()
+            print(f"Применяем поиск: '{search}'")
+            faculties = faculties.filter(
+                Q(name__icontains=search) |
+                Q(code__icontains=search) |
+                Q(description__icontains=search)
+            )
+        
+        if status_filter:
+            print(f"Применяем фильтр статуса: '{status_filter}'")
+            if status_filter == 'active':
+                faculties = faculties.filter(is_active=True)
+            elif status_filter == 'inactive':
+                faculties = faculties.filter(is_active=False)
+        
+        # Если выбраны конкретные факультеты
+        if selected and not export_all:
+            try:
+                selected_ids = [int(id) for id in selected.split(',') if id.strip()]
+                print(f"Экспорт выбранных факультетов: {selected_ids}")
+                faculties = faculties.filter(id__in=selected_ids)
+            except ValueError:
+                return Response({
+                    'success': False,
+                    'message': 'Неверный формат выбранных факультетов'
+                }, status=status.HTTP_400_BAD_REQUEST)
+        
+        faculties_list = list(faculties.order_by('name'))
+        print(f"Факультетов для экспорта: {len(faculties_list)}")
+        
+        if not faculties_list:
+            return Response({
+                'success': False,
+                'message': 'Нет факультетов для экспорта'
+            }, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Создаем Excel файл
+        try:
+            import pandas as pd
+            import io
+        except ImportError:
+            return Response({
+                'success': False,
+                'message': 'Не установлены необходимые библиотеки для экспорта'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+        # Используем serializer для консистентности данных
+        faculties_data = FacultySerializer(faculties_list, many=True).data
+        
+        # Преобразуем в формат для pandas
+        data = []
+        for faculty_data in faculties_data:
+            data.append({
+                'ID': faculty_data['id'],
+                'Название': faculty_data['name'],
+                'Код': faculty_data['code'],
+                'Описание': faculty_data['description'] or '',
+                'Статус': 'Активен' if faculty_data['is_active'] else 'Неактивен',
+                'Групп': faculty_data['groups_count'],
+                'Студентов': faculty_data['students_count'],
+                'Активных студентов': faculty_data['active_students_count'],
+                'Дата создания': faculty_data['created_at'][:10] if faculty_data['created_at'] else '',
+            })
+        
+        df = pd.DataFrame(data)
+        
+        # Создаем Excel файл в памяти
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Факультеты', index=False)
+            
+            # Автоширина колонок
+            worksheet = writer.sheets['Факультеты']
+            for column in worksheet.columns:
+                max_length = 0
+                column_letter = column[0].column_letter
+                
+                for cell in column:
+                    try:
+                        if len(str(cell.value)) > max_length:
+                            max_length = len(str(cell.value))
+                    except:
+                        pass
+                
+                adjusted_width = min(max_length + 2, 50)
+                worksheet.column_dimensions[column_letter].width = adjusted_width
+        
+        output.seek(0)
+        
+        # Возвращаем файл
+        response = HttpResponse(
+            output.read(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+        # Формируем имя файла
+        if selected and not export_all:
+            filename = f'faculties_selected_{len(faculties_list)}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+        else:
+            filename = f'faculties_all_{len(faculties_list)}_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+            
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        print(f"Excel файл создан успешно: {filename}")
+        return response
+        
+    except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"ОШИБКА при экспорте:")
+        print(f"Тип ошибки: {type(e).__name__}")
+        print(f"Сообщение: {str(e)}")
+        print(f"Traceback:\n{error_details}")
+        
+        return Response({
+            'success': False,
+            'message': f'Ошибка при экспорте: {str(e)}',
+            'error_type': type(e).__name__
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@swagger_auto_schema(
+    method='get',
+    operation_description="Получить список факультетов (для AJAX)",
+    manual_parameters=[
+        openapi.Parameter('search', openapi.IN_QUERY, description="Поиск", type=openapi.TYPE_STRING),
+        openapi.Parameter('page', openapi.IN_QUERY, description="Номер страницы", type=openapi.TYPE_INTEGER),
+        openapi.Parameter('status', openapi.IN_QUERY, description="Фильтр по статусу", type=openapi.TYPE_STRING),
+    ],
+    responses={
+        200: FacultyListResponseSerializer,
+        500: 'Ошибка сервера'
+    }
+)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def faculty_list_api(request):
+    """API для получения списка факультетов (AJAX)"""
+    if not MODELS_AVAILABLE:
+        return Response({
+            'success': False, 
+            'message': 'Модели недоступны'
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    try:
+        faculties = Faculty.objects.all()
+        
+        # Фильтрация
+        search = request.GET.get('search', '').strip() 
+        if search:
+            search_lower = search.lower()
+            faculties = faculties.filter(
+                Q(name__icontains=search) |
+                Q(code__icontains=search) |
+                Q(description__icontains=search)
+            )
+        
+        status_filter = request.GET.get('status', '').strip()
+        if status_filter == 'active':
+            faculties = faculties.filter(is_active=True)
+        elif status_filter == 'inactive':
+            faculties = faculties.filter(is_active=False)
+        
+        # Сортировка
+        faculties = faculties.order_by('name')
+        
+        # Пагинация
+        paginator = Paginator(faculties, 20)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+        
+        # Сериализация с использованием FacultyListSerializer
+        faculties_data = FacultyListSerializer(page_obj, many=True).data
+        
+        # Сериализация пагинации
+        pagination_data = {
+            'page': page_obj.number,
+            'pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+            'count': paginator.count,
+        }
+        
+        return Response({
+            'success': True,
+            'faculties': faculties_data,
+            'pagination': pagination_data
+        }, status=status.HTTP_200_OK)
+        
+    except Exception as e:
+        return Response({
+            'success': False, 
+            'message': str(e)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+

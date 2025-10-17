@@ -1,0 +1,934 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}{{ faculty.name }} - МПТ Журнал{% endblock %}
+{% block page_title %}Профиль специальности{% endblock %}
+{% block mobile_title %}{{ faculty.name|truncatechars:20 }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<style>
+/* Используем стили из студентов, адаптированные под факультеты */
+.profile-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.profile-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.profile-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.faculty-avatar {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(45deg, #f59e0b, #d97706);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.status-indicator {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    border: 3px solid var(--sidebar-bg);
+}
+
+.status-indicator.active {
+    background: #10b981;
+}
+
+.status-indicator.inactive {
+    background: #ef4444;
+}
+
+.faculty-info {
+    flex: 1;
+}
+
+.faculty-name {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+}
+
+.faculty-meta {
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+}
+
+.faculty-meta > span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.status-pill.status-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-pill.status-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.info-section {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.info-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--bs-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: 1rem;
+    color: var(--bs-body-color);
+    font-weight: 500;
+}
+
+.info-value.empty {
+    color: var(--bs-secondary);
+    font-style: italic;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-sm {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
+.btn-primary {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-outline-primary {
+    background: transparent;
+    color: var(--bs-primary);
+    border: 1px solid var(--bs-primary);
+}
+
+.btn-outline-primary:hover {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-secondary {
+    background: var(--sidebar-bg);
+    color: var(--nav-link-color);
+    border: 1px solid var(--sidebar-border);
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.page-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.back-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.main-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+/* Стили для групп и студентов в секции */
+.related-items {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.5rem;
+    margin-top: 1rem;
+}
+
+.related-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem;
+    border-bottom: 1px solid #e5e7eb;
+    transition: background-color 0.2s;
+}
+
+.related-item:last-child {
+    border-bottom: none;
+}
+
+.related-item:hover {
+    background: rgba(59, 130, 246, 0.05);
+}
+
+.related-item-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.related-item-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--bs-primary), #2563eb);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.related-item-details {
+    flex: 1;
+}
+
+.related-item-name {
+    font-weight: 500;
+    color: var(--bs-body-color);
+    margin-bottom: 2px;
+}
+
+.related-item-meta {
+    font-size: 0.85rem;
+    color: var(--bs-secondary);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.stat-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--bs-primary);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--bs-secondary);
+    font-weight: 500;
+}
+
+.stat-icon {
+    font-size: 1.2rem;
+    margin-bottom: 0.5rem;
+    color: var(--bs-primary);
+}
+
+/* Стили для профессий */
+.professions-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+.profession-tag {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--bs-primary);
+    padding: 0.25rem 0.75rem;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.no-professions {
+    color: var(--bs-secondary);
+    font-style: italic;
+    font-size: 0.9rem;
+}
+
+/* Модальные окна */
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    background: var(--sidebar-bg);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--sidebar-bg), var(--sidebar-border));
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    padding: 2rem 2rem 1rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    position: relative;
+}
+
+.modal-body {
+    padding: 1.5rem 2rem 2rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    background: var(--sidebar-bg);
+    color: var(--bs-body-color);
+}
+
+.modal-footer {
+    background: var(--sidebar-bg);
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    border-top: 1px solid var(--sidebar-border);
+    padding: 1.5rem 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.modal-icon-danger {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #dc2626;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
+    animation: pulse 2s infinite;
+}
+
+/* Темная тема */
+[data-bs-theme="dark"] .related-items {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-bs-theme="dark"] .related-item {
+    border-bottom-color: #475569;
+}
+
+[data-bs-theme="dark"] .related-item:hover {
+    background: rgba(59, 130, 246, 0.1);
+}
+
+[data-bs-theme="dark"] .stat-card {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-bs-theme="dark"] .status-pill.status-active {
+    background: #064e3b;
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .status-pill.status-inactive {
+    background: #7f1d1d;
+    color: #fca5a5;
+}
+
+[data-bs-theme="dark"] .modal-icon-danger {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    color: #fca5a5;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .profile-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .faculty-avatar {
+        align-self: center;
+    }
+    
+    .info-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .page-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .back-actions,
+    .main-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .faculty-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .related-item {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .professions-list {
+        justify-content: center;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+@keyframes bounce {
+    0%, 20%, 53%, 80%, 100% { transform: translate3d(0,0,0); }
+    40%, 43% { transform: translate3d(0,-10px,0); }
+    70% { transform: translate3d(0,-5px,0); }
+    90% { transform: translate3d(0,-2px,0); }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+    20%, 40%, 60%, 80% { transform: translateX(5px); }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <!-- Основная информация о факультете -->
+    <div class="profile-card">
+        <div class="profile-header">
+            
+            <div class="faculty-info">
+                <h1 class="faculty-name">{{ faculty.name }}</h1>
+                <div class="faculty-meta">
+                    <span><i class="bi bi-tag"></i> {{ faculty.code }}</span>
+                    {% if faculty.groups_count %}
+                        <span><i class="bi bi-collection"></i> {{ faculty.groups_count }} групп{{ faculty.groups_count|pluralize:"а,ы" }}</span>
+                    {% endif %}
+                    {% if faculty.students_count %}
+                        <span><i class="bi bi-mortarboard"></i> {{ faculty.students_count }} студент{{ faculty.students_count|pluralize:",,ов" }}</span>
+                    {% endif %}
+                    <span><i class="bi bi-calendar"></i> Создана {{ faculty.created_at|date:"d.m.Y" }}</span>
+                </div>
+                
+                <div class="status-pill {% if faculty.is_active %}status-active{% else %}status-inactive{% endif %}">
+                    <div class="status-dot"></div>
+                    {% if faculty.is_active %}Активна{% else %}Неактивна{% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Основные данные -->
+        <div class="info-section">
+            <div class="section-title">
+                <i class="bi bi-building"></i>
+                Информация о специальности
+            </div>
+            
+            <div class="info-grid">
+                <div class="info-item">
+                    <div class="info-label">Название</div>
+                    <div class="info-value">{{ faculty.name }}</div>
+                </div>
+                
+                <div class="info-item">
+                    <div class="info-label">Код специальности</div>
+                    <div class="info-value">{{ faculty.code }}</div>
+                </div>
+                
+                {% if faculty.description %}
+                <div class="info-item">
+                    <div class="info-label">Описание</div>
+                    <div class="info-value">{{ faculty.description }}</div>
+                </div>
+                {% endif %}
+                
+                <div class="info-item">
+                    <div class="info-label">Статус</div>
+                    <div class="info-value">
+                        {% if faculty.is_active %}
+                            <span style="color: #10b981;">Активна</span>
+                        {% else %}
+                            <span style="color: #ef4444;">Неактивна</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- НОВАЯ СЕКЦИЯ: Профессии -->
+    <div class="profile-card">
+        <div class="section-title">
+            <i class="bi bi-briefcase"></i>
+            Профессии специальности ({{ faculty.get_professions_count }})
+        </div>
+        
+        {% if faculty.professions %}
+            <div class="professions-list">
+                {% for profession in faculty.professions %}
+                    <span class="profession-tag">{{ profession }}</span>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-professions">
+                <i class="bi bi-briefcase"></i>
+                Профессии не указаны. 
+                <a href="{% url 'admin_faculty_edit' faculty.pk %}">Добавить профессии</a>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- Статистика -->
+    <div class="profile-card">
+        <div class="section-title">
+            <i class="bi bi-bar-chart"></i>
+            Статистика
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="bi bi-collection"></i>
+                </div>
+                <div class="stat-number">{{ faculty.groups_count|default:0 }}</div>
+                <div class="stat-label">Групп</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="bi bi-mortarboard"></i>
+                </div>
+                <div class="stat-number">{{ faculty.students_count|default:0 }}</div>
+                <div class="stat-label">Студентов</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="bi bi-person-check"></i>
+                </div>
+                <div class="stat-number">{{ faculty.active_students_count|default:0 }}</div>
+                <div class="stat-label">Активных студентов</div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="bi bi-briefcase"></i>
+                </div>
+                <div class="stat-number">{{ faculty.get_professions_count }}</div>
+                <div class="stat-label">Профессий</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Группы факультета -->
+    {% if faculty.group_set.all %}
+    <div class="profile-card">
+        <div class="section-title">
+            <i class="bi bi-collection"></i>
+            Группы специальности ({{ faculty.group_set.count }})
+        </div>
+        
+        <div class="related-items">
+            {% for group in faculty.group_set.all %}
+                <div class="related-item">
+                    <div class="related-item-info">
+                        <div class="related-item-avatar">
+                            {{ group.name|first }}{{ group.code|first|default:"Г" }}
+                        </div>
+                        <div class="related-item-details">
+                            <div class="related-item-name">{{ group.name }}</div>
+                            <div class="related-item-meta">
+                                {{ group.code }}
+                                {% if group.students.count %}
+                                    • {{ group.students.count }} студент{{ group.students.count|pluralize:",,ов" }}
+                                {% endif %}
+                                {% if group.course %}
+                                    • {{ group.course }} курс
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <a href="{% url 'admin_group_detail' group.id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye"></i>
+                            Просмотр
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    
+    <!-- Системная информация -->
+    <div class="profile-card">
+        <div class="section-title">
+            <i class="bi bi-info-circle"></i>
+            Системная информация
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Дата создания</div>
+                <div class="info-value">{{ faculty.created_at|date:"d.m.Y H:i" }}</div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Последнее обновление</div>
+                <div class="info-value">{{ faculty.updated_at|date:"d.m.Y H:i" }}</div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">ID в системе</div>
+                <div class="info-value">#{{ faculty.id }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Действия со страницей -->
+<div class="page-actions">
+    <div class="back-actions">
+        <a href="{% url 'admin_faculties' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i>
+            Назад к списку
+        </a>
+    </div>
+    
+    <div class="main-actions">
+        <a href="{% url 'admin_faculty_edit' faculty.pk %}" class="btn btn-primary">
+            <i class="bi bi-pencil"></i>
+            Редактировать
+        </a>
+        
+        {% if faculty.groups_count == 0 and faculty.students_count == 0 %}
+        <button class="btn btn-danger" onclick="showDeleteModal({{ faculty.id }}, '{{ faculty.name|escapejs }}')">
+            <i class="bi bi-trash"></i>
+            Удалить
+        </button>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Модальные окна -->
+
+<!-- Модальное окно удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Удаление специальности</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-danger">
+                    <i class="bi bi-trash"></i>
+                </div>
+                <p><strong>Удалить специальность?</strong></p>
+                <p class="text-muted" id="deleteModalText">Это действие нельзя отменить!</p>
+                {% if faculty.groups_count > 0 or faculty.students_count > 0 %}
+                <div class="alert alert-warning text-start">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Внимание!</strong> К специальности привязано {{ faculty.groups_count }} групп и {{ faculty.students_count }} студентов. 
+                    Сначала переместите или удалите связанные данные.
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDelete" 
+                        {% if faculty.groups_count > 0 or faculty.students_count > 0 %}disabled{% endif %}>
+                    <i class="bi bi-trash"></i>
+                    Удалить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+let currentFacultyId = null;
+let currentFacultyName = null;
+
+// Показать уведомление
+function showNotification(message, type = 'success') {
+    const alertClass = type === 'error' || type === 'danger' ? 'alert-danger' : 'alert-success';
+    const icon = type === 'error' || type === 'danger' ? 'bi-exclamation-triangle' : 'bi-check-circle';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert" 
+             style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            <i class="bi ${icon} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+    
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        if (alerts.length > 0) {
+            alerts[alerts.length - 1].remove();
+        }
+    }, 5000);
+}
+
+// Переключение статуса факультета
+function toggleFacultyStatus(facultyId, newStatus) {
+    const actionText = newStatus ? 'Активация' : 'Деактивация';
+    
+    if (confirm(`${actionText} специальности?`)) {
+        fetch(`/faculties/${facultyId}/toggle-status/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken,
+                'Content-Type': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message);
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showNotification(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Произошла ошибка при изменении статуса', 'danger');
+        });
+    }
+}
+
+// Показать модальное окно удаления
+function showDeleteModal(facultyId, facultyName) {
+    currentFacultyId = facultyId;
+    currentFacultyName = facultyName;
+    
+    const modalText = document.getElementById('deleteModalText');
+    if (modalText) {
+        modalText.innerHTML = `Специальность "<strong>${facultyName}</strong>" будет удалена безвозвратно!`;
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+// Обработчик подтверждения удаления
+document.getElementById('confirmDelete').addEventListener('click', function() {
+    if (!currentFacultyId) return;
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+    modal.hide();
+    
+    fetch(`/faculties/${currentFacultyId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Специальность удалена');
+            setTimeout(() => {
+                window.location.href = "{% url 'admin_faculties' %}";
+            }, 1500);
+        } else {
+            showNotification(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при удалении специальности', 'danger');
+    });
+});
+
+// Исправление проблемы с aria-hidden для модальных окон
+document.addEventListener('show.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+});
+
+document.addEventListener('hidden.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+    currentFacultyId = null;
+    currentFacultyName = null;
+});
+</script>
+{% endblock %}

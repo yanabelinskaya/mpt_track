@@ -1,0 +1,1134 @@
+/* static/css/login.css */
+
+/* Используем ваши переменные и стили */
+:root {
+    --primary-color: #6366f1;
+    --secondary-color: #64748b;
+    --sidebar-width: 260px;
+    --header-height: 70px;
+}
+
+/* Кастомные цвета для светлой темы */
+[data-bs-theme="light"] {
+    --bs-primary: #6366f1;
+    --bs-secondary: #64748b;
+    --sidebar-bg: #ffffff;
+    --sidebar-border: #e2e8f0;
+    --nav-link-color: #64748b;
+    --nav-link-hover: #f1f5f9;
+    --nav-link-active: #6366f1;
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --bs-body-bg: #f8fafc;
+    --bs-body-color: #0f172a;
+}
+
+/* Кастомные цвета для темной темы */
+[data-bs-theme="dark"] {
+    --bs-primary: #818cf8;
+    --bs-secondary: #94a3b8;
+    --sidebar-bg: #0f172a;
+    --sidebar-border: #1e293b;
+    --nav-link-color: #94a3b8;
+    --nav-link-hover: #1e293b;
+    --nav-link-active: #818cf8;
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --bs-body-bg: #0f172a;
+    --bs-body-color: #f1f5f9;
+}
+
+/* Переменные для страницы входа */
+:root {
+    --primary: #6366f1;
+    --accent: #8b5cf6;
+    --surface: var(--sidebar-bg);
+    --surface-hover: var(--nav-link-hover);
+    --border: var(--sidebar-border);
+    --text-primary: var(--bs-body-color);
+    --text-secondary: var(--nav-link-color);
+    --text-muted: var(--bs-secondary);
+    --shadow: var(--card-shadow);
+    --radius: 12px;
+    --spacing: 24px;
+    --spacing-sm: 16px;
+    --spacing-xs: 12px;
+}
+
+/* Сброс и базовые стили */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    background-color: var(--bs-body-bg);
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Переключатель темы */
+.theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-secondary);
+    z-index: 1000;
+}
+
+.theme-toggle:hover {
+    background: var(--surface-hover);
+    color: var(--primary);
+}
+
+/* Основной контейнер входа */
+.login-container {
+    width: 100%;
+    max-width: 420px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    padding: 3rem;
+    animation: slideUp 0.6s ease-out;
+    margin: 0;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+
+[data-bs-theme="dark"] .login-container {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+/* Заголовок */
+.login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-logo {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: white;
+    font-size: 2rem;
+    font-weight: 600;
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+}
+
+.login-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.login-subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Форма */
+.login-form {
+    margin-top: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: var(--surface);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    transform: translateY(-2px);
+}
+
+.form-control.is-invalid {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+}
+
+.invalid-feedback {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    font-weight: 500;
+}
+
+/* Кнопка входа */
+.login-btn {
+    width: 100%;
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+}
+
+.login-btn:active {
+    transform: translateY(0);
+}
+
+.login-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Дополнительные опции */
+.remember-me {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 1.5rem 0;
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+.checkbox-wrapper label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.forgot-password {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.forgot-password:hover {
+    text-decoration: underline;
+    color: var(--accent);
+}
+
+/* Подвал */
+.login-footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+}
+
+.footer-text {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Уведомления об ошибках */
+.error-messages {
+    margin-bottom: 1rem;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #7f1d1d;
+    border: 1px solid #fca5a5;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #1e3a8a;
+    border: 1px solid #93c5fd;
+}
+
+/* Темная тема для уведомлений */
+[data-bs-theme="dark"] .alert-danger {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    color: #fca5a5;
+    border-color: #7f1d1d;
+}
+
+[data-bs-theme="dark"] .alert-success {
+    background: linear-gradient(135deg, #064e3b, #065f46);
+    color: #6ee7b7;
+    border-color: #064e3b;
+}
+
+[data-bs-theme="dark"] .alert-info {
+    background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+    color: #93c5fd;
+    border-color: #1e3a8a;
+}
+
+/* Анимации */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .login-container {
+        padding: 2rem;
+        margin: 20px;
+        border-radius: var(--radius);
+        max-height: calc(100vh - 40px);
+    }
+    
+    .login-title {
+        font-size: 1.5rem;
+    }
+    
+    .form-control {
+        padding: 0.875rem;
+    }
+
+    .login-btn {
+        padding: 0.875rem 1.5rem;
+        font-size: 1rem;
+    }
+
+    .theme-toggle {
+        top: 10px;
+        right: 10px;
+        width: 36px;
+        height: 36px;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-container {
+        padding: 1.5rem;
+        margin: 10px;
+        max-height: calc(100vh - 20px);
+    }
+    
+    .login-title {
+        font-size: 1.3rem;
+    }
+
+    .login-logo {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+
+    .form-control {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .login-btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .remember-me {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+}
+
+/* Дополнительная адаптивность для низких экранов */
+@media (max-height: 600px) {
+    .login-container {
+        padding: 1.5rem;
+        max-height: calc(100vh - 20px);
+    }
+    
+    .login-logo {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .login-title {
+        font-size: 1.4rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .login-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .remember-me {
+        margin: 1rem 0;
+    }
+}
+
+@media (max-height: 500px) {
+    .login-header {
+        margin-bottom: 1rem;
+    }
+    
+    .login-logo {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .login-title {
+        font-size: 1.2rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .login-subtitle {
+        font-size: 0.8rem;
+    }
+    
+    .form-group {
+        margin-bottom: 0.75rem;
+    }
+    
+    .form-control {
+        padding: 0.75rem;
+    }
+    
+    .login-btn {
+        padding: 0.75rem 1rem;
+    }
+    
+    .remember-me {
+        margin: 0.75rem 0;
+    }
+    
+    .login-footer {
+        margin-top: 1rem;
+        padding-top: 1rem;
+    }
+}
+
+/* Улучшения для touch-устройств */
+@media (hover: none) {
+    .login-btn:hover,
+    .theme-toggle:hover {
+        transform: none;
+    }
+}
+
+/* Печать */
+@media print {
+    .theme-toggle {
+        display: none;
+    }
+}
+
+/* Уменьшенная анимация для пользователей с ограниченными возможностями */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Высокий контраст */
+@media (prefers-contrast: high) {
+    .login-container {
+        border: 2px solid var(--border);
+    }
+}
+/* static/css/login.css */
+
+/* Используем ваши переменные и стили */
+:root {
+    --primary-color: #6366f1;
+    --secondary-color: #64748b;
+    --sidebar-width: 260px;
+    --header-height: 70px;
+}
+
+/* Кастомные цвета для светлой темы */
+[data-bs-theme="light"] {
+    --bs-primary: #6366f1;
+    --bs-secondary: #64748b;
+    --sidebar-bg: #ffffff;
+    --sidebar-border: #e2e8f0;
+    --nav-link-color: #64748b;
+    --nav-link-hover: #f1f5f9;
+    --nav-link-active: #6366f1;
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --bs-body-bg: #f8fafc;
+    --bs-body-color: #0f172a;
+}
+
+/* Кастомные цвета для темной темы */
+[data-bs-theme="dark"] {
+    --bs-primary: #818cf8;
+    --bs-secondary: #94a3b8;
+    --sidebar-bg: #0f172a;
+    --sidebar-border: #1e293b;
+    --nav-link-color: #94a3b8;
+    --nav-link-hover: #1e293b;
+    --nav-link-active: #818cf8;
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --bs-body-bg: #0f172a;
+    --bs-body-color: #f1f5f9;
+}
+
+/* Переменные для страницы входа */
+:root {
+    --primary: #6366f1;
+    --accent: #8b5cf6;
+    --surface: var(--sidebar-bg);
+    --surface-hover: var(--nav-link-hover);
+    --border: var(--sidebar-border);
+    --text-primary: var(--bs-body-color);
+    --text-secondary: var(--nav-link-color);
+    --text-muted: var(--bs-secondary);
+    --shadow: var(--card-shadow);
+    --radius: 12px;
+    --spacing: 24px;
+    --spacing-sm: 16px;
+    --spacing-xs: 12px;
+}
+
+/* Сброс и базовые стили */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    background-color: var(--bs-body-bg);
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+}
+
+/* Переключатель темы */
+.theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--text-secondary);
+    z-index: 1000;
+}
+
+.theme-toggle:hover {
+    background: var(--surface-hover);
+    color: var(--primary);
+}
+
+/* Основной контейнер входа */
+.login-container {
+    width: 100%;
+    max-width: 420px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+    padding: 3rem;
+    animation: slideUp 0.6s ease-out;
+    margin: 0;
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+}
+
+[data-bs-theme="dark"] .login-container {
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
+}
+
+/* Заголовок */
+.login-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.login-logo {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: white;
+    font-size: 2rem;
+    font-weight: 600;
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.3);
+}
+
+.login-title {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.login-subtitle {
+    color: var(--text-muted);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+/* Форма */
+.login-form {
+    margin-top: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.form-control {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface-hover);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    box-sizing: border-box;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: var(--surface);
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    transform: translateY(-2px);
+}
+
+.form-control.is-invalid {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.1);
+}
+
+.invalid-feedback {
+    color: #ef4444;
+    font-size: 0.875rem;
+    margin-top: 0.5rem;
+    font-weight: 500;
+}
+
+/* Кнопка входа */
+.login-btn {
+    width: 100%;
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: white;
+    border: none;
+    border-radius: var(--radius);
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.login-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px rgba(99, 102, 241, 0.4);
+}
+
+.login-btn:active {
+    transform: translateY(0);
+}
+
+.login-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Дополнительные опции */
+.remember-me {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 1.5rem 0;
+}
+
+.checkbox-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.checkbox-wrapper input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--primary);
+}
+
+.checkbox-wrapper label {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+.forgot-password {
+    color: var(--primary);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.forgot-password:hover {
+    text-decoration: underline;
+    color: var(--accent);
+}
+
+/* Подвал */
+.login-footer {
+    text-align: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+}
+
+.footer-text {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    font-weight: 500;
+}
+
+/* Уведомления об ошибках */
+.error-messages {
+    margin-bottom: 1rem;
+}
+
+.alert {
+    padding: 1rem;
+    border-radius: var(--radius);
+    margin-bottom: 1rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #7f1d1d;
+    border: 1px solid #fca5a5;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #065f46;
+    border: 1px solid #6ee7b7;
+}
+
+.alert-info {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    color: #1e3a8a;
+    border: 1px solid #93c5fd;
+}
+
+/* Темная тема для уведомлений */
+[data-bs-theme="dark"] .alert-danger {
+    background: linear-gradient(135deg, #7f1d1d, #991b1b);
+    color: #fca5a5;
+    border-color: #7f1d1d;
+}
+
+[data-bs-theme="dark"] .alert-success {
+    background: linear-gradient(135deg, #064e3b, #065f46);
+    color: #6ee7b7;
+    border-color: #064e3b;
+}
+
+[data-bs-theme="dark"] .alert-info {
+    background: linear-gradient(135deg, #1e3a8a, #1d4ed8);
+    color: #93c5fd;
+    border-color: #1e3a8a;
+}
+
+/* Анимации */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .login-container {
+        padding: 2rem;
+        margin: 20px;
+        border-radius: var(--radius);
+        max-height: calc(100vh - 40px);
+    }
+    
+    .login-title {
+        font-size: 1.5rem;
+    }
+    
+    .form-control {
+        padding: 0.875rem;
+    }
+
+    .login-btn {
+        padding: 0.875rem 1.5rem;
+        font-size: 1rem;
+    }
+
+    .theme-toggle {
+        top: 10px;
+        right: 10px;
+        width: 36px;
+        height: 36px;
+    }
+}
+
+@media (max-width: 480px) {
+    .login-container {
+        padding: 1.5rem;
+        margin: 10px;
+        max-height: calc(100vh - 20px);
+    }
+    
+    .login-title {
+        font-size: 1.3rem;
+    }
+
+    .login-logo {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+    }
+
+    .form-control {
+        padding: 0.75rem;
+        font-size: 0.9rem;
+    }
+
+    .login-btn {
+        padding: 0.75rem 1rem;
+        font-size: 0.9rem;
+    }
+
+    .remember-me {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+    }
+}
+
+/* Дополнительная адаптивность для низких экранов */
+@media (max-height: 600px) {
+    .login-container {
+        padding: 1.5rem;
+        max-height: calc(100vh - 20px);
+    }
+    
+    .login-logo {
+        width: 60px;
+        height: 60px;
+        font-size: 1.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .login-title {
+        font-size: 1.4rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .login-subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1rem;
+    }
+    
+    .remember-me {
+        margin: 1rem 0;
+    }
+}
+
+@media (max-height: 500px) {
+    .login-header {
+        margin-bottom: 1rem;
+    }
+    
+    .login-logo {
+        width: 50px;
+        height: 50px;
+        font-size: 1.2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .login-title {
+        font-size: 1.2rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .login-subtitle {
+        font-size: 0.8rem;
+    }
+    
+    .form-group {
+        margin-bottom: 0.75rem;
+    }
+    
+    .form-control {
+        padding: 0.75rem;
+    }
+    
+    .login-btn {
+        padding: 0.75rem 1rem;
+    }
+    
+    .remember-me {
+        margin: 0.75rem 0;
+    }
+    
+    .login-footer {
+        margin-top: 1rem;
+        padding-top: 1rem;
+    }
+}
+
+/* Улучшения для touch-устройств */
+@media (hover: none) {
+    .login-btn:hover,
+    .theme-toggle:hover {
+        transform: none;
+    }
+}
+
+/* Печать */
+@media print {
+    .theme-toggle {
+        display: none;
+    }
+}
+
+/* Уменьшенная анимация для пользователей с ограниченными возможностями */
+@media (prefers-reduced-motion: reduce) {
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* Высокий контраст */
+@media (prefers-contrast: high) {
+    .login-container {
+        border: 2px solid var(--border);
+    }
+}
+
+
+/* Добавьте эти стили в ваш login.css файл */
+
+/* Обертка для поля пароля с кнопкой */
+.password-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-input-wrapper .form-control {
+    padding-right: 3rem; /* Место для кнопки */
+}
+
+/* Кнопка показа/скрытия пароля */
+.password-toggle {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    padding: 0.5rem;
+    cursor: pointer;
+    color: var(--text-secondary);
+    transition: all 0.2s ease;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 6px;
+}
+
+.password-toggle:hover {
+    color: var(--primary);
+}
+
+.password-toggle:focus {
+    outline: none;
+    color: var(--primary);
+}
+
+.password-toggle i {
+    font-size: 1.1rem;
+    transition: all 0.2s ease;
+}
+
+/* Анимация при переключении иконки */
+.password-toggle.show-password i {
+    color: var(--primary);
+}
+
+/* Темная тема для кнопки */
+[data-bs-theme="dark"] .password-toggle {
+    color: var(--text-secondary);
+}
+
+[data-bs-theme="dark"] .password-toggle:hover {
+    color: var(--primary);
+}
+
+/* Адаптивность */
+@media (max-width: 480px) {
+    .password-toggle {
+        width: 2.2rem;
+        height: 2.2rem;
+    }
+    
+    .password-toggle i {
+        font-size: 1rem;
+    }
+    
+    .password-input-wrapper .form-control {
+        padding-right: 2.7rem;
+    }
+}
+
+/* Улучшения для доступности */
+.password-toggle:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+}
+
+/* Анимация при клике */
+.password-toggle:active {
+    transform: translateY(-50%) scale(0.95);
+}

@@ -1,0 +1,1027 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Редактировать {{ faculty.name }} - МПТ Журнал{% endblock %}
+{% block page_title %}Редактирование специальности{% endblock %}
+{% block mobile_title %}Изменить {{ faculty.name|truncatechars:15 }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<style>
+.edit-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.edit-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.edit-header {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.faculty-avatar {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(45deg, #f59e0b, #d97706);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: white;
+    flex-shrink: 0;
+}
+
+.edit-info h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin: 0 0 0.5rem 0;
+}
+
+.edit-meta {
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-row.single {
+    grid-template-columns: 1fr;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 500;
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.form-label.required::after {
+    content: '*';
+    color: var(--bs-danger);
+    margin-left: 4px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--sidebar-bg);
+    color: var(--nav-link-color);
+    border: 1px solid var(--sidebar-border);
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.error-message {
+    color: var(--bs-danger);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.secondary-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.primary-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.info-card {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-card .info-title {
+    font-weight: 600;
+    color: #f59e0b;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.info-card ul {
+    margin-bottom: 0;
+    padding-left: 1rem;
+}
+
+.info-card li {
+    color: var(--bs-body-color);
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Стили для статистики */
+.stats-preview {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.stat-preview {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1rem;
+    text-align: center;
+}
+
+.stat-preview-number {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #f59e0b;
+    margin-bottom: 0.25rem;
+}
+
+.stat-preview-label {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+    font-weight: 500;
+}
+
+/* Стили для профессий */
+.professions-preview {
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 0.5rem;
+    min-height: 2rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.profession-tag {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.profession-count {
+    color: var(--bs-primary);
+    font-weight: 600;
+}
+
+.char-counter {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+}
+
+/* ====================================
+   СТИЛИ МОДАЛЬНЫХ ОКОН
+   ==================================== */
+
+.modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
+    background: var(--sidebar-bg);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, var(--sidebar-bg), var(--sidebar-border));
+    border-top-left-radius: 16px;
+    border-top-right-radius: 16px;
+    padding: 2rem 2rem 1rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    position: relative;
+}
+
+.modal-body {
+    padding: 1.5rem 2rem 2rem;
+    font-size: 1.1rem;
+    line-height: 1.6;
+    background: var(--sidebar-bg);
+    color: var(--bs-body-color);
+}
+
+.modal-footer {
+    background: var(--sidebar-bg);
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+    border-top: 1px solid var(--sidebar-border);
+    padding: 1.5rem 2rem;
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.modal-title {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--bs-body-color);
+    text-align: center;
+    width: 100%;
+}
+
+.modal-icon-danger {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.5rem;
+    color: #dc2626;
+    font-size: 2rem;
+    box-shadow: 0 4px 20px rgba(220, 38, 38, 0.2);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.modal .btn {
+    border-radius: 10px;
+    padding: 12px 24px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.95rem;
+    min-width: 120px;
+    justify-content: center;
+}
+
+.modal .btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.modal .btn-danger {
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: none;
+    color: white;
+}
+
+.modal .btn-danger:hover {
+    background: linear-gradient(135deg, #dc2626, #b91c1c);
+    color: white;
+}
+
+.modal .btn-outline-secondary {
+    border: 2px solid var(--sidebar-border);
+    color: var(--bs-secondary);
+    background: var(--sidebar-bg);
+}
+
+.modal .btn-outline-secondary:hover {
+    background: var(--sidebar-border);
+    border-color: var(--bs-secondary);
+    color: var(--bs-body-color);
+}
+
+.modal-backdrop {
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+}
+
+/* Стили для уведомлений */
+.alert {
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    backdrop-filter: blur(10px);
+    border: none;
+    padding: 1rem 1.5rem;
+    font-weight: 500;
+}
+
+.alert-success {
+    background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+    color: #065f46;
+    border-left: 4px solid #10b981;
+}
+
+.alert-danger {
+    background: linear-gradient(135deg, #fee2e2, #fecaca);
+    color: #7f1d1d;
+    border-left: 4px solid #ef4444;
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .edit-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-preview {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .secondary-actions,
+    .primary-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn {
+        flex: 1;
+        justify-content: center;
+    }
+    
+    .modal-dialog {
+        margin: 1rem;
+        max-width: calc(100vw - 2rem);
+    }
+    
+    .modal-header,
+    .modal-body,
+    .modal-footer {
+        padding-left: 1rem;
+        padding-right: 1rem;
+    }
+    
+    .modal-footer {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+    
+    .modal .btn {
+        width: 100%;
+        margin: 0;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="edit-container">
+    <!-- Заголовок с информацией о факультете -->
+    <div class="edit-card">
+        <div class="edit-header">
+            <div class="edit-info">
+                <h1>Редактирование специальности</h1>
+                <div class="edit-meta">
+                    <i class="bi bi-building"></i> {{ faculty.name }}
+                    • <i class="bi bi-tag"></i> {{ faculty.code }}
+                    • <i class="bi bi-circle-fill {% if faculty.is_active %}text-success{% else %}text-danger{% endif %}"></i> 
+                    {% if faculty.is_active %}Активна{% else %}Неактивна{% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Информационная карточка -->
+        <div class="info-card">
+            <div class="info-title">
+                <i class="bi bi-info-circle"></i>
+                Редактирование специальности
+            </div>
+            <ul>
+                <li>Название и код специальности - основные идентификаторы</li>
+                <li>Код должен быть уникальным в формате XX.XX.XX</li>
+                <li>Профессии определяют выбор для студентов</li>
+                <li>Статус "Активна" определяет видимость специальности в системе</li>
+            </ul>
+        </div>
+        
+        <!-- Текущая статистика -->
+        {% if faculty.groups_count > 0 or faculty.students_count > 0 %}
+        <div class="stats-preview">
+            <div class="stat-preview">
+                <div class="stat-preview-number">{{ faculty.groups_count|default:0 }}</div>
+                <div class="stat-preview-label">Групп</div>
+            </div>
+            <div class="stat-preview">
+                <div class="stat-preview-number">{{ faculty.students_count|default:0 }}</div>
+                <div class="stat-preview-label">Студентов</div>
+            </div>
+            <div class="stat-preview">
+                <div class="stat-preview-number">{{ faculty.active_students_count|default:0 }}</div>
+                <div class="stat-preview-label">Активных</div>
+            </div>
+            <div class="stat-preview">
+                <div class="stat-preview-number">{{ faculty.get_professions_count }}</div>
+                <div class="stat-preview-label">Профессий</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Отображение ошибок Django -->
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" id="editFacultyForm">
+        {% csrf_token %}
+        
+        <!-- Основная информация -->
+        <div class="edit-card">
+            <div class="section-title">
+                <i class="bi bi-building"></i>
+                Основная информация
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required" for="name">Название специальности</label>
+                    <input type="text" class="form-control" id="name" name="name" 
+                           value="{{ faculty.name }}" required maxlength="200">
+                    <div class="form-text">Полное официальное название</div>
+                    <div class="error-message" id="name_error"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label required" for="code">Код специальности</label>
+                    <input type="text" class="form-control" id="code" name="code" 
+                        value="{{ faculty.code }}" required maxlength="8" 
+                        pattern="\d{2}\.\d{2}\.\d{2}" 
+                        placeholder="09.02.07">
+                    <div class="form-text">Код специальности в формате XX.XX.XX (например: 09.02.07)</div>
+                    <div class="error-message" id="code_error"></div>
+                </div>
+            </div>
+            
+            <div class="form-row single">
+                <div class="form-group">
+                    <label class="form-label" for="description">Описание</label>
+                    <textarea class="form-control" id="description" name="description" rows="3" 
+                              placeholder="Описание специальности" maxlength="500">{{ faculty.description|default:'' }}</textarea>
+                    <div class="form-text">Необязательное поле для дополнительной информации</div>
+                    <div class="char-counter">
+                        <span id="desc-counter">0</span>/500
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- НОВАЯ СЕКЦИЯ: Профессии -->
+        <div class="edit-card">
+            <div class="section-title">
+                <i class="bi bi-briefcase"></i>
+                Профессии специальности
+            </div>
+            
+            <div class="info-card">
+                <div class="info-title">
+                    <i class="bi bi-lightbulb"></i>
+                    Управление профессиями
+                </div>
+                <ul>
+                    <li>Студенты смогут выбирать из этого списка при регистрации</li>
+                    <li>Введите каждую профессию с новой строки</li>
+                    <li>Изменение профессий повлияет только на новых студентов</li>
+                    <li>Существующие студенты сохранят свои профессии</li>
+                </ul>
+            </div>
+            
+            <div class="form-row single">
+                <div class="form-group">
+                    <label class="form-label required" for="professions_input">Список профессий</label>
+                    <textarea class="form-control" id="professions_input" name="professions_input" 
+                              rows="6" placeholder="Введите профессии, каждую с новой строки:&#10;Программист&#10;Администратор баз данных&#10;Web-разработчик" 
+                              maxlength="2000" required>{{ faculty.get_professions_as_text }}</textarea>
+                    <div class="form-text">
+                        <i class="bi bi-info-circle"></i>
+                        Каждая профессия с новой строки. Минимум одна профессия обязательна.
+                    </div>
+                    <div class="char-counter">
+                        <span class="profession-count">Профессий: <span id="prof-count">0</span></span>
+                        <span><span id="prof-counter">0</span>/2000</span>
+                    </div>
+                    <div class="error-message" id="professions-error"></div>
+                </div>
+            </div>
+            
+            <!-- Предварительный просмотр профессий -->
+            <div id="professionsPreview" class="professions-preview" style="display: none;">
+                <strong>Предварительный просмотр:</strong>
+                <div id="professionTags" style="display: flex;flex-direction: column;"></div>
+            </div>
+        </div>
+        
+        <!-- Настройки -->
+        <div class="edit-card">
+            <div class="section-title">
+                <i class="bi bi-gear"></i>
+                Настройки
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label" for="is_active">Статус специальности</label>
+                    <select class="form-select" id="is_active" name="is_active">
+                        <option value="true" {% if faculty.is_active %}selected{% endif %}>Активна</option>
+                        <option value="false" {% if not faculty.is_active %}selected{% endif %}>Неактивна</option>
+                    </select>
+                    <div class="form-text">
+                        {% if faculty.groups_count > 0 or faculty.students_count > 0 %}
+                            <span class="text-warning">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                К специальности привязано {{ faculty.groups_count }} групп и {{ faculty.students_count }} студентов
+                            </span>
+                        {% else %}
+                            Неактивные специальности скрыты от пользователей
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Дата создания</label>
+                    <input type="text" class="form-control" 
+                           value="{{ faculty.created_at|date:'d.m.Y H:i' }}" readonly>
+                    <div class="form-text">Только для информации, изменить нельзя</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Действия -->
+        <div class="form-actions">
+            <div class="secondary-actions">
+                <a href="{% url 'admin_faculty_detail' faculty.pk %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i>
+                    Отмена
+                </a>
+                
+                {% if faculty.groups_count == 0 and faculty.students_count == 0 %}
+                <button type="button" class="btn btn-danger" onclick="showDeleteModal({{ faculty.id }})">
+                    <i class="bi bi-trash"></i>
+                    Удалить
+                </button>
+                {% endif %}
+            </div>
+            
+            <div class="primary-actions">
+                <button type="submit" class="btn btn-primary" id="saveBtn">
+                    <i class="bi bi-check"></i>
+                    Сохранить изменения
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Модальное окно удаления -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Удаление специальности</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-danger">
+                    <i class="bi bi-trash"></i>
+                </div>
+                <p><strong>Удалить специальность "{{ faculty.name }}"?</strong></p>
+                <p class="text-muted">Это действие нельзя отменить! Специальность и вся связанная информация будут безвозвратно удалены из системы.</p>
+                
+                {% if faculty.groups_count > 0 or faculty.students_count > 0 %}
+                <div class="alert alert-warning text-start">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Внимание!</strong> К специальности привязано {{ faculty.groups_count }} групп и {{ faculty.students_count }} студентов. 
+                    Сначала переместите или удалите связанные данные.
+                </div>
+                {% else %}
+                <div class="mt-3 p-3" style="background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px;">
+                    <small class="text-muted">
+                        <i class="bi bi-exclamation-triangle me-1"></i>
+                        Внимание: это действие также удалит всю связанную со специальностью информацию из базы данных.
+                    </small>
+                </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDelete"
+                        {% if faculty.groups_count > 0 or faculty.students_count > 0 %}disabled{% endif %}>
+                    <i class="bi bi-trash"></i>
+                    Удалить специальность
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+let currentFacultyId = null;
+
+// Показать уведомление
+function showNotification(message, type = 'success') {
+    const alertClass = type === 'error' ? 'alert-danger' : 'alert-success';
+    const icon = type === 'error' ? 'bi-exclamation-triangle' : 'bi-check-circle';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert" 
+             style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            <i class="bi ${icon} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+    
+    setTimeout(() => {
+        const alert = document.querySelector('.alert:last-child');
+        if (alert) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+// Показать модальное окно удаления
+function showDeleteModal(facultyId) {
+    currentFacultyId = facultyId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('editFacultyForm');
+    const saveBtn = document.getElementById('saveBtn');
+    const codeInput = document.getElementById('code');
+    const descCounter = document.getElementById('desc-counter');
+    const descTextarea = document.getElementById('description');
+    const profCounter = document.getElementById('prof-counter');
+    const profCountDisplay = document.getElementById('prof-count');
+    const profTextarea = document.getElementById('professions_input');
+    const professionsPreview = document.getElementById('professionsPreview');
+    const professionTags = document.getElementById('professionTags');
+    
+    // Инициализация счетчиков
+    updateCharCounter();
+    updateProfCounter();
+    
+    // Обработчики событий
+    descTextarea.addEventListener('input', updateCharCounter);
+    profTextarea.addEventListener('input', updateProfCounter);
+    
+    function updateCharCounter() {
+        const count = descTextarea.value.length;
+        descCounter.textContent = count;
+        
+        if (count > 450) {
+            descCounter.style.color = 'var(--bs-danger)';
+        } else {
+            descCounter.style.color = 'var(--bs-secondary)';
+        }
+    }
+    
+    function updateProfCounter() {
+        const count = profTextarea.value.length;
+        profCounter.textContent = count;
+        
+        // Подсчитываем количество профессий (строк)
+        const lines = profTextarea.value.split('\n').filter(line => line.trim() !== '');
+        const profCount = lines.length;
+        
+        profCountDisplay.textContent = profCount;
+        
+        // Показываем/скрываем предварительный просмотр
+        if (profCount > 0) {
+            professionsPreview.style.display = 'block';
+            
+            // Создаем теги профессий
+            professionTags.innerHTML = '';
+            lines.slice(0, 10).forEach(profession => { // Показываем первые 10
+                if (profession.trim()) {
+                    const tag = document.createElement('span');
+                    tag.className = 'profession-tag';
+                    tag.textContent = profession.trim();
+                    professionTags.appendChild(tag);
+                }
+            });
+            
+            // Если больше 10, показываем "+N еще"
+            if (lines.length > 10) {
+                const moreTag = document.createElement('span');
+                moreTag.className = 'profession-tag';
+                moreTag.style.background = 'var(--bs-secondary)';
+                moreTag.textContent = `+${lines.length - 10} еще`;
+                professionTags.appendChild(moreTag);
+            }
+        } else {
+            professionsPreview.style.display = 'none';
+        }
+        
+        // Цвет счетчика символов
+        if (count > 1800) {
+            profCounter.style.color = 'var(--bs-danger)';
+        } else {
+            profCounter.style.color = 'var(--bs-secondary)';
+        }
+        
+        // Цвет счетчика профессий
+        if (profCount === 0) {
+            profCountDisplay.style.color = 'var(--bs-danger)';
+        } else if (profCount > 20) {
+            profCountDisplay.style.color = 'var(--bs-warning)';
+        } else {
+            profCountDisplay.style.color = 'var(--bs-success)';
+        }
+    }
+    
+    // Форматирование кода специальности
+    if (codeInput) {
+        codeInput.addEventListener('input', function() {
+            // Удаляем все кроме цифр
+            let digits = this.value.replace(/[^\d]/g, '');
+            
+            // Обрезаем до 6 цифр максимум
+            digits = digits.substring(0, 6);
+            
+            // Форматируем
+            let formatted = '';
+            if (digits.length > 0) {
+                formatted += digits.substring(0, Math.min(2, digits.length));
+                
+                if (digits.length > 2) {
+                    formatted += '.' + digits.substring(2, Math.min(4, digits.length));
+                }
+                
+                if (digits.length > 4) {
+                    formatted += '.' + digits.substring(4, 6);
+                }
+            }
+            
+            this.value = formatted;
+        });
+
+        codeInput.addEventListener('blur', function(e) {
+            const value = e.target.value;
+            const pattern = /^\d{2}\.\d{2}\.\d{2}$/;
+            
+            if (value && !pattern.test(value)) {
+                const errorElement = document.getElementById('code_error');
+                if (errorElement) {
+                    errorElement.textContent = 'Код должен быть в формате XX.XX.XX (например: 09.02.07)';
+                }
+                e.target.style.borderColor = '#dc2626';
+            } else {
+                const errorElement = document.getElementById('code_error');
+                if (errorElement) {
+                    errorElement.textContent = '';
+                }
+                e.target.style.borderColor = '';
+            }
+        });
+    }
+    
+    // Обработка отправки формы
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Проверяем, что есть хотя бы одна профессия
+        const lines = profTextarea.value.split('\n').filter(line => line.trim() !== '');
+        if (lines.length === 0) {
+            document.getElementById('professions-error').textContent = 'Добавьте хотя бы одну профессию';
+            profTextarea.classList.add('is-invalid');
+            profTextarea.focus();
+            return;
+        }
+        
+        // Очищаем предыдущие ошибки
+        document.querySelectorAll('.error-message').forEach(el => el.textContent = '');
+        
+        // Показываем индикатор загрузки
+        saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Сохраняем...';
+        saveBtn.disabled = true;
+        
+        // Собираем данные формы
+        const formData = new FormData(form);
+        
+        // Отправляем обычный POST запрос (не AJAX)
+        form.submit();
+    });
+});
+
+// Обработчик подтверждения удаления
+document.getElementById('confirmDelete').addEventListener('click', function() {
+    if (!currentFacultyId) return;
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+    modal.hide();
+    
+    fetch(`{% url 'admin_faculties' %}${currentFacultyId}/delete/`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            throw new Error('Сервер вернул не JSON ответ');
+        }
+        
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            showNotification('Специальность успешно удалена');
+            setTimeout(() => {
+                window.location.href = "{% url 'admin_faculties' %}";
+            }, 1500);
+        } else {
+            showNotification(data.message || 'Ошибка при удалении специальности', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при удалении специальности', 'error');
+    });
+});
+
+// Исправление проблемы с aria-hidden для модальных окон
+document.addEventListener('show.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+});
+
+document.addEventListener('hidden.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+    currentFacultyId = null;
+});
+
+// Автоматическое закрытие уведомлений
+setTimeout(function() {
+    const alerts = document.querySelectorAll('.alert');
+    alerts.forEach(alert => {
+        if (alert.classList.contains('show')) {
+            alert.classList.remove('show');
+            setTimeout(() => alert.remove(), 300);
+        }
+    });
+}, 5000);
+</script>
+{% endblock %}

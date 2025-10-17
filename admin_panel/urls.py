@@ -4,14 +4,17 @@ from . import views, api_views
 
 urlpatterns = [
     # === ГЛАВНАЯ СТРАНИЦА ===
-    path('', views.dashboard_view, name='admin_dashboard'),
+    path('', views.dashboard_view, name='home'),  # Главная страница с перенаправлением
+    path('admin-panel/', views.admin_dashboard_view, name='admin_dashboard'),  # Админ-панель
+    path('student-cabinet/', views.student_dashboard_view, name='student_dashboard'),  # Кабинет студента
     path('accounts/', include('django.contrib.auth.urls')),
     
     # === ОСНОВНЫЕ HTML СТРАНИЦЫ ===
     # Факультеты
     path('faculties/', views.faculties_list_view, name='admin_faculties'),
     path('faculties/create/', views.faculty_create_view, name='admin_faculty_create'),
-    path('faculties/import/', views.faculty_import_view, name='admin_faculty_import'),
+    path('faculties/<int:faculty_id>/', views.faculty_detail_view, name='admin_faculty_detail'),  # ДОБАВЛЕНО
+    path('faculties/<int:faculty_id>/edit/', views.faculty_edit_view, name='admin_faculty_edit'),  # ДОБАВЛЕНО
     
     # Студенты
     path('students/', views.students_list_view, name='admin_students'),
@@ -40,7 +43,7 @@ urlpatterns = [
     path('students/export/', api_views.student_export_view, name='student_export'),
     path('students/list/', api_views.student_list_api, name='student_list_api'),
     
-    # === API ENDPOINTS ДЛЯ ФАКУЛЬТЕТОВ (заглушки) ===
+    # === API ENDPOINTS ДЛЯ ФАКУЛЬТЕТОВ ===
     # Одиночные операции
     path('faculties/<int:faculty_id>/delete/', api_views.faculty_delete_api, name='faculty_delete_api'),
     path('faculties/<int:faculty_id>/toggle-status/', api_views.faculty_toggle_status_api, name='faculty_toggle_status_api'),
@@ -50,6 +53,12 @@ urlpatterns = [
     path('faculties/bulk-deactivate/', api_views.faculty_bulk_deactivate_api, name='faculty_bulk_deactivate_api'),
     path('faculties/bulk-delete/', api_views.faculty_bulk_delete_api, name='faculty_bulk_delete_api'),
     
-    # Экспорт факультетов
-    path('faculties/export/', api_views.faculty_export_view, name='faculty_export'),
+    # список факультетов
+    path('faculties/list/', api_views.faculty_list_api, name='faculty_list_api'),  # ДОБАВЛЕНО
+
+    # Резервные копии
+    path('backups/', views.backups_list_view, name='admin_backups'),
+    path('backups/create/', views.backup_create_view, name='admin_backup_create'),
+    path('backups/<int:backup_id>/delete/', views.backup_delete_view, name='admin_backup_delete'),
+    path('backups/<int:backup_id>/download/', views.backup_download_view, name='admin_backup_download'),
 ]

@@ -1,0 +1,1147 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Специальности - МПТ Журнал{% endblock %}
+{% block page_title %}Управление специальностями{% endblock %}
+{% block mobile_title %}Специальности{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/tables.css' %}">
+<link rel="stylesheet" href="{% static 'css/modals.css' %}">
+<style>
+/* Стили для профессий в таблице */
+.user-professions {
+    font-size: 0.75rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+    line-height: 1.3;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-wrap: wrap;
+}
+
+.profession-tag {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--bs-primary);
+    padding: 0.15rem 0.4rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.profession-count {
+    background: var(--bs-secondary);
+    color: white;
+    padding: 0.15rem 0.4rem;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+}
+
+.no-professions {
+    color: var(--bs-secondary);
+    font-style: italic;
+    font-size: 0.7rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Поиск и фильтры -->
+<div class="search-filter-bar">
+    <form method="get" class="search-form">
+        <!-- Поиск -->
+        <div class="search-container">
+            <div class="search-input-wrapper">
+                <i class="bi bi-search search-icon"></i>
+                <input type="text" name="search" value="{{ search }}" 
+                       placeholder="Поиск по названию" 
+                       class="search-field">
+                {% if search %}
+                    <button type="button" class="clear-search" onclick="clearSearch()">
+                        <i class="bi bi-x"></i>
+                    </button>
+                {% endif %}
+            </div>
+        </div>
+    
+        
+        <!-- Скрытые поля для сохранения состояния -->
+        <input type="hidden" name="page" value="1">
+    </form>
+</div>
+
+<!-- Панель данных -->
+<div class="data-panel faculties-panel">
+    <div class="panel-top">
+        <div class="panel-info">
+            <div class="info-icon">
+                <i class="bi bi-building"></i>
+            </div>
+            <div class="info-content">
+                <h1 class="panel-title">Специальности</h1>
+                <div class="panel-stats">
+                    {% if page_obj and page_obj.paginator.count %}
+                        <span class="stat-item">
+                            <i class="bi bi-building"></i>
+                            {{ page_obj.paginator.count }} специальности
+                        </span>
+                    {% else %}
+                        <span class="stat-item empty">—</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="panel-controls">
+            <div class="table-actions">
+                
+                <!-- Простая кнопка добавления -->
+                <button type="button" class="action-btn add-faculty-btn" onclick="addSingleFaculty()" title="Добавить специальность">
+                    <i class="bi bi-plus-circle"></i>
+                    <span>Добавить</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    {% if page_obj %}
+        <!-- Панель выбора и массовых действий -->
+        <div class="selection-bar">
+            <div class="selection-controls">
+                <label class="select-all-wrapper">
+                    <input type="checkbox" id="selectAllFaculties" class="select-checkbox">
+                    <span class="checkmark"></span>
+                    <span class="select-label">Выбрать все</span>
+                </label>
+            </div>
+            
+            <div class="bulk-actions" id="bulkActions" style="display: none;">
+                <span class="selected-info" id="selectedInfo">0</span>
+                
+                <div class="bulk-buttons">
+                    <button class="bulk-btn activate-btn" onclick="showBulkActivateModal()">
+                        <i class="bi bi-check-circle"></i>
+                        Активировать
+                    </button>
+                    <button class="bulk-btn deactivate-btn" onclick="showBulkDeactivateModal()">
+                        <i class="bi bi-x-circle"></i>
+                        Деактивировать
+                    </button>
+                    <button class="bulk-btn delete-btn" onclick="showBulkDeleteModal()">
+                        <i class="bi bi-trash"></i>
+                        Удалить
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Таблица факультетов -->
+        <div class="data-table faculties-table">
+            <div class="table-header">
+                <div class="header-col col-select"></div>
+                <div class="header-col col-faculty">
+                    <span class="col-title">
+                        <i class="bi bi-building"></i>
+                        Специальность
+                    </span>
+                </div>
+                <div class="header-col col-stats">
+                    <span class="col-title">
+                        <i class="bi bi-bar-chart"></i>
+                        Статистика
+                    </span>
+                </div>
+                <div class="header-col col-status">
+                    <span class="col-title">
+                        <i class="bi bi-shield-check"></i>
+                        Статус
+                    </span>
+                </div>
+                <div class="header-col col-actions">
+                    <span class="col-title">Действия</span>
+                </div>
+            </div>
+            
+            <div class="table-body">
+                {% for faculty in page_obj %}
+                    <div class="data-row" data-id="{{ faculty.id }}">
+                        <div class="row-col col-select">
+                            <label class="row-select-wrapper">
+                                <input type="checkbox" class="select-checkbox faculty-checkbox" 
+                                       data-faculty-id="{{ faculty.id }}" 
+                                       data-faculty-name="{{ faculty.name }}" 
+                                       value="{{ faculty.id }}">
+                                <span class="checkmark"></span>
+                            </label>
+                        </div>
+                        
+                        <div class="row-col col-faculty">
+                            <div class="user-card">
+                                <div class="user-details">
+                                    <div class="user-name">{{ faculty.name }}</div>
+                                    <div class="user-meta">{{ faculty.code }}</div>
+                                    
+                                    
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-stats">
+                            <div class="stats-info">
+                                <div class="stat-row">
+                                    <i class="bi bi-collection"></i>
+                                    <span>{{ faculty.groups_count|default:0 }} групп{{ faculty.groups_count|pluralize:"а,ы" }}</span>
+                                </div>
+                                <div class="stat-row">
+                                    <i class="bi bi-mortarboard"></i>
+                                    <span>{{ faculty.students_count|default:0 }} студент{{ faculty.students_count|pluralize:",,ов" }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-status">
+                            <div class="status-pill {% if faculty.is_active %}status-active{% else %}status-inactive{% endif %}" 
+                                 onclick="toggleFacultyStatus({{ faculty.id }})" 
+                                 style="cursor: pointer;" 
+                                 title="Нажмите для изменения статуса">
+                                <div class="status-indicator"></div>
+                                <span>{% if faculty.is_active %}Активна{% else %}Неактивна{% endif %}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="row-col col-actions">
+                            <div class="actions-menu">
+                                <button class="action-item view-action" onclick="viewFaculty({{ faculty.id }})" title="Просмотр">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="action-item edit-action" onclick="editFaculty({{ faculty.id }})" title="Редактировать">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="action-item delete-action" onclick="deleteFaculty({{ faculty.id }})" title="Удалить">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <!-- Пагинация -->
+        {% if page_obj.has_other_pages %}
+            <div class="pagination-container">
+                <div class="pagination-info">
+                    <span class="info-text">
+                        Показано <strong>{{ page_obj.start_index }}—{{ page_obj.end_index }}</strong> 
+                        из <strong>{{ page_obj.paginator.count }}</strong>
+                    </span>
+                </div>
+                
+                <nav class="pagination-nav">
+                    <div class="pagination-buttons">
+                        {% if page_obj.has_previous %}
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page=1" 
+                               class="page-btn first-btn" title="Первая страница">
+                                <i class="bi bi-chevron-double-left"></i>
+                            </a>
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.previous_page_number }}" 
+                               class="page-btn prev-btn" title="Предыдущая страница">
+                                <i class="bi bi-chevron-left"></i>
+                            </a>
+                        {% endif %}
+
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <span class="page-btn current">{{ num }}</span>
+                            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ num }}" 
+                                   class="page-btn">{{ num }}</a>
+                            {% endif %}
+                        {% endfor %}
+
+                        {% if page_obj.has_next %}
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.next_page_number }}" 
+                               class="page-btn next-btn" title="Следующая страница">
+                                <i class="bi bi-chevron-right"></i>
+                            </a>
+                            <a href="?{% if search %}search={{ search }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}page={{ page_obj.paginator.num_pages }}" 
+                               class="page-btn last-btn" title="Последняя страница">
+                                <i class="bi bi-chevron-double-right"></i>
+                            </a>
+                        {% endif %}
+                    </div>
+                </nav>
+            </div>
+        {% endif %}
+    {% else %}
+        <!-- Пустое состояние -->
+        <div class="empty-state">
+            <div class="empty-illustration">
+                <i class="bi bi-building"></i>
+            </div>
+            <h2 class="empty-title">Специальности не найдены</h2>
+            <p class="empty-description">
+                {% if search or status_filter %}
+                    По вашему запросу специальности не найдены. Попробуйте изменить критерии поиска.
+                {% else %}
+                    В системе пока нет специальностей. Добавьте первую специальность или импортируйте данные из Excel.
+                {% endif %}
+            </p>
+            <div class="empty-actions">
+                {% if search or status_filter %}
+                    <a href="{% url 'admin_faculties' %}" class="empty-btn secondary">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        Сбросить фильтры
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Модальные окна для массовых операций -->
+
+<!-- Массовая активация -->
+<div class="modal fade" id="bulkActivateModal" tabindex="-1" aria-labelledby="bulkActivateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkActivateModalLabel">Массовая активация</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-success">
+                    <i class="bi bi-check-circle"></i>
+                </div>
+                <p><strong>Активировать выбранные специальности?</strong></p>
+                <p class="text-muted">Будет активировано <span id="activateCount">0</span> специальностей.</p>
+                <div class="faculty-preview" id="activatePreview"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-success" id="confirmBulkActivate">
+                    <i class="bi bi-check-circle"></i>
+                    Активировать
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Массовая деактивация -->
+<div class="modal fade" id="bulkDeactivateModal" tabindex="-1" aria-labelledby="bulkDeactivateModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkDeactivateModalLabel">Массовая деактивация</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-warning">
+                    <i class="bi bi-x-circle"></i>
+                </div>
+                <p><strong>Деактивировать выбранные специальности?</strong></p>
+                <p class="text-muted">Будет деактивировано <span id="deactivateCount">0</span> специальностей.</p>
+                <div class="faculty-preview" id="deactivatePreview"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-warning" id="confirmBulkDeactivate">
+                    <i class="bi bi-x-circle"></i>
+                    Деактивировать
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Массовое удаление -->
+<div class="modal fade" id="bulkDeleteModal" tabindex="-1" aria-labelledby="bulkDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bulkDeleteModalLabel">Массовое удаление</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-danger">
+                    <i class="bi bi-trash"></i>
+                </div>
+                <p><strong>Удалить выбранные специальности?</strong></p>
+                <p class="text-muted">Будет удалено <span id="deleteCount">0</span> специальностей.</p>
+                <div class="alert alert-warning text-start">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Внимание!</strong> Это действие нельзя отменить. Специальности с привязанными группами или студентами не будут удалены.
+                </div>
+                <div class="faculty-preview" id="deletePreview"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmBulkDelete">
+                    <i class="bi bi-trash"></i>
+                    Удалить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно удаления одного факультета -->
+<div class="modal fade" id="deleteFacultyModal" tabindex="-1" aria-labelledby="deleteFacultyModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteFacultyModalLabel">Удаление специальности</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-danger">
+                    <i class="bi bi-trash"></i>
+                </div>
+                <p><strong id="deleteFacultyText">Удалить специальность?</strong></p>
+                <p class="text-muted">Это действие нельзя отменить! Специальность и вся связанная информация будут безвозвратно удалены из системы.</p>
+                
+                <div class="alert alert-warning text-start">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>Внимание!</strong> Если к специальности привязаны группы или студенты, удаление будет невозможно.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteFaculty">
+                    <i class="bi bi-trash"></i>
+                    Удалить специальность
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+/**
+ * FACULTIES MANAGEMENT SCRIPT
+ * Управление факультетами - ИСПРАВЛЕННЫЙ полный JavaScript код
+ */
+
+// ====================================
+// ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
+// ====================================
+
+// URL-адреса БЕЗ префиксов
+window.FACULTY_CREATE_URL = '/faculties/create/';
+window.FACULTY_IMPORT_URL = '/faculties/import/';
+window.FACULTY_DELETE_URL = '/faculties/';
+window.FACULTY_TOGGLE_STATUS_URL = '/faculties/';
+window.FACULTY_BULK_ACTIVATE_URL = '/faculties/bulk-activate/';
+window.FACULTY_BULK_DEACTIVATE_URL = '/faculties/bulk-deactivate/';
+window.FACULTY_BULK_DELETE_URL = '/faculties/bulk-delete/';
+window.FACULTY_EXPORT_URL = '/faculties/export/';
+
+// Текущие фильтры
+window.CURRENT_FILTERS = {
+    'search': '{{ search|escapejs }}',
+    'status': '{{ status_filter|escapejs }}'
+};
+
+// Переменные для модальных окон
+let currentFacultyId = null;
+let currentFacultyName = null;
+let selectedFacultiesIds = new Set();
+let isLoading = false;
+
+// ====================================
+// УТИЛИТЫ
+// ====================================
+
+// CSRF токен
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+
+// Функция для правильного склонения
+function getPlural(count, one, two, five) {
+    const n = Math.abs(count);
+    const n1 = n % 10;
+    const n2 = n % 100;
+    
+    if (n2 >= 10 && n2 <= 20) {
+        return five;
+    }
+    if (n1 > 1 && n1 < 5) {
+        return two;
+    }
+    if (n1 === 1) {
+        return one;
+    }
+    return five;
+}
+
+// ====================================
+// УВЕДОМЛЕНИЯ И ЗАГРУЗКА
+// ====================================
+
+function showNotification(message, type = 'success') {
+    const alertClass = type === 'error' || type === 'danger' ? 'alert-danger' : 
+                      type === 'warning' ? 'alert-warning' : 'alert-success';
+    const icon = type === 'error' || type === 'danger' ? 'bi-exclamation-triangle' : 
+                 type === 'warning' ? 'bi-exclamation-triangle' : 'bi-check-circle';
+    
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert" 
+             style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px; max-width: 500px;">
+            <i class="bi ${icon} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+    
+    setTimeout(() => {
+        const alerts = document.querySelectorAll('.alert');
+        if (alerts.length > 0) {
+            alerts[alerts.length - 1].remove();
+        }
+    }, 5000);
+}
+
+function showLoading(text = 'Загрузка...') {
+    if (isLoading) return;
+    isLoading = true;
+    
+    const loadingHtml = `
+        <div id="loadingOverlay" style="
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
+            background: rgba(0,0,0,0.5); z-index: 10000; 
+            display: flex; align-items: center; justify-content: center;
+            backdrop-filter: blur(4px);
+        ">
+            <div style="
+                background: white; padding: 2rem; border-radius: 12px; 
+                box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                display: flex; align-items: center; gap: 1rem;
+            ">
+                <div class="spinner-border text-primary" role="status"></div>
+                <span style="font-weight: 500;">${text}</span>
+            </div>
+        </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', loadingHtml);
+}
+
+function hideLoading() {
+    isLoading = false;
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.remove();
+    }
+}
+
+// ====================================
+// НАВИГАЦИЯ
+// ====================================
+
+function addSingleFaculty() {
+    window.location.href = '/faculties/create/';
+}
+
+function bulkImportFaculties() {
+    window.location.href = '/faculties/import/';
+}
+
+function viewFaculty(facultyId) {
+    window.location.href = `/faculties/${facultyId}/`;
+}
+
+function editFaculty(facultyId) {
+    window.location.href = `/faculties/${facultyId}/edit/`;
+}
+
+function deleteFaculty(facultyId) {
+    showDeleteFacultyModal(facultyId);
+}
+
+function showDeleteFacultyModal(facultyId) {
+    const row = document.querySelector(`[data-id="${facultyId}"]`);
+    const facultyName = row ? row.querySelector('.user-name').textContent.trim() : `ID: ${facultyId}`;
+    
+    currentFacultyId = facultyId;
+    currentFacultyName = facultyName;
+    
+    // Заполняем данные в модальном окне
+    const modalText = document.getElementById('deleteFacultyText');
+    if (modalText) {
+        modalText.innerHTML = `Удалить специальность "<strong>${facultyName}</strong>"?`;
+    }
+    
+    // Показываем модальное окно
+    const modal = new bootstrap.Modal(document.getElementById('deleteFacultyModal'));
+    modal.show();
+}
+
+function toggleFacultyStatus(facultyId) {
+    showLoading('Изменение статуса...');
+    
+    fetch(`/faculties/${facultyId}/toggle-status/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        hideLoading();
+        if (data.success) {
+            updateFacultyRowStatus(facultyId, data.is_active);
+            showNotification(data.message, 'success');
+        } else {
+            showNotification(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при изменении статуса', 'danger');
+    });
+}
+
+function updateFacultyRowStatus(facultyId, isActive) {
+    const row = document.querySelector(`[data-id="${facultyId}"]`);
+    if (!row) return;
+    
+    const statusPill = row.querySelector('.status-pill');
+    
+    if (statusPill) {
+        statusPill.className = `status-pill ${isActive ? 'status-active' : 'status-inactive'}`;
+        const statusText = statusPill.querySelector('span');
+        if (statusText) {
+            statusText.textContent = isActive ? 'Активна' : 'Неактивна';
+        }
+    }
+}
+
+// ====================================
+// ОБРАБОТКА ВЫБОРА ЧЕКБОКСОВ
+// ====================================
+
+function initializeCheckboxHandlers() {
+    const selectAllCheckbox = document.getElementById('selectAllFaculties');
+    const facultyCheckboxes = document.querySelectorAll('.faculty-checkbox');
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedInfo = document.getElementById('selectedInfo');
+
+    // Обработчик "Выбрать все"
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function() {
+            const isChecked = this.checked;
+            
+            facultyCheckboxes.forEach(checkbox => {
+                checkbox.checked = isChecked;
+                if (isChecked) {
+                    selectedFacultiesIds.add(parseInt(checkbox.value));
+                } else {
+                    selectedFacultiesIds.delete(parseInt(checkbox.value));
+                }
+            });
+            
+            updateBulkActionsVisibility();
+        });
+    }
+
+    // Обработчики отдельных чекбоксов
+    facultyCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const facultyId = parseInt(this.value);
+            
+            if (this.checked) {
+                selectedFacultiesIds.add(facultyId);
+            } else {
+                selectedFacultiesIds.delete(facultyId);
+                // Снимаем галочку с "Выбрать все"
+                if (selectAllCheckbox) {
+                    selectAllCheckbox.checked = false;
+                }
+            }
+            
+            // Проверяем, все ли чекбоксы выбраны
+            const allChecked = Array.from(facultyCheckboxes).every(cb => cb.checked);
+            if (selectAllCheckbox && allChecked && facultyCheckboxes.length > 0) {
+                selectAllCheckbox.checked = true;
+            }
+            
+            updateBulkActionsVisibility();
+        });
+    });
+}
+
+function updateBulkActionsVisibility() {
+    const bulkActions = document.getElementById('bulkActions');
+    const selectedInfo = document.getElementById('selectedInfo');
+    const selectedCount = selectedFacultiesIds.size;
+    
+    if (selectedCount > 0) {
+        // Показываем панель массовых действий
+        bulkActions.style.display = 'flex';
+        selectedInfo.textContent = `Выбрано: ${selectedCount} специальност${getPlural(selectedCount, 'ь', 'и', 'ей')}`;
+        
+        // Обновляем экспорт выбранные
+        const exportSelectedHeader = document.getElementById('exportSelectedHeader');
+        const exportSelectedExcel = document.getElementById('exportSelectedExcel');
+        
+        if (exportSelectedHeader) exportSelectedHeader.style.display = 'block';
+        if (exportSelectedExcel) exportSelectedExcel.style.display = 'block';
+        
+    } else {
+        // Скрываем панель массовых действий
+        bulkActions.style.display = 'none';
+        
+        // Скрываем экспорт выбранные
+        const exportSelectedHeader = document.getElementById('exportSelectedHeader');
+        const exportSelectedExcel = document.getElementById('exportSelectedExcel');
+        
+        if (exportSelectedHeader) exportSelectedHeader.style.display = 'none';
+        if (exportSelectedExcel) exportSelectedExcel.style.display = 'none';
+    }
+}
+
+function resetSelection() {
+    selectedFacultiesIds.clear();
+    
+    // Снимаем все галочки
+    const selectAllCheckbox = document.getElementById('selectAllFaculties');
+    const facultyCheckboxes = document.querySelectorAll('.faculty-checkbox');
+    
+    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+    facultyCheckboxes.forEach(checkbox => checkbox.checked = false);
+    
+    updateBulkActionsVisibility();
+}
+
+// ====================================
+// ФУНКЦИИ ПОКАЗА МОДАЛЬНЫХ ОКОН (ИСПРАВЛЕНО!)
+// ====================================
+
+function showBulkActivateModal() {
+    const selected = Array.from(selectedFacultiesIds);
+    if (selected.length === 0) {
+        showNotification('Выберите специальности для активации', 'warning');
+        return;
+    }
+    
+    // Заполняем модальное окно
+    const activateCount = document.getElementById('activateCount');
+    const activatePreview = document.getElementById('activatePreview');
+    
+    if (activateCount) {
+        activateCount.textContent = selected.length;
+    }
+    
+    if (activatePreview) {
+        const facultyNames = selected.map(id => {
+            const row = document.querySelector(`[data-id="${id}"]`);
+            return row ? row.querySelector('.user-name').textContent.trim() : `ID: ${id}`;
+        });
+        
+        activatePreview.innerHTML = facultyNames.slice(0, 5).join('<br>') + 
+            (facultyNames.length > 5 ? `<br>и еще ${facultyNames.length - 5}...` : '');
+    }
+    
+    // Показываем модальное окно
+    const modal = new bootstrap.Modal(document.getElementById('bulkActivateModal'));
+    modal.show();
+}
+
+function showBulkDeactivateModal() {
+    const selected = Array.from(selectedFacultiesIds);
+    if (selected.length === 0) {
+        showNotification('Выберите специальности для деактивации', 'warning');
+        return;
+    }
+    
+    // Заполняем модальное окно
+    const deactivateCount = document.getElementById('deactivateCount');
+    const deactivatePreview = document.getElementById('deactivatePreview');
+    
+    if (deactivateCount) {
+        deactivateCount.textContent = selected.length;
+    }
+    
+    if (deactivatePreview) {
+        const facultyNames = selected.map(id => {
+            const row = document.querySelector(`[data-id="${id}"]`);
+            return row ? row.querySelector('.user-name').textContent.trim() : `ID: ${id}`;
+        });
+        
+        deactivatePreview.innerHTML = facultyNames.slice(0, 5).join('<br>') + 
+            (facultyNames.length > 5 ? `<br>и еще ${facultyNames.length - 5}...` : '');
+    }
+    
+    // Показываем модальное окно
+    const modal = new bootstrap.Modal(document.getElementById('bulkDeactivateModal'));
+    modal.show();
+}
+
+function showBulkDeleteModal() {
+    const selected = Array.from(selectedFacultiesIds);
+    if (selected.length === 0) {
+        showNotification('Выберите специальности для удаления', 'warning');
+        return;
+    }
+    
+    // Заполняем модальное окно
+    const deleteCount = document.getElementById('deleteCount');
+    const deletePreview = document.getElementById('deletePreview');
+    
+    if (deleteCount) {
+        deleteCount.textContent = selected.length;
+    }
+    
+    if (deletePreview) {
+        const facultyNames = selected.map(id => {
+            const row = document.querySelector(`[data-id="${id}"]`);
+            return row ? row.querySelector('.user-name').textContent.trim() : `ID: ${id}`;
+        });
+        
+        deletePreview.innerHTML = facultyNames.slice(0, 5).join('<br>') + 
+            (facultyNames.length > 5 ? `<br>и еще ${facultyNames.length - 5}...` : '');
+    }
+    
+    // Показываем модальное окно
+    const modal = new bootstrap.Modal(document.getElementById('bulkDeleteModal'));
+    modal.show();
+}
+
+// ====================================
+// МАССОВЫЕ ОПЕРАЦИИ (БЕЗ ПОКАЗА МОДАЛЬНЫХ ОКОН)
+// ====================================
+
+function performBulkActivate() {
+    const selected = Array.from(selectedFacultiesIds);
+    if (selected.length === 0) return;
+    
+    showLoading('Активация специальностей...');
+    
+    fetch('/faculties/bulk-activate/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            faculty_ids: selected
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.success) {
+            // Обновляем статус в таблице
+            selected.forEach(facultyId => {
+                updateFacultyRowStatus(facultyId, true);
+            });
+            showNotification(data.message, 'success');
+            
+            // Сбрасываем выбор
+            resetSelection();
+        } else {
+            showNotification(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при активации', 'danger');
+    });
+}
+
+function performBulkDeactivate() {
+    const selected = Array.from(selectedFacultiesIds);
+    if (selected.length === 0) return;
+    
+    showLoading('Деактивация специальностей...');
+    
+    fetch('/faculties/bulk-deactivate/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            faculty_ids: selected
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.success) {
+            // Обновляем статус в таблице
+            selected.forEach(facultyId => {
+                updateFacultyRowStatus(facultyId, false);
+            });
+            showNotification(data.message, 'success');
+            
+            // Сбрасываем выбор
+            resetSelection();
+        } else {
+            showNotification(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при деактивации', 'danger');
+    });
+}
+
+function performBulkDelete() {
+    const selected = Array.from(selectedFacultiesIds);
+    if (selected.length === 0) return;
+    
+    showLoading('Удаление специальностей...');
+    
+    fetch('/faculties/bulk-delete/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            faculty_ids: selected
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        hideLoading();
+        if (data.success) {
+            // Удаляем строки из таблицы
+            selected.forEach(facultyId => {
+                const row = document.querySelector(`[data-id="${facultyId}"]`);
+                if (row) {
+                    row.style.transform = 'translateX(-100%)';
+                    row.style.opacity = '0';
+                    row.style.transition = 'all 0.3s ease';
+                    setTimeout(() => row.remove(), 300);
+                }
+            });
+            
+            showNotification(data.message, 'success');
+            resetSelection();
+        } else {
+            showNotification(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        hideLoading();
+        console.error('Error:', error);
+        showNotification('Произошла ошибка при удалении', 'danger');
+    });
+}
+
+// ====================================
+// ЭКСПОРТ
+// ====================================
+
+function exportAllToExcel() {
+    const params = new URLSearchParams(window.CURRENT_FILTERS || {});
+    params.append('export_all', 'true');
+    
+    window.open(`${window.FACULTY_EXPORT_URL}?${params.toString()}`, '_blank');
+}
+
+function exportSelectedToExcel() {
+    const selected = Array.from(selectedFacultiesIds);
+    if (selected.length === 0) {
+        showNotification('Выберите специальности для экспорта', 'warning');
+        return;
+    }
+    
+    const params = new URLSearchParams(window.CURRENT_FILTERS || {});
+    params.append('selected', selected.join(','));
+    
+    window.open(`${window.FACULTY_EXPORT_URL}?${params.toString()}`, '_blank');
+}
+
+// ====================================
+// ИНИЦИАЛИЗАЦИЯ МОДАЛЬНЫХ ОКОН
+// ====================================
+
+function initializeModalHandlers() {
+    // Обработчик удаления одного факультета
+    const confirmDeleteFaculty = document.getElementById('confirmDeleteFaculty');
+    if (confirmDeleteFaculty) {
+        confirmDeleteFaculty.addEventListener('click', function() {
+            if (!currentFacultyId) return;
+            
+            const modal = bootstrap.Modal.getInstance(document.getElementById('deleteFacultyModal'));
+            modal.hide();
+            
+            showLoading('Удаление специальности...');
+            
+            fetch(`/faculties/${currentFacultyId}/delete/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken,
+                    'Content-Type': 'application/json',
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    const row = document.querySelector(`[data-id="${currentFacultyId}"]`);
+                    if (row) {
+                        row.style.transform = 'translateX(-100%)';
+                        row.style.opacity = '0';
+                        row.style.transition = 'all 0.3s ease';
+                        setTimeout(() => row.remove(), 300);
+                    }
+                    showNotification(data.message, 'success');
+                } else {
+                    showNotification(data.message, 'danger');
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                console.error('Error:', error);
+                showNotification('Произошла ошибка при удалении специальности', 'danger');
+            });
+        });
+    }
+
+    // Обработчик массовой активации
+    const confirmBulkActivate = document.getElementById('confirmBulkActivate');
+    if (confirmBulkActivate) {
+        confirmBulkActivate.addEventListener('click', function() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('bulkActivateModal'));
+            modal.hide();
+            performBulkActivate();
+        });
+    }
+
+    // Обработчик массовой деактивации
+    const confirmBulkDeactivate = document.getElementById('confirmBulkDeactivate');
+    if (confirmBulkDeactivate) {
+        confirmBulkDeactivate.addEventListener('click', function() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('bulkDeactivateModal'));
+            modal.hide();
+            performBulkDeactivate();
+        });
+    }
+
+    // Обработчик массового удаления
+    const confirmBulkDelete = document.getElementById('confirmBulkDelete');
+    if (confirmBulkDelete) {
+        confirmBulkDelete.addEventListener('click', function() {
+            const modal = bootstrap.Modal.getInstance(document.getElementById('bulkDeleteModal'));
+            modal.hide();
+            performBulkDelete();
+        });
+    }
+    
+    // Очистка переменных при закрытии модальных окон
+    document.addEventListener('hidden.bs.modal', function(e) {
+        if (e.target.id === 'deleteFacultyModal') {
+            currentFacultyId = null;
+            currentFacultyName = null;
+        }
+    });
+}
+
+// ====================================
+// УТИЛИТЫ
+// ====================================
+
+function clearSearch() {
+    const searchField = document.querySelector('.search-field');
+    if (searchField) {
+        searchField.value = '';
+        document.querySelector('.search-form').submit();
+    }
+}
+
+// ====================================
+// ИНИЦИАЛИЗАЦИЯ ПРИ ЗАГРУЗКЕ СТРАНИЦЫ
+// ====================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM загружен, инициализируем специальности...');
+    
+    // Инициализируем все обработчики
+    initializeModalHandlers();
+    initializeCheckboxHandlers();
+    
+    // Инициализация dropdown меню
+    document.querySelectorAll('#exportTrigger').forEach(trigger => {
+        trigger.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const menu = document.getElementById('exportMenu');
+            
+            // Закрываем все другие меню
+            document.querySelectorAll('.dropdown-menu').forEach(otherMenu => {
+                if (otherMenu !== menu) {
+                    otherMenu.style.display = 'none';
+                }
+            });
+            
+            // Переключаем экспорт
+            if (menu) {
+                menu.style.display = menu.style.display === 'block' ? 'none' : 'block';
+            }
+        });
+    });
+    
+    // Закрытие меню при клике вне
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.dropdown-action')) {
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.style.display = 'none';
+            });
+        }
+    });
+    
+    console.log('Специальности инициализированы');
+});
+
+console.log('Faculties script loaded successfully!');
+</script>
+{% endblock %}
