@@ -800,9 +800,7 @@
 }
 
 .group-pill {
-    background: linear-gradient(135deg, var(--primary), #8b5cf6);
-    padding: 6px 12px;
-    border-radius: 20px;
+    color: var(--text-secondary);
     font-size: 12px;
 }
 

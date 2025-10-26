@@ -1,0 +1,274 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Создание группы - МПТ Журнал{% endblock %}
+{% block page_title %}Создание группы{% endblock %}
+{% block mobile_title %}Создание группы{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<link rel="stylesheet" href="{% static 'css/group_create.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="group-create-container">
+    <div class="create-panel">
+        <!-- Заголовок -->
+        <div class="panel-header">
+            <div class="header-content">
+                <div class="header-icon">
+                    <i class="bi bi-plus-circle"></i>
+                </div>
+                <div class="header-text">
+                    <h1>Создание новой группы</h1>
+                    <p>Заполните информацию о группе и выберите студентов</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Форма -->
+        <form method="post" class="form-content" id="groupCreateForm">
+            {% csrf_token %}
+            
+            <div class="form-grid">
+                <!-- Код группы -->
+                <div class="form-section">
+                    <label class="form-label" for="id_code">
+                        <i class="bi bi-hash"></i>
+                        Код группы
+                    </label>
+                    <input type="text" id="id_code" name="code" class="form-input" 
+                           placeholder="например: ИС-21" required>
+                </div>
+
+                <!-- Название группы -->
+                <div class="form-section">
+                    <label class="form-label" for="id_name">
+                        <i class="bi bi-tag"></i>
+                        Название группы
+                    </label>
+                    <input type="text" id="id_name" name="name" class="form-input" 
+                           placeholder="например: Информационные системы">
+                </div>
+
+                <!-- КРАСИВЫЙ СЕЛЕКТ СПЕЦИАЛЬНОСТИ -->
+                <div class="form-section">
+                    <label class="form-label">
+                        <i class="bi bi-building"></i>
+                        Специальность
+                    </label>
+                    <div class="custom-select" id="facultySelect">
+                        <select name="faculty" required>
+                            <option value="">Выберите специальность</option>
+                            {% for faculty in faculties %}
+                                <option value="{{ faculty.id }}" data-professions="{{ faculty.get_professions_list|join:',' }}">
+                                    {{ faculty.name }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                        <div class="select-trigger placeholder">
+                            <span class="select-text">Выберите специальность</span>
+                            <div class="select-arrow">
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                        </div>
+                        <div class="select-dropdown">
+                            {% for faculty in faculties %}
+                            <div class="select-option" data-value="{{ faculty.id }}" data-professions="{{ faculty.get_professions_list|join:',' }}">
+                                <div class="select-option-icon">
+                                    <i class="bi bi-building"></i>
+                                </div>
+                                <div class="select-option-text">{{ faculty.name }}</div>
+                                <div class="select-option-badge">{{ faculty.code }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- КРАСИВЫЙ СЕЛЕКТ ПРОФЕССИИ -->
+                <div class="form-section">
+                    <label class="form-label">
+                        <i class="bi bi-briefcase"></i>
+                        Профессия
+                    </label>
+                    <div class="custom-select" id="professionSelect">
+                        <select name="profession" required>
+                            <option value="">Сначала выберите специальность</option>
+                        </select>
+                        <div class="select-trigger placeholder">
+                            <span class="select-text">Сначала выберите специальность</span>
+                            <div class="select-arrow">
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                        </div>
+                        <div class="select-dropdown">
+                            <div class="select-option disabled">
+                                <div class="select-option-text">Сначала выберите специальность</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- КРАСИВЫЙ СЕЛЕКТ КУРСА -->
+                <div class="form-section">
+                    <label class="form-label">
+                        <i class="bi bi-mortarboard"></i>
+                        Курс
+                    </label>
+                    <div class="custom-select" id="courseSelect">
+                        <select name="course" required>
+                            <option value="">Выберите курс</option>
+                            <option value="1">1 курс</option>
+                            <option value="2">2 курс</option>
+                            <option value="3">3 курс</option>
+                            <option value="4">4 курс</option>
+                        </select>
+                        <div class="select-trigger placeholder">
+                            <span class="select-text">Выберите курс</span>
+                            <div class="select-arrow">
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                        </div>
+                        <div class="select-dropdown">
+                            <div class="select-option" data-value="1">
+                                <div class="select-option-icon">
+                                    <i class="bi bi-1-circle"></i>
+                                </div>
+                                <div class="select-option-text">1 курс</div>
+                            </div>
+                            <div class="select-option" data-value="2">
+                                <div class="select-option-icon">
+                                    <i class="bi bi-2-circle"></i>
+                                </div>
+                                <div class="select-option-text">2 курс</div>
+                            </div>
+                            <div class="select-option" data-value="3">
+                                <div class="select-option-icon">
+                                    <i class="bi bi-3-circle"></i>
+                                </div>
+                                <div class="select-option-text">3 курс</div>
+                            </div>
+                            <div class="select-option" data-value="4">
+                                <div class="select-option-icon">
+                                    <i class="bi bi-4-circle"></i>
+                                </div>
+                                <div class="select-option-text">4 курс</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Дата поступления -->
+                <div class="form-section">
+                    <label class="form-label" for="id_enrollment_date">
+                        <i class="bi bi-calendar"></i>
+                        Дата поступления
+                    </label>
+                    <input type="date" id="id_enrollment_date" name="enrollment_date" class="form-input" required>
+                </div>
+
+                <!-- Описание -->
+                <div class="form-section full-width">
+                    <label class="form-label" for="id_description">
+                        <i class="bi bi-card-text"></i>
+                        Описание (информационное)
+                    </label>
+                    <textarea id="id_description" name="description" class="form-input form-textarea" 
+                            placeholder="Дополнительная информация о группе (не сохраняется в БД)"></textarea>
+                    <small style="color: var(--bs-secondary); font-size: 12px; margin-top: 4px;">
+                        * Это поле служит для заметок при создании, но не сохраняется в базе данных
+                    </small>
+                </div>
+            </div>
+
+            <!-- Массовый выбор студентов -->
+            <div class="form-section full-width">
+                <label class="form-label">
+                    <i class="bi bi-people"></i>
+                    Студенты группы
+                </label>
+                
+                <div class="students-selection">
+                    <div class="students-header">
+                        <h3 class="students-title">Выберите студентов</h3>
+                        <div class="students-controls">
+                            <button type="button" class="control-btn" onclick="selectAllStudents()">
+                                Выбрать всех
+                            </button>
+                            <button type="button" class="control-btn" onclick="unselectAllStudents()">
+                                Снять выбор
+                            </button>
+                            <span class="selected-count" id="selectedCount">0</span>
+                        </div>
+                    </div>
+
+                    <div class="students-search">
+                        <input type="text" class="search-input" placeholder="Поиск студентов..." 
+                               onkeyup="filterStudents(this.value)">
+                    </div>
+
+                    <div class="students-list" id="studentsList">
+                        {% for student in students %}
+                        <!-- ИСПРАВЛЕНО: убрал onclick="toggleStudent(...)" -->
+                        <div class="student-item" data-student-id="{{ student.id }}" 
+                             data-student-name="{{ student.get_full_name|lower }}">
+                            <input type="checkbox" class="student-checkbox" name="students" 
+                                   value="{{ student.id }}" id="student_{{ student.id }}">
+                            <div class="student-info">
+                                <div class="student-name">{{ student.get_full_name }}</div>
+                                <div class="student-details">
+                                    {% if student.email %}{{ student.email }}{% endif %}
+                                    {% if student.group %} • Группа: {{ student.group.code }}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="student-item">
+                            <div class="student-info">
+                                <div class="student-name">Студенты не найдены</div>
+                                <div class="student-details">Сначала добавьте студентов в систему</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Кнопки действий -->
+            <div class="form-actions">
+                <a href="{% url 'groups_main' %}" class="back-link">
+                    <i class="bi bi-arrow-left"></i>
+                    Назад к группам
+                </a>
+                
+                <div class="submit-actions">
+                    <button type="button" class="submit-btn secondary" onclick="resetForm()">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        Сбросить
+                    </button>
+                    <button type="submit" class="submit-btn primary">
+                        <i class="bi bi-plus-circle"></i>
+                        Создать группу
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Передаем данные специальностей в JavaScript
+window.facultiesData = {
+    {% for faculty in faculties %}
+    {{ faculty.id }}: {
+        name: "{{ faculty.name }}",
+        professions: {{ faculty.get_professions_list|safe }}
+    }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+};
+</script>
+<script src="{% static 'js/group_create.js' %}"></script>
+{% endblock %}

@@ -20,11 +20,14 @@ import io
 import re
 import uuid
 from datetime import datetime
+from urllib.parse import urlencode
 import tempfile
 import os
 from django.contrib.auth.decorators import login_required, user_passes_test
 from admin_panel.services.backup_service import BackupService
 from admin_panel.models import Backup
+from django.views.decorators.http import require_POST
+
 
 # Безопасная проверка импорта моделей
 try:
@@ -103,7 +106,6 @@ def students_list_view(request):
         search = request.GET.get('search', '').strip()
         group_filter = request.GET.get('group', '')
         status_filter = request.GET.get('status', '')
-        course_filter = request.GET.get('course', '')
         
         # Получаем выбранных студентов из параметров
         selected_students = request.GET.get('selected', '').strip()
@@ -141,10 +143,6 @@ def students_list_view(request):
         elif status_filter:
             students = students.filter(study_status=status_filter)
         
-        # Фильтр по курсу
-        if course_filter:
-            students = students.filter(course=course_filter)
-        
         # Сортировка
         students = students.order_by('last_name', 'first_name')
         
@@ -160,8 +158,10 @@ def students_list_view(request):
         groups = Group.objects.filter(is_active=True).select_related('faculty').order_by('name')
         
         # Добавляем количество студентов в каждой группе
+        group_counts = Group.objects.filter(id__in=groups.values_list('id', flat=True)).annotate(total=Count('students'))
+        counts_map = {g.id: g.total for g in group_counts}
         for group in groups:
-            group.students_count = group.students.count()
+            group.total_students = counts_map.get(group.id, 0)
         
         context = {
             'page_obj': page_obj,
@@ -169,24 +169,33 @@ def students_list_view(request):
             'search': search,
             'group_filter': group_filter,
             'status_filter': status_filter,
-            'course_filter': course_filter,
-            'course_choices': Student._meta.get_field('course').choices,
-            'status_choices': Student._meta.get_field('study_status').choices,
             'total_students': total_students,
+            'status_choices': Student._meta.get_field('study_status').choices,
             'selected_students': selected_ids,
             'current_filters': {
                 'search': search,
                 'group': group_filter,
                 'status': status_filter,
-                'course': course_filter,
             }
         }
         
         return render(request, 'admin_panel/students/students_list.html', context)
     
     except Exception as e:
+        import logging, traceback
+        logging.exception("Ошибка загрузки списка студентов")
+        trace = traceback.format_exc()
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': str(e),
+                'traceback': trace,
+            }, status=500)
         messages.error(request, f'Ошибка загрузки студентов: {str(e)}')
-        return redirect('admin_dashboard')
+        return render(request, 'admin_panel/students/students_error.html', {
+            'error': str(e),
+            'traceback': trace,
+        }, status=500)
 
 # ====================================
 # СТУДЕНТЫ - HTML СТРАНИЦЫ
@@ -2707,3 +2716,313 @@ def backup_download_view(request, backup_id):
     except Exception as e:
         messages.error(request, f'Ошибка при скачивании: {str(e)}')
         return redirect('admin_backups')
+
+
+
+
+
+
+
+
+
+
+@login_required
+def groups_main_view(request):
+    search_query = request.GET.get('search', '').strip()
+    specialty_filter = request.GET.get('specialty', '').strip()
+    profession_filter = request.GET.get('profession', '').strip()
+    course_filter = request.GET.get('course', '').strip() or '1'
+
+    faculties = list(Faculty.objects.filter(is_active=True).order_by('name'))
+    all_faculties = faculties  # нужно в шаблон
+
+    faculty_ids = [faculty.id for faculty in faculties]
+    profession_sets = {
+        faculty.id: set(p for p in (faculty.get_professions_list() or []) if p)
+        for faculty in faculties
+    }
+
+    if faculty_ids:
+        for faculty_id, profession in (
+            Group.objects.filter(faculty_id__in=faculty_ids)
+            .values_list('faculty_id', 'profession')
+            .distinct()
+        ):
+            if profession:
+                profession_sets.setdefault(faculty_id, set()).add(profession)
+
+    specialties_data = {
+        str(faculty.id): {
+            'name': faculty.name,
+            'professions': sorted(profession_sets.get(faculty.id, set()))
+        }
+        for faculty in faculties
+    }
+
+    groups_data = []
+    total_groups = 0
+    total_students = 0
+
+    for faculty in faculties:
+        if specialty_filter and str(faculty.id) != specialty_filter:
+            continue
+
+        # 1) Берём из JSON
+        faculty_professions = set(faculty.get_professions_list() or [])
+        # 2) Добавляем фактические профессии из групп
+        group_professions = set(
+            Group.objects.filter(faculty=faculty)
+            .values_list('profession', flat=True)
+            .distinct()
+        )
+        all_professions = sorted(p for p in (faculty_professions | group_professions) if p)
+
+        faculty_data = {'faculty': faculty, 'professions': []}
+
+        # Если вообще нет профессий ни в JSON, ни в группах — показываем пустой блок
+        if not all_professions:
+            groups_data.append(faculty_data)
+            continue
+
+        for profession in all_professions:
+            if profession_filter and profession != profession_filter:
+                continue
+
+            groups = Group.objects.filter(
+                faculty=faculty,
+                profession=profession,
+                is_active=True
+            ).annotate(total_students=Count('students')).order_by('code')
+
+            filtered_groups = []
+            for group in groups:
+                course = group.current_course
+                if course_filter and str(course) != course_filter:
+                    continue
+                if search_query:
+                    q = search_query.lower()
+                    if not (q in group.code.lower() or q in faculty.name.lower() or q in profession.lower()):
+                        continue
+                filtered_groups.append({
+                    'group': group,
+                    'current_course': course,
+                    'students_count': group.total_students
+                })
+
+            profession_entry = {
+                'name': profession,
+                'groups': filtered_groups,
+                'groups_count': len(filtered_groups),
+                'total_students': sum(g['students_count'] for g in filtered_groups),
+            }
+
+            faculty_data['professions'].append(profession_entry)
+
+            if filtered_groups:
+                total_groups += len(filtered_groups)
+                total_students += profession_entry['total_students']
+
+        groups_data.append(faculty_data)
+
+    faculties_with_professions = sum(1 for data in groups_data if data['professions'])
+
+    context = {
+        'groups_data': groups_data,
+        'faculties': faculties,
+        'all_faculties': all_faculties,  # важно для шаблона фильтра
+        'total_faculties': faculties_with_professions,
+        'total_groups': total_groups,
+        'total_students': total_students,
+        'search_query': search_query,
+        'specialty_filter': specialty_filter,
+        'profession_filter': profession_filter,
+        'course_filter': course_filter,
+        'specialties_data_json': json.dumps(specialties_data, ensure_ascii=False),
+    }
+    return render(request, 'admin_panel/groups/groups_main.html', context)
+
+@login_required
+def group_create_view(request):
+    faculties = Faculty.objects.filter(is_active=True).order_by('name')
+    students = Student.objects.filter(group__isnull=True).order_by('last_name', 'first_name')
+    if request.method == 'POST':
+        code = request.POST.get('code', '').strip()
+        faculty_id = request.POST.get('faculty', '').strip()
+        profession = request.POST.get('profession', '').strip()
+        enrollment_date = request.POST.get('enrollment_date')
+        graduation_date = request.POST.get('graduation_date')
+        selected_student_ids = request.POST.getlist('students')
+
+        faculty = get_object_or_404(Faculty, id=faculty_id)
+        group = Group(code=code, name=code, faculty=faculty, profession=profession, is_active=True)
+        try:
+            with transaction.atomic():
+                if enrollment_date:
+                    group.enrollment_date = datetime.strptime(enrollment_date, '%Y-%m-%d').date()
+                if graduation_date:
+                    group.graduation_date = datetime.strptime(graduation_date, '%Y-%m-%d').date()
+                group.save()
+
+                if selected_student_ids:
+                    students_to_assign = Student.objects.filter(id__in=selected_student_ids)
+                    for student in students_to_assign:
+                        student.group = group
+                        if group.enrollment_date:
+                            student.enrollment_date = group.enrollment_date
+                        if group.graduation_date:
+                            student.graduation_date = group.graduation_date
+                        student.save()
+
+            messages.success(request, 'Группа успешно создана')
+            
+            query = urlencode({
+                'search': group.code,
+                'course': group.current_course or 1,
+            })
+            redirect_url = f"{reverse('groups_main')}?{query}"
+            return redirect(redirect_url)
+        except Exception as e:
+            messages.error(request, f'Ошибка при создании группы: {str(e)}')
+
+    context = {
+        'faculties': faculties,
+        'students': students,
+    }
+    return render(request, 'admin_panel/groups/group_create.html', context)
+
+@login_required
+def group_edit_view(request, group_id):
+    group = get_object_or_404(Group, id=group_id)
+    faculties = Faculty.objects.filter(is_active=True).order_by('name')
+    if request.method == 'POST':
+        code = request.POST.get('code', '').strip()
+        faculty_id = request.POST.get('faculty', '').strip()
+        profession = request.POST.get('profession', '').strip()
+        enrollment_date = request.POST.get('enrollment_date')
+        graduation_date = request.POST.get('graduation_date')
+        is_active = request.POST.get('is_active') == 'on'
+
+        faculty = get_object_or_404(Faculty, id=faculty_id)
+        group.code = code
+        group.name = code
+        group.faculty = faculty
+        group.profession = profession
+        group.is_active = is_active
+        try:
+            if enrollment_date:
+                group.enrollment_date = datetime.strptime(enrollment_date, '%Y-%m-%d').date()
+            if graduation_date:
+                group.graduation_date = datetime.strptime(graduation_date, '%Y-%m-%d').date()
+            group.save()
+            messages.success(request, 'Группа успешно обновлена')
+            return redirect('group_detail', group_id=group.id)
+        except Exception as e:
+            messages.error(request, f'Ошибка при сохранении: {str(e)}')
+    students = group.students.all().order_by('last_name', 'first_name')
+    students_without_group = Student.objects.filter(group__isnull=True).order_by('last_name', 'first_name')
+    other_groups = Group.objects.exclude(id=group.id).filter(is_active=True).order_by('code')
+    context = {
+        'group': group,
+        'faculties': faculties,
+        'students': students,
+        'students_without_group': students_without_group,
+        'other_groups': other_groups,
+        'total_students': students.count(),
+        'students_without_group_count': students_without_group.count(),
+    }
+    return render(request, 'admin_panel/groups/group_edit.html', context)
+
+@login_required
+def group_detail_view(request, group_id):
+    group = get_object_or_404(Group, id=group_id)
+    students = group.students.all().order_by('last_name', 'first_name')
+    context = {
+        'group': group,
+        'students': students,
+    }
+    return render(request, 'admin_panel/groups/group_detail.html', context)
+
+# API-операции для управления студентами в группе
+@login_required
+@require_POST
+def transfer_student_api(request):
+    try:
+        data = json.loads(request.body or '{}')
+        student_id = data.get('student_id')
+        target_group_id = data.get('target_group_id')
+
+        if not student_id or not target_group_id:
+            return JsonResponse({'success': False, 'error': 'Не указаны студент или целевая группа'}, status=400)
+
+        student = get_object_or_404(Student, id=student_id)
+        target_group = get_object_or_404(Group, id=target_group_id)
+
+        if student.group_id == target_group.id:
+            return JsonResponse({'success': False, 'error': 'Студент уже состоит в этой группе'}, status=400)
+
+        with transaction.atomic():
+            student.group = target_group
+            if target_group.enrollment_date:
+                student.enrollment_date = target_group.enrollment_date
+            if target_group.graduation_date:
+                student.graduation_date = target_group.graduation_date
+            student.save()
+
+        return JsonResponse({'success': True, 'message': 'Студент успешно переведен'})
+    except Exception as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
+
+@login_required
+@require_POST
+def remove_student_from_group_api(request):
+    try:
+        data = json.loads(request.body or '{}')
+        student_id = data.get('student_id')
+
+        if not student_id:
+            return JsonResponse({'success': False, 'error': 'Не указан студент'}, status=400)
+
+        student = get_object_or_404(Student, id=student_id)
+
+        with transaction.atomic():
+            student.group = None
+            if hasattr(student, 'study_status'):
+                student.study_status = 'expelled'
+            student.save()
+
+        return JsonResponse({'success': True, 'message': 'Студент исключён из группы'})
+    except Exception as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)
+
+
+@login_required
+@require_POST
+def add_student_to_group_api(request, group_id):
+    try:
+        data = json.loads(request.body or '{}')
+        student_id = data.get('student_id')
+
+        if not student_id:
+            return JsonResponse({'success': False, 'error': 'Не указан студент'}, status=400)
+
+        group = get_object_or_404(Group, id=group_id)
+        student = get_object_or_404(Student, id=student_id)
+
+        if student.group_id == group.id:
+            return JsonResponse({'success': False, 'error': 'Студент уже состоит в этой группе'}, status=400)
+
+        if student.group_id:
+            return JsonResponse({'success': False, 'error': 'Студент уже состоит в другой группе'}, status=400)
+
+        with transaction.atomic():
+            student.group = group
+            if group.enrollment_date:
+                student.enrollment_date = group.enrollment_date
+            if group.graduation_date:
+                student.graduation_date = group.graduation_date
+            student.save()
+
+        return JsonResponse({'success': True, 'message': 'Студент добавлен в группу'})
+    except Exception as exc:
+        return JsonResponse({'success': False, 'error': str(exc)}, status=400)

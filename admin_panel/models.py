@@ -2,12 +2,14 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
 from django.utils import timezone
+from django.core.exceptions import ValidationError
 import os
+from datetime import date, datetime
 
 
 class Faculty(models.Model):
-    """Факультет"""
-    name = models.CharField('Название факультета', max_length=200)
+    """Факультет (Специальность) - оставляем как есть"""
+    name = models.CharField('Название специальности', max_length=200)
     
     # Изменяем поле code для формата специальности
     code_validator = RegexValidator(
@@ -39,14 +41,14 @@ class Faculty(models.Model):
                                   related_name='created_faculties', verbose_name='Создан пользователем')
     
     class Meta:
-        verbose_name = 'Факультет'
-        verbose_name_plural = 'Факультеты'
+        verbose_name = 'Специальность'
+        verbose_name_plural = 'Специальности'
         ordering = ['name']
     
     def __str__(self):
         return f"{self.name} ({self.code})"
     
-    # МЕТОДЫ ДЛЯ РАБОТЫ С ПРОФЕССИЯМИ
+    # МЕТОДЫ ДЛЯ РАБОТЫ С ПРОФЕССИЯМИ - оставляем как есть
     def get_professions_list(self):
         """Возвращает список названий профессий"""
         if not self.professions:
@@ -115,54 +117,154 @@ class Faculty(models.Model):
         professions = self.get_professions_list()
         return '\n'.join(professions) if professions else ''
     
-    # СУЩЕСТВУЮЩИЕ МЕТОДЫ
+    # ОБНОВЛЕННЫЕ МЕТОДЫ для новой структуры
     @property
     def groups_count(self):
-        return self.group_set.count()
+        """Количество групп через профессии"""
+        return Group.objects.filter(profession__in=self.get_professions_list(), 
+                                   faculty=self).count()
     
     @property 
     def students_count(self):
+        """Количество студентов через группы"""
         return Student.objects.filter(group__faculty=self).count()
     
     @property
     def active_students_count(self):
+        """Количество активных студентов"""
         return Student.objects.filter(group__faculty=self, user__is_active=True).count()
 
 
 
-
-
 class Group(models.Model):
-    """Учебная группа"""
-    name = models.CharField('Название группы', max_length=50)
-    code = models.CharField('Код группы', max_length=20, unique=True, default='TEMP')
-    faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, verbose_name='Факультет')
-    course = models.IntegerField('Курс', choices=[
-        (1, '1 курс'),
-        (2, '2 курс'),
-        (3, '3 курс'),
-        (4, '4 курс'),
-        (5, '5 курс'),
-    ])
-    year_start = models.IntegerField('Год поступления')
+    """Учебная группа - ОБНОВЛЕННАЯ МОДЕЛЬ"""
+    
+    STATUS_CHOICES = [
+        ('studying', 'Учится'),
+        ('graduated', 'Выпущена'),
+        ('disbanded', 'Расформирована'),
+    ]
+    
+    # Основные поля
+    name = models.CharField('Название группы', max_length=50)  # оставляем для совместимости
+    code = models.CharField('Код группы', max_length=20, unique=True)
+    
+    # Связи - ИЗМЕНЯЕМ СТРУКТУРУ
+    faculty = models.ForeignKey(Faculty, on_delete=models.CASCADE, verbose_name='Специальность')
+    profession = models.CharField('Профессия', max_length=150, help_text='Профессия в рамках специальности')
+    
+    # Временные поля - ОБНОВЛЯЕМ
+    enrollment_date = models.DateField('Дата поступления', null=True, blank=True)
+    graduation_date = models.DateField('Дата планируемого окончания', null=True, blank=True)
+    
+    # Статус
     is_active = models.BooleanField('Активная группа', default=True)
+    
+    # Служебные поля
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, 
+                                  related_name='created_groups', verbose_name='Создан пользователем')
     
     class Meta:
         verbose_name = 'Группа'
         verbose_name_plural = 'Группы'
-        ordering = ['faculty', 'course', 'name']
+        ordering = ['faculty', 'profession', 'code']
     
     def __str__(self):
-        return f"{self.name} ({self.faculty.code})"
+        return f"{self.code} ({self.profession})"
+    
+    # АВТОМАТИЧЕСКИЕ РАСЧЕТЫ
+    @property
+    def current_course(self):
+        """Автоматический расчет текущего курса"""
+        if not self.enrollment_date:
+            return 1
+            
+        current_date = date.today()
+        years_passed = current_date.year - self.enrollment_date.year
+        
+        # Если еще не сентябрь текущего учебного года, курс меньше на 1
+        if current_date.month < 9:
+            years_passed -= 1
+            
+        course = max(years_passed + 1, 1)
+        return min(course, 4)  # Максимум 4 курса
+    
+    @property
+    def status(self):
+        """Автоматический расчет статуса группы"""
+        if not self.is_active:
+            return 'disbanded'
+        
+        if self.current_course > 4:
+            return 'graduated'
+        
+        return 'studying'
+    
+    @property
+    def status_display(self):
+        """Отображение статуса"""
+        status_dict = {
+            'studying': f'{self.current_course} курс',
+            'graduated': 'Выпущена',
+            'disbanded': 'Расформирована'
+        }
+        return status_dict.get(self.status, 'Неизвестно')
     
     @property
     def students_count(self):
+        """Количество студентов в группе"""
         return self.students.count()
+    
+    @property
+    def active_students_count(self):
+        """Количество активных студентов"""
+        return self.students.filter(study_status='active').count()
+    
+    # МЕТОДЫ ДЛЯ РАБОТЫ С ПРОФЕССИЯМИ
+    def get_available_professions(self):
+        """Возвращает доступные профессии для специальности"""
+        return self.faculty.get_professions_list()
+    
+    def is_valid_profession(self):
+        """Проверяет валидность выбранной профессии"""
+        available = self.get_available_professions()
+        return self.profession in available if available else True
+    
+    def save(self, *args, **kwargs):
+        # Автоматический расчет даты окончания (4 года обучения)
+        if self.enrollment_date and not self.graduation_date:
+            from datetime import timedelta
+            self.graduation_date = self.enrollment_date.replace(
+                year=self.enrollment_date.year + 4,
+                month=6,  # Июнь - традиционный месяц выпуска
+                day=30
+            )
+        
+        # Заполняем name если не указано (для совместимости)
+        if not self.name:
+            self.name = self.code
+            
+        super().save(*args, **kwargs)
+    
+    def clean(self):
+        """Валидация модели"""
+        # Проверяем профессию
+        if self.profession and not self.is_valid_profession():
+            available = self.get_available_professions()
+            if available:
+                available_str = ', '.join(available)
+                raise ValidationError({
+                    'profession': f'Выбранная профессия недоступна для специальности "{self.faculty.name}". '
+                                f'Доступные профессии: {available_str}'
+                })
+
 
 
 class Student(models.Model):
-    """Студент"""
+    """Студент - ДОБАВЛЯЕМ СВЯЗЬ С НОВОЙ ГРУППОЙ"""
+    
     # ИЗМЕНЕНО: Связь с пользователем теперь опциональна
     user = models.OneToOneField(
         User, 
@@ -179,25 +281,15 @@ class Student(models.Model):
     last_name = models.CharField('Фамилия', max_length=50)
     middle_name = models.CharField('Отчество', max_length=50, blank=True)
     
-    # Учебная информация
+    # Учебная информация - ОБНОВЛЯЕМ
     group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, blank=True, 
                              verbose_name='Группа', related_name='students')
-    course = models.IntegerField('Курс', choices=[
-        (1, '1 курс'),
-        (2, '2 курс'),
-        (3, '3 курс'),
-        (4, '4 курс'),
-        (5, '5 курс'),
-    ], default=1)
     
-    # ДОБАВЛЯЕМ ПОЛЕ ПРОФЕССИИ
-    profession = models.CharField(
-        'Профессия',
-        max_length=150,
-        blank=True,
-        null=True,
-        help_text='Выбранная профессия в рамках специальности'
-    )
+    # УБИРАЕМ ДУБЛИРУЮЩИЕ ПОЛЯ (course берем из группы)
+    # course = models.IntegerField... - удаляем, берем из group.current_course
+    
+    # УБИРАЕМ profession - берем из группы
+    # profession = models.CharField... - удаляем, берем из group.profession
     
     # Контактная информация
     phone_regex = RegexValidator(
@@ -263,27 +355,27 @@ class Student(models.Model):
             return f"{self.last_name} {self.first_name[0]}.{self.middle_name[0]}."
         return f"{self.last_name} {self.first_name[0]}."
     
-    # МЕТОДЫ ДЛЯ РАБОТЫ С ПРОФЕССИЯМИ
-    def get_available_professions(self):
-        """Возвращает список доступных профессий из специальности"""
-        if self.group and self.group.faculty:
-            return self.group.faculty.get_professions_list()
-        return []
+    # СВОЙСТВА ДЛЯ ПОЛУЧЕНИЯ ДАННЫХ ИЗ ГРУППЫ
+    @property
+    def course(self):
+        """Курс студента (из группы)"""
+        return self.group.current_course if self.group else None
     
-    def is_valid_profession(self):
-        """Проверяет, что выбранная профессия доступна для специальности"""
-        if not self.profession:
-            return True  # Профессия не обязательна
-        
-        available_professions = self.get_available_professions()
-        if not available_professions:
-            return True  # Если в специальности нет профессий, любая подходит
-        
-        return self.profession in available_professions
+    def get_course_display(self):
+        """Отображение курса"""
+        course = self.course
+        if course:
+            return f"{course} курс"
+        return "Не определен"
+    
+    @property
+    def profession(self):
+        """Профессия студента (из группы)"""
+        return self.group.profession if self.group else None
     
     def get_profession_display(self):
         """Возвращает название профессии для отображения"""
-        return self.profession if self.profession else 'Не выбрана'
+        return self.profession if self.profession else 'Не определена'
     
     # НОВЫЕ МЕТОДЫ для управления доступом
     def has_system_access(self):
@@ -315,7 +407,6 @@ class Student(models.Model):
     def age(self):
         """Возраст студента"""
         if self.date_of_birth:
-            from datetime import date
             today = date.today()
             return today.year - self.date_of_birth.year - (
                 (today.month, today.day) < (self.date_of_birth.month, self.date_of_birth.day)
@@ -344,25 +435,10 @@ class Student(models.Model):
             return self.faculty.code
         return 'Не указан'
     
-    def clean(self):
-        """Валидация модели"""
-        from django.core.exceptions import ValidationError
-        
-        # Проверяем, что профессия доступна для специальности
-        if self.profession and not self.is_valid_profession():
-            available = self.get_available_professions()
-            if available:
-                available_str = ', '.join(available)
-                raise ValidationError({
-                    'profession': f'Выбранная профессия недоступна для специальности "{self.faculty_name}". '
-                                f'Доступные профессии: {available_str}'
-                })
-    
     def save(self, *args, **kwargs):
-        # Автогенерация студенческого билета если не указан
+    # Автогенерация студенческого билета если не указан
         if not self.student_id:
-            import datetime
-            year = datetime.datetime.now().year
+            year = datetime.now().year
             # Находим максимальный номер для текущего года
             last_student = Student.objects.filter(
                 student_id__startswith=f"MPT{year}"
@@ -376,15 +452,34 @@ class Student(models.Model):
             
             self.student_id = f"MPT{year}{new_number:04d}"
         
-        # Вызываем clean для валидации
-        self.full_clean()
+        # ИСПРАВЛЯЕМ: Синхронизируем даты с группой всегда, если группа изменилась
+        if self.group:
+            # Проверяем, изменилась ли группа
+            group_changed = False
+            if self.pk:  # Если студент уже существует
+                try:
+                    old_student = Student.objects.get(pk=self.pk)
+                    group_changed = (old_student.group != self.group)
+                except Student.DoesNotExist:
+                    group_changed = True
+            else:
+                # Новый студент
+                group_changed = True
+            
+            # Обновляем даты если группа изменилась или даты не заданы
+            if group_changed or not self.enrollment_date:
+                self.enrollment_date = self.group.enrollment_date
+            
+            if group_changed or not self.graduation_date:
+                self.graduation_date = self.group.graduation_date
         
         super().save(*args, **kwargs)
 
 
-# admin_panel/models.py - добавьте в конец файла
+
+
 class Backup(models.Model):
-    """Модель для хранения информации о резервных копиях"""
+    """Модель для хранения информации о резервных копиях - оставляем как есть"""
     
     BACKUP_TYPE_CHOICES = [
         ('manual', 'Ручная'),
@@ -418,10 +513,12 @@ class Backup(models.Model):
     description = models.TextField('Описание', blank=True)
     error_message = models.TextField('Сообщение об ошибке', blank=True)
 
+
     class Meta:
         verbose_name = 'Резервная копия'
         verbose_name_plural = 'Резервные копии'
         ordering = ['-created_at']
+
 
     def __str__(self):
         return f"{self.name} ({self.get_status_display()})"
@@ -456,5 +553,4 @@ class Backup(models.Model):
             'tables': self.tables_count,
             'records': self.records_count,
         }
-        return info
-
+        return info 

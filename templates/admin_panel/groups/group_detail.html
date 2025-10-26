@@ -1,0 +1,613 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}{{ group.code }} - МПТ Журнал{% endblock %}
+{% block page_title %}Группа {{ group.code }}{% endblock %}
+{% block mobile_title %}{{ group.code }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<style>
+.group-detail-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.detail-card {
+    margin-top: 10px;
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.group-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+    margin-bottom: 2rem;
+}
+
+.group-avatar {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(135deg, var(--bs-primary), #8b5cf6);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 700;
+    color: white;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.course-indicator {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #10b981;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    border: 3px solid var(--sidebar-bg);
+}
+
+.group-info {
+    flex: 1;
+}
+
+.group-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+}
+
+.group-meta {
+    color: var(--bs-secondary);
+    font-size: 0.95rem;
+    margin-bottom: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: center;
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    margin-bottom: 1rem;
+}
+
+.status-studying {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-graduated {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-disbanded {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+[data-bs-theme="dark"] .status-studying {
+    background: #1e3a8a;
+    color: #93c5fd;
+}
+
+[data-bs-theme="dark"] .status-graduated {
+    background: #064e3b;
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .status-disbanded {
+    background: #7f1d1d;
+    color: #fca5a5;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.info-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--bs-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.info-value {
+    font-size: 1.1rem;
+    color: var(--bs-body-color);
+    font-weight: 500;
+}
+
+.info-value.empty {
+    color: var(--bs-secondary);
+    font-style: italic;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-card {
+    background: var(--nav-link-hover);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--bs-primary);
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--bs-secondary);
+    font-weight: 500;
+}
+
+.students-table {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.table-header {
+    background: var(--nav-link-hover);
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.table-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.students-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 1rem;
+    padding: 0.75rem 1.5rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--bs-secondary);
+    text-transform: uppercase;
+    background: var(--nav-link-hover);
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.student-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.3);
+    align-items: center;
+    transition: background-color 0.2s ease;
+}
+
+.student-row:hover {
+    background: var(--nav-link-hover);
+}
+
+.student-row:last-child {
+    border-bottom: none;
+}
+
+.student-name {
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.student-email {
+    font-size: 0.9rem;
+    color: var(--bs-secondary);
+    margin-top: 2px;
+}
+
+.student-id {
+    font-family: 'SF Mono', Consolas, monospace;
+    color: var(--bs-primary);
+    font-weight: 500;
+}
+
+.account-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-weight: 500;
+}
+
+.account-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.account-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.no-account {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+[data-bs-theme="dark"] .account-active {
+    background: #064e3b;
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .account-inactive {
+    background: #7f1d1d;
+    color: #fca5a5;
+}
+
+[data-bs-theme="dark"] .no-account {
+    background: #451a03;
+    color: #fbbf24;
+}
+
+.student-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.action-btn {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    color: var(--bs-secondary);
+    font-size: 12px;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+    background: var(--bs-primary);
+    border-color: var(--bs-primary);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.page-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-top: 2rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--sidebar-bg);
+    color: var(--nav-link-color);
+    border: 1px solid var(--sidebar-border);
+}
+
+.btn-secondary:hover {
+    background: var(--nav-link-hover);
+    border-color: var(--bs-primary);
+    color: var(--bs-primary);
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    color: var(--bs-secondary);
+}
+
+.empty-state h4 {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--bs-body-color);
+}
+
+/* Адаптивность */
+@media (max-width: 768px) {
+    .group-header {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .group-avatar {
+        align-self: center;
+    }
+    
+    .group-meta {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .students-grid,
+    .student-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+    
+    .students-grid {
+        display: none;
+    }
+    
+    .student-row {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 1rem;
+        border: 1px solid var(--sidebar-border);
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+    }
+    
+    .page-actions {
+        flex-direction: column;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Кнопка возврата -->
+<a href="{% url 'groups_main' %}" class="btn btn-secondary">
+    <i class="bi bi-arrow-left"></i>
+    Назад к группам
+</a>
+
+<div class="group-detail-container">
+    <!-- Основная информация о группе -->
+    <div class="detail-card">
+        <div class="group-header">
+            <div class="group-info">
+                <h1 class="group-title">Группа {{ group.code }}</h1>
+                <div class="group-meta">
+                    <div class="meta-item">
+                        <i class="bi bi-tools"></i>
+                        {{ group.profession }}
+                    </div>
+                    <div class="meta-item">
+                        <i class="bi bi-building"></i>
+                        {{ group.faculty.name }}
+                    </div>
+                    <div class="meta-item">
+                        <i class="bi bi-people"></i>
+                        {{ total_students }} студентов
+                    </div>
+                </div>
+                
+                <div class="status-badge status-{{ group.status }}">
+                    <i class="bi bi-{% if group.status == 'studying' %}book{% elif group.status == 'graduated' %}trophy{% else %}x-circle{% endif %}"></i>
+                    {{ group.status_display }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Детальная информация -->
+        <div class="section-title">
+            <i class="bi bi-info-circle"></i>
+            Информация о группе
+        </div>
+        
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-label">Код группы</div>
+                <div class="info-value">{{ group.code }}</div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Специальность</div>
+                <div class="info-value">
+                    {{ group.faculty.name }}
+                    <br><small style="color: var(--bs-secondary);">{{ group.faculty.code }}</small>
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Профессия</div>
+                <div class="info-value">{{ group.profession }}</div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Текущий курс</div>
+                <div class="info-value">{{ group.current_course }} курс</div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Дата поступления</div>
+                <div class="info-value">
+                    {% if group.enrollment_date %}
+                        {{ group.enrollment_date|date:"d.m.Y" }}
+                    {% else %}
+                        <span class="empty">Не указана</span>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="info-item">
+                <div class="info-label">Планируемый выпуск</div>
+                <div class="info-value">
+                    {% if group.graduation_date %}
+                        {{ group.graduation_date|date:"d.m.Y" }}
+                    {% else %}
+                        <span class="empty">Не указана</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Список студентов -->
+    <div class="detail-card">
+        <div class="students-table">
+            <div class="table-header">
+                <div class="table-title">
+                    <i class="bi bi-people me-2"></i>
+                    Студенты группы
+                </div>
+                <span class="badge bg-primary">{{ total_students }}</span>
+            </div>
+            
+            {% if students %}
+                <div class="students-grid">
+                    <div>Студент</div>
+                    <div>Студ. билет</div>
+                    <div>Статус</div>
+                    <div>Аккаунт</div>
+                </div>
+                
+                {% for student in students %}
+                <div class="student-row">
+                    <div>
+                        <div class="student-name">{{ student.get_full_name }}</div>
+                        <div class="student-email">{{ student.email }}</div>
+                    </div>
+                    
+                    <div class="student-id">
+                        {{ student.student_id|default:"—" }}
+                    </div>
+                    
+                    <div>
+                        <span class="badge bg-{% if student.study_status == 'active' %}success{% elif student.study_status == 'academic_leave' %}warning{% else %}secondary{% endif %}">
+                            {{ student.get_study_status_display }}
+                        </span>
+                    </div>
+                    
+                    <div>
+                        {% if student.user %}
+                            {% if student.user.is_active %}
+                                <span class="account-status account-active">
+                                    <i class="bi bi-check-circle"></i>
+                                    Активен
+                                </span>
+                            {% else %}
+                                <span class="account-status account-inactive">
+                                    <i class="bi bi-x-circle"></i>
+                                    Заблокирован
+                                </span>
+                            {% endif %}
+                        {% else %}
+                            <span class="account-status no-account">
+                                <i class="bi bi-person-x"></i>
+                                Нет аккаунта
+                            </span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <h4>Нет студентов</h4>
+                    <p>В группе пока нет студентов</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Действия -->
+<div class="page-actions">
+    <a href="{% url 'group_edit' group.id %}" class="btn btn-primary">
+        <i class="bi bi-pencil"></i>
+        Редактировать группу
+    </a>
+</div>
+{% endblock %}

@@ -1,0 +1,12 @@
+{% extends 'admin_panel/base.html' %}
+{% block title %}Ошибка загрузки студентов{% endblock %}
+{% block page_title %}Ошибка{% endblock %}
+
+{% block content %}
+<div class="alert alert-danger">
+    <h4 class="alert-heading">Не удалось загрузить список студентов</h4>
+    <p>{{ error }}</p>
+    <hr>
+    <pre style="white-space: pre-wrap; background:#f9f9f9; padding:1rem; border-radius:6px; border:1px solid #ddd;">{{ traceback }}</pre>
+</div>
+{% endblock %}

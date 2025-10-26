@@ -590,7 +590,7 @@
                     <div class="info-label">Группа</div>
                     <div class="info-value {% if not student.group %}empty{% endif %}">
                         {% if student.group %}
-                            {{ student.group.name }}
+                            {{ student.group.code }}
                             {% if student.group.faculty %}
                                 <br><small class="text-muted">{{ student.group.faculty.name }}</small>
                             {% endif %}

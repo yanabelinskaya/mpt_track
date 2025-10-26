@@ -535,7 +535,7 @@
                         <option value="">Не назначена</option>
                         {% for group in groups %}
                             <option value="{{ group.id }}" {% if student.group_id == group.id %}selected{% endif %}>
-                                {{ group.name }} ({{ group.faculty.name }})
+                                {{ group.code }} ({{ group.faculty.name }})
                             </option>
                         {% endfor %}
                     </select>

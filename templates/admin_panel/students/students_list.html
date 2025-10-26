@@ -349,7 +349,7 @@
                             <option value="">Все группы</option>
                             {% for group in groups %}
                                 <option value="{{ group.id }}" {% if group_filter == group.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ group.name }} ({{ group.students_count }})
+                                    {{ group.code }} ({{ group.total_students }})
                                 </option>
                             {% endfor %}
                         </select>
@@ -580,7 +580,7 @@
                             {% if student.group %}
                                 <div class="group-pill">
                                     <i class="bi bi-collection"></i>
-                                    <span>{{ student.group.name }}</span>
+                                    <span>{{ student.group.code }}</span>
                                 </div>
                             {% else %}
                                 <span class="no-data">Не назначена</span>

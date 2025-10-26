@@ -1441,3 +1441,72 @@ def faculty_list_api(request):
             'message': str(e)
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
+from django.shortcuts import get_object_or_404
+from .models import Group, Student
+from .serializers import GroupSerializer
+import json
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def group_list_api(request):
+    groups = Group.objects.all().order_by('faculty__name', 'profession', 'code')
+    serializer = GroupSerializer(groups, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def group_detail_api(request, group_id):
+    group = get_object_or_404(Group, id=group_id)
+    serializer = GroupSerializer(group)
+    return Response(serializer.data)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def group_create_api(request):
+    serializer = GroupSerializer(data=request.data)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({'success': True, 'data': serializer.data}, status=status.HTTP_201_CREATED)
+    return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def group_update_api(request, group_id):
+    group = get_object_or_404(Group, id=group_id)
+    serializer = GroupSerializer(group, data=request.data, partial=True)
+    if serializer.is_valid():
+        serializer.save()
+        return Response({'success': True, 'data': serializer.data})
+    return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def group_delete_api(request, group_id):
+    group = get_object_or_404(Group, id=group_id)
+    group.delete()
+    return Response({'success': True, 'message': 'Группа удалена'})
+
+# Пример API для перевода студента
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def transfer_student_api(request):
+    try:
+        data = request.data
+        student_id = data.get('student_id')
+        target_group_id = data.get('target_group_id')
+
+        student = get_object_or_404(Student, id=student_id)
+        target_group = get_object_or_404(Group, id=target_group_id)
+
+        student.group = target_group
+        student.save()
+
+        return Response({'success': True, 'message': 'Студент переведен'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+

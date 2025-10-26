@@ -2,6 +2,7 @@ from django.contrib import admin
 from .models import Faculty, Group, Student
 from admin_panel.models import Backup
 
+
 @admin.register(Faculty)
 class FacultyAdmin(admin.ModelAdmin):
     list_display = ['name', 'code', 'created_at']
@@ -9,53 +10,78 @@ class FacultyAdmin(admin.ModelAdmin):
     search_fields = ['name', 'code']
     ordering = ['name']
 
+
 @admin.register(Group)
 class GroupAdmin(admin.ModelAdmin):
-    list_display = ['name', 'code', 'faculty', 'course', 'year_start', 'is_active', 'students_count']
-    list_filter = ['faculty', 'course', 'is_active', 'year_start']
-    search_fields = ['name', 'code', 'faculty__name']
-    ordering = ['faculty', 'course', 'name']
-    
-    def students_count(self, obj):
-        return obj.students_count
-    students_count.short_description = 'Количество студентов'
+    # Нет 'course' и 'year_start' в модели — используем вычисляемые колонки
+    ordering = ('faculty', 'profession', 'code')
+    list_display = (
+        'code',
+        'faculty',
+        'profession',
+        'current_course_display',
+        'enrollment_year',
+        'is_active',
+        'students_count_display',
+        'status_display_admin',
+    )
+    list_filter = ('faculty', 'profession', 'is_active')
+    search_fields = ('code', 'profession', 'faculty__name')
+
+    # вычисляемые колонки
+    def current_course_display(self, obj):
+        return obj.current_course
+    current_course_display.short_description = 'Курс'
+
+    def enrollment_year(self, obj):
+        return obj.enrollment_date.year if obj.enrollment_date else '-'
+    enrollment_year.short_description = 'Год поступления'
+
+    def students_count_display(self, obj):
+        return obj.students.count()
+    students_count_display.short_description = 'Студентов'
+
+    def status_display_admin(self, obj):
+        return obj.status_display
+    status_display_admin.short_description = 'Статус'
+
 
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
     list_display = [
-        'student_id', 
-        'get_full_name', 
-        'email', 
-        'group', 
-        'course', 
+        'student_id',
+        'get_full_name',
+        'email',
+        'group',
+        'course_display',          # заменяем прямое поле course на вычисляемую колонку
         'study_status',
         'has_system_access_display',
-        'is_active_display'
+        'is_active_display',
     ]
+    # убираем несуществующее поле 'course' из фильтров
     list_filter = [
-        'study_status', 
-        'course', 
+        'study_status',
         'group__faculty',
-        'created_at'
-    ]  # УБРАЛИ 'is_active_account'
-    
-    search_fields = [
-        'first_name', 
-        'last_name', 
-        'middle_name', 
-        'email', 
-        'student_id',
-        'user__username'
+        'group__profession',
+        'created_at',
     ]
-    
+    search_fields = [
+        'first_name',
+        'last_name',
+        'middle_name',
+        'email',
+        'student_id',
+        'user__username',
+    ]
     ordering = ['last_name', 'first_name']
-    
+
     fieldsets = (
         ('Основная информация', {
             'fields': ('first_name', 'last_name', 'middle_name', 'student_id')
         }),
         ('Учебная информация', {
-            'fields': ('group', 'course', 'study_status', 'enrollment_date', 'graduation_date')
+            # убираем несуществующее поле 'course' из формы
+            'fields': ('group', 'study_status', 'enrollment_date', 'graduation_date')
         }),
         ('Контактная информация', {
             'fields': ('email', 'phone', 'address', 'city')
@@ -72,28 +98,30 @@ class StudentAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
+    # вычисляемая колонка курса студента
+    def course_display(self, obj):
+        return obj.course or '-'
+    course_display.short_description = 'Курс'
+
     # НОВЫЕ МЕТОДЫ для отображения статусов
     def has_system_access_display(self, obj):
         """Отображение наличия доступа к системе"""
-        if obj.has_system_access():
-            return "✅ Есть доступ"
-        return "❌ Нет доступа"
+        return obj.has_system_access()
     has_system_access_display.short_description = 'Доступ к системе'
     has_system_access_display.boolean = True
-    
+
     def is_active_display(self, obj):
         """Отображение активности аккаунта"""
         if obj.has_system_access():
-            if obj.is_active_account:
-                return "✅ Активен"
-            return "❌ Заблокирован"
-        return "—"
-    is_active_display.short_description = 'Статус аккаунта'
-    
+            return obj.is_active_account
+        return False
+    is_active_display.short_description = 'Активен'
+    is_active_display.boolean = True
+
     # Действия для массовых операций
     actions = ['activate_students', 'deactivate_students', 'create_system_access']
-    
+
     def activate_students(self, request, queryset):
         """Активировать выбранных студентов"""
         count = 0
@@ -102,10 +130,9 @@ class StudentAdmin(admin.ModelAdmin):
                 student.user.is_active = True
                 student.user.save()
                 count += 1
-        
         self.message_user(request, f'Активированы аккаунты {count} студентов.')
     activate_students.short_description = "Активировать аккаунты"
-    
+
     def deactivate_students(self, request, queryset):
         """Деактивировать выбранных студентов"""
         count = 0
@@ -114,18 +141,16 @@ class StudentAdmin(admin.ModelAdmin):
                 student.user.is_active = False
                 student.user.save()
                 count += 1
-        
         self.message_user(request, f'Деактивированы аккаунты {count} студентов.')
     deactivate_students.short_description = "Деактивировать аккаунты"
-    
+
     def create_system_access(self, request, queryset):
         """Создать доступ к системе для выбранных студентов"""
         from django.contrib.auth.models import User
         import secrets
         import string
-        
+
         def generate_username(first_name, last_name):
-            """Генерация логина"""
             transliteration = {
                 'а': 'a', 'б': 'b', 'в': 'v', 'г': 'g', 'д': 'd', 'е': 'e', 'ё': 'e',
                 'ж': 'zh', 'з': 'z', 'и': 'i', 'й': 'y', 'к': 'k', 'л': 'l', 'м': 'm',
@@ -133,32 +158,26 @@ class StudentAdmin(admin.ModelAdmin):
                 'ф': 'f', 'х': 'h', 'ц': 'c', 'ч': 'ch', 'ш': 'sh', 'щ': 'sch',
                 'ъ': '', 'ы': 'y', 'ь': '', 'э': 'e', 'ю': 'yu', 'я': 'ya',
             }
-            
             def translit(text):
                 return ''.join(transliteration.get(char.lower(), char.lower()) for char in text)
-            
-            username = f"{translit(last_name)}.{translit(first_name)}"
-            
-            counter = 1
-            original_username = username
+            base = f"{translit(last_name)}.{translit(first_name)}"
+            username = base
+            i = 1
             while User.objects.filter(username=username).exists():
-                username = f"{original_username}{counter}"
-                counter += 1
-            
+                username = f"{base}{i}"
+                i += 1
             return username
-        
-        def generate_password(length=8):
-            """Генерация пароля"""
+
+        def generate_password(length=10):
             characters = string.ascii_letters + string.digits
             return ''.join(secrets.choice(characters) for _ in range(length))
-        
-        count = 0
+
+        created = 0
         for student in queryset:
             if not student.has_system_access():
                 try:
                     username = generate_username(student.first_name, student.last_name)
                     password = generate_password()
-                    
                     user = User.objects.create_user(
                         username=username,
                         email=student.email,
@@ -167,15 +186,16 @@ class StudentAdmin(admin.ModelAdmin):
                         last_name=student.last_name,
                         is_active=True,
                     )
-                    
                     student.user = user
                     student.save()
-                    count += 1
-                    
+                    created += 1
                 except Exception as e:
-                    self.message_user(request, f'Ошибка при создании доступа для {student.get_full_name()}: {e}', level='ERROR')
-        
-        self.message_user(request, f'Создан доступ для {count} студентов.')
+                    self.message_user(
+                        request,
+                        f'Ошибка при создании доступа для {student.get_full_name()}: {e}',
+                        level='ERROR'
+                    )
+        self.message_user(request, f'Создан доступ для {created} студентов.')
     create_system_access.short_description = "Создать доступ к системе"
 
 
@@ -184,9 +204,11 @@ class BackupAdmin(admin.ModelAdmin):
     list_display = ['name', 'backup_type', 'status', 'file_size_mb', 'created_at', 'created_by']
     list_filter = ['status', 'backup_type', 'created_at']
     search_fields = ['name', 'description']
-    readonly_fields = ['name', 'file_path', 'file_size', 'tables_count', 'records_count', 
-                      'created_at', 'completed_at', 'created_by']
-    
+    readonly_fields = [
+        'name', 'file_path', 'file_size', 'tables_count', 'records_count',
+        'created_at', 'completed_at', 'created_by'
+    ]
+
     def file_size_mb(self, obj):
         return f"{obj.file_size_mb} МБ"
     file_size_mb.short_description = 'Размер файла'

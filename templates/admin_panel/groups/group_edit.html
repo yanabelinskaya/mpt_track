@@ -1,0 +1,442 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Редактирование группы {{ group.code }} - МПТ Журнал{% endblock %}
+{% block page_title %}Редактирование группы{% endblock %}
+{% block mobile_title %}{{ group.code }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<link rel="stylesheet" href="{% static 'css/group_edit.css' %}">
+{% endblock %}
+
+{% block content %}
+<a href="{% url 'groups_main' %}" class="btn btn-secondary">
+    <i class="bi bi-arrow-left"></i>
+    Назад к группе
+</a>
+
+<div class="edit-container" data-group-id="{{ group.id }}">
+    <div class="edit-card">
+        <div class="section-title">
+            <i class="bi bi-people"></i> Управление студентами
+        </div>
+
+        <div class="students-management">
+
+            <!-- Студенты группы -->
+            <div class="students-list" id="groupStudentsContainer">
+                <div class="list-header" style="justify-content: space-between;">
+                    <span><i class="bi bi-people me-2"></i> Студенты группы</span>
+                    <span class="badge bg-light text-dark" data-group-count>{{ total_students }}</span>
+                </div>
+
+                <input type="text" id="groupStudentsSearch" class="students-search-input" placeholder="Поиск студентов в группе...">
+
+                <div class="students-content" id="groupStudentsList">
+                    {% if students %}
+                        {% for student in students %}
+                        <div class="student-item"
+                             data-name="{{ student.get_full_name|lower }}"
+                             data-email="{{ student.email|lower }}"
+                             data-display-name="{{ student.get_full_name }}"
+                             data-display-email="{{ student.email }}">
+                            <div class="student-info">
+                                <div class="student-name" title="{{ student.get_full_name }}">{{ student.get_full_name }}</div>
+                                <div class="student-email" title="{{ student.email }}">{{ student.email }}</div>
+                            </div>
+                            <div class="student-actions">
+                                <button class="action-btn transfer"
+                                        type="button"
+                                        onclick="showTransferModal({{ student.id }}, '{{ student.get_full_name|escapejs }}')"
+                                        title="Перевести в другую группу">
+                                    <i class="bi bi-arrow-right"></i>
+                                </button>
+                                <button class="action-btn remove"
+                                        type="button"
+                                        onclick="showRemoveModal({{ student.id }}, '{{ student.get_full_name|escapejs }}')"
+                                        title="Исключить из группы">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="bi bi-people"></i>
+                            <h4>Нет студентов</h4>
+                            <p>В группе пока нет студентов</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Студенты без группы -->
+            <div class="students-list" id="noGroupStudentsContainer">
+                <div class="list-header" style="justify-content: space-between;">
+                    <span><i class="bi bi-person-plus me-2"></i> Студенты без группы</span>
+                    <span class="badge bg-light text-dark" data-free-count>{{ students_without_group_count }}</span>
+                </div>
+
+                <input type="text" id="noGroupStudentsSearch" class="students-search-input" placeholder="Поиск студентов без группы...">
+
+                <div class="students-content" id="noGroupStudentsList">
+                    {% if students_without_group %}
+                        {% for student in students_without_group %}
+                        <div class="student-item"
+                             data-name="{{ student.get_full_name|lower }}"
+                             data-email="{{ student.email|lower }}"
+                             data-display-name="{{ student.get_full_name }}"
+                             data-display-email="{{ student.email }}">
+                            <div class="student-info">
+                                <div class="student-name" title="{{ student.get_full_name }}">{{ student.get_full_name }}</div>
+                                <div class="student-email" title="{{ student.email }}">{{ student.email }}</div>
+                            </div>
+                            <div class="student-actions">
+                                <button class="action-btn add"
+                                        type="button"
+                                        onclick="showAddModal({{ student.id }}, '{{ student.get_full_name|escapejs }}')"
+                                        title="Добавить в группу">
+                                    <i class="bi bi-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="empty-state">
+                            <i class="bi bi-check-circle"></i>
+                            <h4>Нет доступных студентов</h4>
+                            <p>Все студенты уже распределены по группам</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Модальные одиночных действий с кастомными beautiful dropdowns -->
+
+<!-- Перевод студента -->
+<div class="modal fade" id="transferModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Перевод студента</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Студент:</strong> <span id="transferStudentName"></span></p>
+                <div class="form-group">
+                    <label>Выберите группу для перевода:</label>
+                    <div class="custom-select" id="transferGroupSelect">
+                        <select id="transferTargetGroupSelect">
+                            <option value="">Выберите группу</option>
+                            {% for group in other_groups %}
+                                <option value="{{ group.id }}">{{ group.code }} - {{ group.profession }}</option>
+                            {% empty %}
+                                <option disabled>Доступных групп нет</option>
+                            {% endfor %}
+                        </select>
+                        <div class="select-trigger placeholder">
+                            <span class="select-text">Выберите группу</span>
+                            <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                        </div>
+                        <div class="select-dropdown">
+                            {% for group in other_groups %}
+                            <div class="select-option" data-value="{{ group.id }}">
+                                <div class="select-option-text">{{ group.code }} - {{ group.profession }}</div>
+                            </div>
+                            {% empty %}
+                            <div class="select-option disabled">Доступных групп нет</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Причина перевода:</label>
+                    <textarea id="transferReason" class="form-control" rows="3" placeholder="Укажите причину перевода..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-primary" id="confirmTransferBtn" disabled>Перевести</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Исключение студента -->
+<div class="modal fade" id="removeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Исключение студента</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Студент:</strong> <span id="removeStudentName"></span></p>
+                <div class="form-group">
+                    <label>Причина исключения:</label>
+                    <div class="custom-select" id="removeReasonSelect">
+                        <select id="removeReason" class="form-control" required>
+                            <option value="">Выберите причину</option>
+                            <option value="expelled">Отчислен за неуспеваемость</option>
+                            <option value="transferred">Переведен в другое учебное заведение</option>
+                            <option value="academic_leave">Академический отпуск</option>
+                            <option value="personal">По личному заявлению</option>
+                            <option value="other">Другая причина</option>
+                        </select>
+                        <div class="select-trigger placeholder">
+                            <span class="select-text">Выберите причину</span>
+                            <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                        </div>
+                        <div class="select-dropdown">
+                            <div class="select-option" data-value="expelled">
+                                <div class="select-option-icon"><i class="bi bi-graph-down"></i></div>
+                                <div class="select-option-text">Отчислен за неуспеваемость</div>
+                            </div>
+                            <div class="select-option" data-value="transferred">
+                                <div class="select-option-icon"><i class="bi bi-building"></i></div>
+                                <div class="select-option-text">Переведен в другое учебное заведение</div>
+                            </div>
+                            <div class="select-option" data-value="academic_leave">
+                                <div class="select-option-icon"><i class="bi bi-pause-circle"></i></div>
+                                <div class="select-option-text">Академический отпуск</div>
+                            </div>
+                            <div class="select-option" data-value="personal">
+                                <div class="select-option-icon"><i class="bi bi-person-check"></i></div>
+                                <div class="select-option-text">По личному заявлению</div>
+                            </div>
+                            <div class="select-option" data-value="other">
+                                <div class="select-option-icon"><i class="bi bi-question-circle"></i></div>
+                                <div class="select-option-text">Другая причина</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Дополнительная информация:</label>
+                    <textarea id="removeComment" class="form-control" rows="3" placeholder="Дополнительные комментарии..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-danger" id="confirmRemoveBtn" disabled>Исключить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Добавление студента -->
+<div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добавление студента в группу</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Закрыть"></button>
+            </div>
+            <div class="modal-body">
+                <p>Добавить студента <strong><span id="addStudentName"></span></strong> в группу <strong>{{ group.code }}</strong>?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                <button type="button" class="btn btn-success" id="confirmAddBtn">Добавить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentStudentId = null;
+const currentGroupId = {{ group.id }};
+
+document.addEventListener('DOMContentLoaded', () => {
+    initCustomSelects();
+    
+    const groupStudentsSearchInput = document.getElementById('groupStudentsSearch');
+    if (groupStudentsSearchInput) {
+        groupStudentsSearchInput.addEventListener('input', () => {
+            filterStudentList('groupStudentsList', groupStudentsSearchInput.value);
+        });
+    }
+    
+    const freeStudentsSearchInput = document.getElementById('noGroupStudentsSearch');
+    if (freeStudentsSearchInput) {
+        freeStudentsSearchInput.addEventListener('input', () => {
+            filterStudentList('noGroupStudentsList', freeStudentsSearchInput.value);
+        });
+    }
+});
+
+function initCustomSelects() {
+    document.querySelectorAll('.custom-select').forEach(container => {
+        const trigger = container.querySelector('.select-trigger');
+        const dropdown = container.querySelector('.select-dropdown');
+        const options = container.querySelectorAll('.select-option');
+        const select = container.querySelector('select');
+        const selectText = container.querySelector('.select-text');
+
+        if (!trigger || !dropdown || !select || !selectText) {
+            console.warn('Custom select missing elements');
+            return;
+        }
+
+        // Закрыть все остальные дропдауны перед открытием этого
+        trigger.onclick = (e) => {
+            e.stopPropagation();
+            document.querySelectorAll('.custom-select .select-dropdown').forEach(d => {
+                if (d !== dropdown) d.classList.remove('show');
+            });
+            document.querySelectorAll('.custom-select .select-trigger').forEach(t => {
+                if (t !== trigger) t.classList.remove('active');
+            });
+            dropdown.classList.toggle('show');
+            trigger.classList.toggle('active');
+        };
+
+        // Выбор опции
+        options.forEach(option => {
+            option.onclick = (e) => {
+                e.stopPropagation();
+                const value = option.dataset.value || "";
+                // Обновляем nativ select и текст в триггере
+                select.value = value;
+                selectText.textContent = option.querySelector('.select-option-text').textContent;
+                options.forEach(o => o.classList.remove('selected'));
+                option.classList.add('selected');
+                dropdown.classList.remove('show');
+                trigger.classList.remove('active');
+                select.dispatchEvent(new Event('change'));
+            };
+        });
+
+        // Закрытие при клике вне
+        document.addEventListener('click', () => {
+            dropdown.classList.remove('show');
+            trigger.classList.remove('active');
+        });
+
+        // При загрузке страницы устанавливаем селected и текст по value select
+        const currentValue = select.value;
+        options.forEach(option => {
+            if (option.dataset.value === currentValue) {
+                selectText.textContent = option.querySelector('.select-option-text').textContent;
+                option.classList.add('selected');
+            }
+        });
+    });
+}
+
+// После открытия модалки вызывайте initCustomSelects для инициализации
+function showTransferModal(studentId, studentName) {
+    currentStudentId = studentId;
+    document.getElementById('transferStudentName').textContent = studentName;
+    // Сброс значений
+    document.getElementById('transferTargetGroupSelect').value = '';
+    document.getElementById('transferReason').value = '';
+    document.getElementById('confirmTransferBtn').disabled = true;
+
+    const modal = new bootstrap.Modal(document.getElementById('transferModal'));
+    modal.show();
+    setTimeout(initCustomSelects, 100);
+}
+
+// Активируем кнопку "Подтвердить" если выбрана группа
+document.getElementById('transferTargetGroupSelect').addEventListener('change', function() {
+    document.getElementById('confirmTransferBtn').disabled = !this.value;
+});
+
+// Подтверждение перевода студента
+document.getElementById('confirmTransferBtn').addEventListener('click', () => {
+    const targetGroup = document.getElementById('transferTargetGroupSelect').value;
+    const reason = document.getElementById('transferReason').value.trim();
+    fetch('/groups/transfer-student/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: currentStudentId, target_group_id: targetGroup, reason })
+    }).then(r => r.json()).then(data => {
+        if (data.success) location.reload();
+        else alert('Ошибка: ' + data.error);
+    });
+});
+
+// Показываем модалку исключения студента
+function showRemoveModal(studentId, studentName) {
+    currentStudentId = studentId;
+    document.getElementById('removeStudentName').textContent = studentName;
+    document.getElementById('removeReason').value = '';
+    document.getElementById('removeComment').value = '';
+    document.getElementById('confirmRemoveBtn').disabled = true;
+    const modal = new bootstrap.Modal(document.getElementById('removeModal'));
+    modal.show();
+    setTimeout(initCustomSelects, 100);
+}
+
+// Активируем кнопку "Подтвердить" если выбрана причина
+document.getElementById('removeReason').addEventListener('change', () => {
+    document.getElementById('confirmRemoveBtn').disabled = !document.getElementById('removeReason').value;
+});
+
+// Подтверждение исключения студента
+document.getElementById('confirmRemoveBtn').addEventListener('click', () => {
+    const reason = document.getElementById('removeReason').value.trim();
+    const comment = document.getElementById('removeComment').value.trim();
+    fetch('/groups/remove-student/', {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: currentStudentId, reason, comment })
+    }).then(r => r.json()).then(data => {
+        if (data.success) location.reload();
+        else alert('Ошибка: ' + data.error);
+    });
+});
+
+// Показываем модалку добавления студента в группу
+function showAddModal(studentId, studentName) {
+    currentStudentId = studentId;
+    document.getElementById('addStudentName').textContent = studentName;
+    const modal = new bootstrap.Modal(document.getElementById('addModal'));
+    modal.show();
+}
+
+// Подтверждение добавления студента в группу
+document.getElementById('confirmAddBtn').addEventListener('click', () => {
+    fetch(`/groups/${currentGroupId}/add-student/`, {
+        method: 'POST',
+        headers: { 'X-CSRFToken': getCsrfToken(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: currentStudentId })
+    }).then(r => r.json()).then(data => {
+        if (data.success) location.reload();
+        else alert('Ошибка: ' + data.error);
+    });
+});
+
+function filterStudentList(listId, query) {
+    const list = document.getElementById(listId);
+    if (!list) {
+        return;
+    }
+    const normalized = (query || '').trim().toLowerCase();
+    list.querySelectorAll('.student-item').forEach(item => {
+        const name = item.dataset.name || '';
+        const email = item.dataset.email || '';
+        const visible = !normalized || name.includes(normalized) || email.includes(normalized);
+        item.style.display = visible ? 'flex' : 'none';
+    });
+}
+
+// Функция получения CSRF токена из cookie
+function getCsrfToken() {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') return decodeURIComponent(value);
+    }
+    return '';
+}
+
+</script>
+
+{% endblock %}

@@ -61,4 +61,15 @@ urlpatterns = [
     path('backups/create/', views.backup_create_view, name='admin_backup_create'),
     path('backups/<int:backup_id>/delete/', views.backup_delete_view, name='admin_backup_delete'),
     path('backups/<int:backup_id>/download/', views.backup_download_view, name='admin_backup_download'),
+
+
+    path('groups/', views.groups_main_view, name='groups_main'),
+    path('groups/<int:group_id>/edit/', views.group_edit_view, name='group_edit'),
+    path('groups/<int:group_id>/', views.group_detail_view, name='group_detail'),
+    path('groups/create/', views.group_create_view, name='group_create'),
+
+    # API endpoints example:
+    path('groups/transfer-student/', views.transfer_student_api, name='transfer_student_api'),
+    path('groups/remove-student/', views.remove_student_from_group_api, name='remove_student_api'),
+    path('groups/<int:group_id>/add-student/', views.add_student_to_group_api, name='add_student_to_group_api'),
 ]
