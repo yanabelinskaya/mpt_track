@@ -1,0 +1,331 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Управление предметами - МПТ Журнал{% endblock %}
+{% block page_title %}Управление предметами{% endblock %}
+{% block mobile_title %}Предметы{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<link rel="stylesheet" href="{% static 'css/groups.css' %}">
+<link rel="stylesheet" href="{% static 'css/subjects.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="subjects-container groups-container">
+    <div class="search-filter-bar">
+        <form class="search-form" id="subjectSearchForm">
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <i class="bi bi-search search-icon"></i>
+                    <input type="text"
+                           name="search"
+                           value="{{ search_query }}"
+                           placeholder="Найти предмет..."
+                           class="search-field">
+                    <button type="submit" class="search-submit" id="subjectSearchSubmit" title="Найти">
+                        <i class="bi bi-arrow-return-right"></i>
+                    </button>
+                    {% if search_query %}
+                        <button type="button" class="clear-search" onclick="clearSubjectSearch()">
+                            <i class="bi bi-x"></i>
+                        </button>
+                    {% endif %}
+                </div>
+
+                <input type="hidden" name="course" value="{{ course_filter }}" id="courseFilterInput">
+
+                <div class="filter-dropdown">
+                    <button type="button" class="filter-trigger" id="subjectFilterTrigger">
+                        <i class="bi bi-funnel"></i>
+                        <span>Фильтры</span>
+                        <span class="filter-badge" id="subjectFilterBadge"{% if not specialty_filter %} style="display: none;"{% endif %}>1</span>
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+
+                    <div class="filter-menu" id="subjectFilterMenu">
+                        <div class="filter-section">
+                            <label class="filter-title">Специальность</label>
+                            <div class="custom-select filter-custom-select" id="subjectSpecialtySelect">
+                                <select name="specialty">
+                                    <option value="">Все специальности</option>
+                                    {% for faculty in all_faculties %}
+                                        <option value="{{ faculty.id }}" {% if specialty_filter == faculty.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ faculty.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="select-trigger {% if not specialty_filter %}placeholder{% endif %}">
+                                    <span class="select-text">
+                                        {% if specialty_filter %}
+                                            {% for faculty in all_faculties %}
+                                                {% if specialty_filter == faculty.id|stringformat:"s" %}
+                                                    {{ faculty.name }}
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            Все специальности
+                                        {% endif %}
+                                    </span>
+                                    <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                                </div>
+                                <div class="select-dropdown">
+                                    <div class="select-option{% if not specialty_filter %} selected{% endif %}" data-value="">
+                                        <div class="select-option-text">Все специальности</div>
+                                    </div>
+                                    {% for faculty in all_faculties %}
+                                    <div class="select-option{% if specialty_filter == faculty.id|stringformat:"s" %} selected{% endif %}" data-value="{{ faculty.id }}">
+                                        <div class="select-option-text">{{ faculty.name }}</div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="filter-actions">
+                            <button type="button" class="apply-filters" id="subjectApplyFilters">
+                                <i class="bi bi-check"></i>
+                                Применить
+                            </button>
+                            <button type="button" class="reset-filters" id="subjectResetFilters">
+                                <i class="bi bi-arrow-clockwise"></i>
+                                Сбросить
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="course-tabs-section">
+        <div class="course-tabs">
+            <a href="#"
+               class="course-tab {% if course_filter == '1' %}active{% endif %}"
+               data-course="1"
+               onclick="switchSubjectCourse('1', event)">
+                <span>1 курс</span>
+            </a>
+            <a href="#"
+               class="course-tab {% if course_filter == '2' %}active{% endif %}"
+               data-course="2"
+               onclick="switchSubjectCourse('2', event)">
+                <span>2 курс</span>
+            </a>
+            <a href="#"
+               class="course-tab {% if course_filter == '3' %}active{% endif %}"
+               data-course="3"
+               onclick="switchSubjectCourse('3', event)">
+                <span>3 курс</span>
+            </a>
+            <a href="#"
+               class="course-tab {% if course_filter == '4' %}active{% endif %}"
+               data-course="4"
+               onclick="switchSubjectCourse('4', event)">
+                <span>4 курс</span>
+            </a>
+        </div>
+    </div>
+
+    <div class="data-panel">
+        <div class="panel-top">
+            <div class="panel-info">
+                <div class="info-icon">
+                    <i class="bi bi-journals"></i>
+                </div>
+                <div>
+                    <h1 class="panel-title">
+                        Предметы
+                        <small id="courseTitleSuffix" style="font-weight: 400; color: var(--bs-secondary); {% if not course_filter %}display: none;{% endif %}">
+                            — <span id="courseTitleValue">{{ course_filter }}</span> курс
+                        </small>
+                    </h1>
+                    <div class="panel-stats">
+                        <div class="stat-item">
+                            <i class="bi bi-building"></i>
+                            <span>{{ total_faculties }} специальностей</span>
+                        </div>
+                        <span class="stat-separator">•</span>
+                        <div class="stat-item">
+                            <i class="bi bi-journal-bookmark"></i>
+                            <span>{{ total_subjects }} уникальных предметов</span>
+                        </div>
+                        {% if search_query %}
+                        <span class="stat-separator">•</span>
+                        <div class="stat-item">
+                            <i class="bi bi-search"></i>
+                            <span>Поиск: "{{ search_query }}"</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel-controls">
+                <a href="{% url 'admin_subject_create' %}"
+                   class="action-btn add-group-btn">
+                    <i class="bi bi-plus-circle"></i>
+                    Добавить предмет
+                </a>
+
+                <button class="action-btn" type="button" onclick="toggleAllSubjectSpecialties(event)">
+                    <i class="bi bi-arrows-expand"></i>
+                    Развернуть все
+                </button>
+            </div>
+        </div>
+
+        <div class="course-content" id="subjectsContent">
+            {% if subjects_data %}
+                {% for faculty_data in subjects_data %}
+                    <div class="specialty-section"
+                         data-specialty-id="{{ faculty_data.faculty.id }}"
+                         data-specialty-name="{{ faculty_data.faculty.name }}">
+                        <div class="specialty-header" onclick="toggleSubjectSpecialty({{ faculty_data.faculty.id }})">
+                            <div class="specialty-info">
+                                <div>
+                                    <h3>{{ faculty_data.faculty.name }}</h3>
+                                    <div class="specialty-code">{{ faculty_data.faculty.code }}</div>
+                                </div>
+                            </div>
+                            <i class="bi bi-chevron-down specialty-toggle" id="subject-toggle-{{ faculty_data.faculty.id }}"></i>
+                        </div>
+
+                        <div class="specialty-content" id="subject-content-{{ faculty_data.faculty.id }}">
+                            {% if faculty_data.professions %}
+                                {% for profession_data in faculty_data.professions %}
+                                    <div class="profession-section"
+                                         data-profession-name="{{ profession_data.name }}">
+                                        <div class="profession-header"
+                                             onclick="toggleSubjectProfession({{ faculty_data.faculty.id }}, {{ forloop.counter0 }})">
+                                            <div class="profession-name">
+                                                {{ profession_data.name }}
+                                            </div>
+                                            <i class="bi bi-chevron-right profession-toggle"
+                                               id="subject-prof-toggle-{{ faculty_data.faculty.id }}-{{ forloop.counter0 }}"></i>
+                                        </div>
+
+                                        <div class="subjects-list groups-list"
+                                             id="subject-prof-content-{{ faculty_data.faculty.id }}-{{ forloop.counter0 }}"
+                                             data-toggle-id="subject-prof-toggle-{{ faculty_data.faculty.id }}-{{ forloop.counter0 }}">
+                                            {% if profession_data.assignments %}
+                                                <div class="groups-table subjects-table">
+                                                    <div class="groups-table-header">
+                                                        <div>Предмет</div>
+                                                        <div>Преподаватели</div>
+                                                        <div>Профессия</div>
+                                                        <div>Специальность</div>
+                                                        <div>Действия</div>
+                                                    </div>
+                                                    {% for assignment in profession_data.assignments %}
+                                                        <div class="group-row subject-row"
+                                                             data-course="{{ assignment.course }}"
+                                                             data-faculty-id="{{ assignment.faculty.id }}"
+                                                             data-search="{{ assignment.subject.name|lower }} {{ assignment.subject.short_name|lower }} {{ assignment.profession|lower }} {{ assignment.faculty.name|lower }} {% for teacher in assignment.teachers.all %}{{ teacher.get_full_name|lower }} {% endfor %}">
+                                                            <div class="group-cell group-name-cell">
+                                                                <div class="group-name">
+                                                                    {{ assignment.subject.short_name|default:assignment.subject.name }}
+                                                                </div>
+                                                                <div class="group-meta">
+                                                                    {{ assignment.subject.name }}
+                                                                    {% if assignment.subject.description %}
+                                                                        · {{ assignment.subject.description|truncatechars:80 }}
+                                                                    {% endif %}
+                                                                </div>
+                                                            </div>
+                                                            <div class="group-cell">
+                                                                {% if assignment.teachers.all %}
+                                                                    <div class="subject-teachers-list">
+                                                                        {% for teacher in assignment.teachers.all %}
+                                                                            <span class="badge rounded-pill bg-primary-subtle text-primary">
+                                                                                {{ teacher.get_short_name }}
+                                                                            </span>
+                                                                        {% endfor %}
+                                                                    </div>
+                                                                {% else %}
+                                                                    <span class="text-muted">Не назначены</span>
+                                                                {% endif %}
+                                                            </div>
+                                                            <div class="group-cell">
+                                                                <span class="subject-badge">
+                                                                    {{ assignment.profession }}
+                                                                </span>
+                                                            </div>
+                                                            <div class="group-cell">
+                                                                <div class="subject-meta">
+                                                                    <span class="subject-course">
+                                                                        <i class="bi bi-mortarboard"></i>
+                                                                        {{ assignment.get_course_display }}
+                                                                    </span>
+                                                                    <span class="subject-faculty-code">
+                                                                        <i class="bi bi-building"></i>
+                                                                        {{ assignment.faculty.code }}
+                                                                    </span>
+                                                                </div>
+                                                            </div>
+                                                            <div class="group-cell actions-cell">
+                                                                <div class="actions-menu">
+                                                                    <a class="action-item"
+                                                                       href="{% url 'admin_subject_detail' assignment.subject.id %}"
+                                                                       title="Детали предмета">
+                                                                        <i class="bi bi-eye"></i>
+                                                                    </a>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            {% else %}
+                                                <div class="empty-state">
+                                                    <i class="bi bi-journal-x"></i>
+                                                    <h4>Нет предметов</h4>
+                                                    <p>Для профессии "{{ profession_data.name }}" пока нет предметов на выбранном курсе</p>
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="empty-state">
+                                    <i class="bi bi-journal-minus"></i>
+                                    <h4>Нет предметов</h4>
+                                    <p>Для специальности "{{ faculty_data.faculty.name }}" пока не назначены предметы</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    {% if search_query or specialty_filter %}
+                        <i class="bi bi-search"></i>
+                        <h4>Ничего не найдено</h4>
+                        <p>По заданным критериям предметы не найдены</p>
+                        <button type="button" class="action-btn" onclick="resetSubjectFilters()">
+                            Сбросить фильтры
+                        </button>
+                    {% else %}
+                        <i class="bi bi-journal"></i>
+                        <h4>Нет предметов</h4>
+                        <p>Добавьте предметы для отображения информации</p>
+                        <a href="{% url 'admin_subject_create' %}" class="action-btn">
+                            Добавить предмет
+                        </a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    window.subjectsData = {
+        specialties: JSON.parse('{{ subjects_map_json|escapejs }}')
+    };
+    window.currentFilters = JSON.parse('{{ current_filters_json|escapejs }}');
+</script>
+<script src="{% static 'js/subjects.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Редактирование преподавателя - {{ teacher.get_full_name }}{% endblock %}
+{% block page_title %}Редактирование преподавателя{% endblock %}
+{% block mobile_title %}{{ teacher.get_short_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-card">
+        <form method="post">
+            {% csrf_token %}
+            <div class="section-title">
+                <i class="bi bi-person-workspace"></i>
+                Основная информация
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required">Фамилия</label>
+                    <input type="text" name="last_name" class="form-control" value="{{ form_data.last_name|default:teacher.last_name }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label required">Имя</label>
+                    <input type="text" name="first_name" class="form-control" value="{{ form_data.first_name|default:teacher.first_name }}" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Отчество</label>
+                    <input type="text" name="middle_name" class="form-control" value="{{ form_data.middle_name|default:teacher.middle_name }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label required">Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ form_data.email|default:teacher.email }}" required>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Телефон</label>
+                    <input type="text" name="phone" class="form-control" value="{{ form_data.phone|default:teacher.phone }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Дата приема на работу</label>
+                    <input type="date" name="hire_date" class="form-control" value="{{ form_data.hire_date|default:teacher.hire_date|date:'Y-m-d' }}">
+                </div>
+            </div>
+
+            <div class="section-title">
+                <i class="bi bi-journal-bookmark"></i>
+                Профессиональные данные
+            </div>
+
+            <div class="form-row single">
+                <div class="form-group">
+                    <label class="form-label">Должность</label>
+                    <input type="text" name="position" class="form-control" value="{{ form_data.position|default:teacher.position }}">
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Предметы</label>
+                    <select name="subjects" class="form-select" multiple size="6">
+                        {% for subject in subjects %}
+                            <option value="{{ subject.id }}" {% if subject.id|stringformat:"s" in selected_subjects %}selected{% endif %}>{{ subject.short_name|default:subject.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Удерживайте Ctrl/Cmd для выбора нескольких предметов</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Группы</label>
+                    <select name="groups" class="form-select" multiple size="6">
+                        {% for group in groups %}
+                            <option value="{{ group.id }}" {% if group.id|stringformat:"s" in selected_groups %}selected{% endif %}>{{ group.code }} — {{ group.profession }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Группы, за которые отвечает преподаватель</div>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <i class="bi bi-card-checklist"></i>
+                Дополнительные настройки
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Заметки</label>
+                    <textarea name="notes" class="form-control" rows="4">{{ form_data.notes|default:teacher.notes }}</textarea>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group form-check">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" name="is_curator" {% if form_data %}{% if form_data.is_curator == 'on' %}checked{% endif %}{% else %}{% if teacher.is_curator %}checked{% endif %}{% endif %}>
+                        <span class="checkbox-label">Преподаватель является куратором групп</span>
+                    </label>
+                </div>
+                <div class="form-group form-check">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" name="is_active" {% if form_data %}{% if form_data.is_active != 'off' %}checked{% endif %}{% else %}{% if teacher.is_active %}checked{% endif %}{% endif %}>
+                        <span class="checkbox-label">Активен в системе</span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="section-title">
+                <i class="bi bi-shield-lock"></i>
+                Учетная запись
+            </div>
+
+            {% if teacher.user %}
+                <div class="info-card">
+                    <div class="info-title">
+                        <i class="bi bi-person-badge"></i>
+                        У преподавателя уже есть учетная запись
+                    </div>
+                    <p class="mb-1">Логин: <strong>{{ teacher.user.username }}</strong></p>
+                    <p class="mb-0">Статус: {% if teacher.user.is_active %}<span class="text-success">активен</span>{% else %}<span class="text-danger">заблокирован</span>{% endif %}</p>
+                </div>
+            {% else %}
+                <div class="form-row">
+                    <div class="form-group form-check">
+                        <label class="checkbox-wrapper">
+                            <input type="checkbox" name="create_account" {% if form_data.create_account == 'on' %}checked{% endif %}>
+                            <span class="checkbox-label">Создать учетную запись для преподавателя</span>
+                        </label>
+                    </div>
+                    <div class="form-group form-check">
+                        <label class="checkbox-wrapper">
+                            <input type="checkbox" name="send_email" {% if form_data.send_email == 'on' or not form_data %}checked{% endif %}>
+                            <span class="checkbox-label">Отправить логин и пароль на email</span>
+                        </label>
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="form-actions">
+                <a href="{% url 'admin_teacher_detail' teacher.id %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i>
+                    Отмена
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i>
+                    Сохранить изменения
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,158 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Новый предмет - МПТ Журнал{% endblock %}
+{% block page_title %}Добавление предмета{% endblock %}
+{% block mobile_title %}Новый предмет{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<link rel="stylesheet" href="{% static 'css/group_edit.css' %}">
+{% endblock %}
+
+{% block content %}
+<a href="{% url 'admin_subjects' %}" class="btn btn-secondary mb-3">
+    <i class="bi bi-arrow-left"></i>
+    Назад к предметам
+</a>
+
+<div class="edit-container">
+    <form method="post" class="edit-card">
+        {% csrf_token %}
+        <div class="section-title">
+            <i class="bi bi-journals"></i>
+            Основная информация
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <label class="form-label">Специальность <span class="text-danger">*</span></label>
+                <select name="faculty" id="facultySelect" class="form-select" required>
+                    <option value="" selected disabled>Выберите специальность</option>
+                    {% for faculty in faculties %}
+                        <option value="{{ faculty.id }}">{{ faculty.name }} ({{ faculty.code }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="info-item">
+                <label class="form-label">Профессия <span class="text-danger">*</span></label>
+                <input type="text" name="profession" id="professionInput" class="form-control" placeholder="Выберите или введите профессию" list="professionOptions" required disabled>
+                <datalist id="professionOptions"></datalist>
+                <div class="form-text">Доступные профессии подгрузятся после выбора специальности. Можно ввести новую.</div>
+            </div>
+
+            <div class="info-item">
+                <label class="form-label">Курс <span class="text-danger">*</span></label>
+                <select name="course" class="form-select" required>
+                    <option value="" selected disabled>Выберите курс</option>
+                    {% for value, label in course_choices %}
+                        <option value="{{ value }}">{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="info-item">
+                <label class="form-label">Преподаватели</label>
+                <select name="teachers" class="form-select" multiple size="6">
+                    {% for teacher in teachers %}
+                        <option value="{{ teacher.id }}">{{ teacher.get_full_name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Можно выбрать несколько преподавателей.</div>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="section-title">
+            <i class="bi bi-pencil-square"></i>
+            Предмет
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <label class="form-label">Существующий предмет</label>
+                <select name="subject" id="subjectSelect" class="form-select">
+                    <option value="">— выберите предмет —</option>
+                    {% for subject in subjects %}
+                        <option value="{{ subject.id }}">{{ subject.name }}</option>
+                    {% endfor %}
+                </select>
+                <div class="form-text">Можно выбрать уже созданный предмет.</div>
+            </div>
+
+            <div class="info-item">
+                <label class="form-label">Название нового предмета</label>
+                <input type="text" name="subject_name" class="form-control" placeholder="Например, Математика">
+                <div class="form-text">Если заполнить это поле, будет создан новый предмет.</div>
+            </div>
+
+            <div class="info-item">
+                <label class="form-label">Короткое название</label>
+                <input type="text" name="subject_short_name" class="form-control" placeholder="Например, Мат.">
+            </div>
+
+            <div class="info-item">
+                <label class="form-label">Описание</label>
+                <textarea name="subject_description" class="form-control" rows="3" placeholder="Краткое описание предмета"></textarea>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-3 mt-4">
+            <a href="{% url 'admin_subjects' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x"></i>
+                Отмена
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-check2-circle"></i>
+                Сохранить
+            </button>
+        </div>
+    </form>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    (function() {
+        const professionsMap = JSON.parse('{{ professions_json|escapejs }}');
+        const facultySelect = document.getElementById('facultySelect');
+        const professionInput = document.getElementById('professionInput');
+        const professionDataList = document.getElementById('professionOptions');
+
+        function populateProfessions() {
+            if (!professionInput || !professionDataList) {
+                return;
+            }
+
+            const facultyId = facultySelect ? facultySelect.value : '';
+            const professions = professionsMap[facultyId] || [];
+
+            professionInput.value = '';
+            professionDataList.innerHTML = '';
+
+            if (!facultyId) {
+                professionInput.disabled = true;
+                professionInput.placeholder = 'Сначала выберите специальность';
+                return;
+            }
+
+            professionInput.disabled = false;
+            professions.sort((a, b) => a.localeCompare(b, 'ru')).forEach(name => {
+                const option = document.createElement('option');
+                option.value = name;
+                professionDataList.appendChild(option);
+            });
+
+            professionInput.placeholder = professions.length ? 'Выберите или введите профессию' : 'Введите профессию';
+        }
+
+        if (facultySelect) {
+            facultySelect.addEventListener('change', populateProfessions);
+            populateProfessions();
+        }
+    })();
+</script>
+{% endblock %}

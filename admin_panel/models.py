@@ -7,6 +7,36 @@ import os
 from datetime import date, datetime
 
 
+class Subject(models.Model):
+    """Учебный предмет"""
+    name = models.CharField('Название', max_length=150, unique=True)
+    short_name = models.CharField('Короткое название', max_length=50, blank=True)
+    description = models.TextField('Описание', blank=True)
+    is_active = models.BooleanField('Активен', default=True)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_subjects',
+        verbose_name='Создан пользователем'
+    )
+
+    class Meta:
+        verbose_name = 'Предмет'
+        verbose_name_plural = 'Предметы'
+        ordering = ['name']
+
+    def __str__(self):
+        return self.short_name or self.name
+
+    @property
+    def assignments_count(self):
+        return self.assignments.count()
+
+
 class Faculty(models.Model):
     """Факультет (Специальность) - оставляем как есть"""
     name = models.CharField('Название специальности', max_length=200)
@@ -231,34 +261,98 @@ class Group(models.Model):
         """Проверяет валидность выбранной профессии"""
         available = self.get_available_professions()
         return self.profession in available if available else True
-    
+
     def save(self, *args, **kwargs):
-        # Автоматический расчет даты окончания (4 года обучения)
+        # Автоматически подставляем даты выпуска, если они не заполнены
         if self.enrollment_date and not self.graduation_date:
-            from datetime import timedelta
             self.graduation_date = self.enrollment_date.replace(
                 year=self.enrollment_date.year + 4,
-                month=6,  # Июнь - традиционный месяц выпуска
+                month=6,
                 day=30
             )
-        
-        # Заполняем name если не указано (для совместимости)
+
+        # Для совместимости заполняем name, если пусто
         if not self.name:
             self.name = self.code
-            
+
         super().save(*args, **kwargs)
-    
+
     def clean(self):
         """Валидация модели"""
-        # Проверяем профессию
         if self.profession and not self.is_valid_profession():
             available = self.get_available_professions()
             if available:
                 available_str = ', '.join(available)
                 raise ValidationError({
-                    'profession': f'Выбранная профессия недоступна для специальности "{self.faculty.name}". '
-                                f'Доступные профессии: {available_str}'
+                    'profession': (
+                        f'Выбранная профессия недоступна для специальности "{self.faculty.name}". '
+                        f'Доступные профессии: {available_str}'
+                    )
                 })
+
+
+class SubjectAssignment(models.Model):
+    """Связь предмета с курсом и специальностью"""
+
+    COURSE_CHOICES = [(i, f'{i} курс') for i in range(1, 5)]
+
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.CASCADE,
+        related_name='assignments',
+        verbose_name='Предмет'
+    )
+    faculty = models.ForeignKey(
+        Faculty,
+        on_delete=models.CASCADE,
+        related_name='subject_assignments',
+        verbose_name='Специальность'
+    )
+    profession = models.CharField('Профессия', max_length=150)
+    course = models.PositiveSmallIntegerField('Курс', choices=COURSE_CHOICES)
+    teachers = models.ManyToManyField(
+        'Teacher',
+        blank=True,
+        related_name='subject_assignments',
+        verbose_name='Преподаватели'
+    )
+    is_active = models.BooleanField('Активен', default=True)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_subject_assignments',
+        verbose_name='Создан пользователем'
+    )
+
+    class Meta:
+        verbose_name = 'Предмет по курсу'
+        verbose_name_plural = 'Предметы по курсам'
+        ordering = ['faculty__name', 'profession', 'course', 'subject__name']
+        unique_together = ('subject', 'faculty', 'profession', 'course')
+
+    def __str__(self):
+        return f'{self.subject} — {self.faculty.name} / {self.profession} / {self.get_course_display()}'
+
+    def clean(self):
+        profession = (self.profession or '').strip()
+        if self.faculty_id:
+            professions = self.faculty.get_professions_list()
+            if professions and profession not in professions:
+                raise ValidationError({'profession': 'Профессия не относится к выбранной специальности'})
+        self.profession = profession
+
+    def save(self, *args, **kwargs):
+        self.profession = (self.profession or '').strip()
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    @property
+    def course_number(self):
+        return int(self.course)
 
 
 
@@ -476,6 +570,109 @@ class Student(models.Model):
         super().save(*args, **kwargs)
 
 
+
+
+class Teacher(models.Model):
+    """Преподаватель"""
+    user = models.OneToOneField(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='teacher_profile',
+        verbose_name='Пользователь'
+    )
+    first_name = models.CharField('Имя', max_length=50)
+    last_name = models.CharField('Фамилия', max_length=50)
+    middle_name = models.CharField('Отчество', max_length=50, blank=True)
+    email = models.EmailField('Email', unique=True)
+    phone = models.CharField('Телефон', max_length=20, blank=True)
+    position = models.CharField('Должность', max_length=150, blank=True)
+    academic_title = models.CharField('Ученое звание', max_length=150, blank=True)
+    academic_degree = models.CharField('Ученая степень', max_length=150, blank=True)
+    hire_date = models.DateField('Дата приема', null=True, blank=True)
+    is_curator = models.BooleanField('Куратор', default=False)
+    is_active = models.BooleanField('Активен', default=True)
+    subjects = models.ManyToManyField(
+        Subject,
+        blank=True,
+        related_name='teachers',
+        verbose_name='Предметы'
+    )
+    groups = models.ManyToManyField(
+        'Group',
+        blank=True,
+        related_name='teachers',
+        verbose_name='Группы'
+    )
+    notes = models.TextField('Заметки', blank=True)
+    created_at = models.DateTimeField('Дата создания', auto_now_add=True)
+    updated_at = models.DateTimeField('Дата обновления', auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_teachers',
+        verbose_name='Создан пользователем'
+    )
+
+    class Meta:
+        verbose_name = 'Преподаватель'
+        verbose_name_plural = 'Преподаватели'
+        ordering = ['last_name', 'first_name']
+
+    def __str__(self):
+        return self.get_full_name()
+
+    def get_full_name(self):
+        if self.middle_name:
+            return f"{self.last_name} {self.first_name} {self.middle_name}"
+        return f"{self.last_name} {self.first_name}"
+
+    def get_short_name(self):
+        if self.middle_name:
+            return f"{self.last_name} {self.first_name[0]}.{self.middle_name[0]}."
+        return f"{self.last_name} {self.first_name[0]}."
+
+    @property
+    def has_system_access(self):
+        return self.user is not None
+
+    @property
+    def is_active_account(self):
+        return self.user.is_active if self.user else False
+
+    @property
+    def username(self):
+        return self.user.username if self.user else None
+
+    @property
+    def last_login(self):
+        return self.user.last_login if self.user else None
+
+    @property
+    def subjects_display(self):
+        return ', '.join(
+            subject.short_name or subject.name for subject in self.subjects.all()
+        )
+
+    @property
+    def faculties(self):
+        faculty_ids = self.groups.values_list('faculty_id', flat=True)
+        return Faculty.objects.filter(id__in=faculty_ids).distinct()
+
+    @property
+    def professions(self):
+        return self.groups.values_list('profession', flat=True).distinct()
+
+    @property
+    def teaching_subjects(self):
+        return self.subjects.all()
+
+    @property
+    def curated_groups(self):
+        return self.groups.all()
 
 
 class Backup(models.Model):

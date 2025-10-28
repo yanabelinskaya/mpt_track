@@ -1,0 +1,83 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Редактирование предмета {{ subject.name }} - МПТ Журнал{% endblock %}
+{% block page_title %}Редактирование предмета{% endblock %}
+{% block mobile_title %}{{ subject.short_name|default:subject.name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<link rel="stylesheet" href="{% static 'css/group_edit.css' %}">
+{% endblock %}
+
+{% block content %}
+<a href="{% url 'admin_subject_detail' subject.id %}" class="btn btn-secondary mb-3">
+    <i class="bi bi-arrow-left"></i>
+    Назад к предмету
+</a>
+
+<div class="edit-container">
+    <form method="post" class="edit-card">
+        {% csrf_token %}
+        <div class="section-title">
+            <i class="bi bi-journal-text"></i>
+            Основные сведения
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <label class="form-label">Название <span class="text-danger">*</span></label>
+                <input type="text" name="name" value="{{ subject.name }}" class="form-control" required>
+            </div>
+
+            <div class="info-item">
+                <label class="form-label">Короткое название</label>
+                <input type="text" name="short_name" value="{{ subject.short_name }}" class="form-control">
+            </div>
+
+            <div class="info-item">
+                <label class="form-label">Статус</label>
+                <div class="form-check form-switch mt-2">
+                    <input class="form-check-input" type="checkbox" name="is_active" id="subjectActive" {% if subject.is_active %}checked{% endif %}>
+                    <label class="form-check-label" for="subjectActive">Активный предмет</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <label class="form-label">Описание</label>
+            <textarea name="description" class="form-control" rows="4" placeholder="Краткое описание">{{ subject.description }}</textarea>
+        </div>
+
+        <hr class="my-4">
+
+        <div class="section-title">
+            <i class="bi bi-person-workspace"></i>
+            Преподаватели предмета
+        </div>
+
+        <div class="info-item">
+            <label class="form-label">Преподаватели</label>
+            <select name="teachers" class="form-select" multiple size="8">
+                {% for teacher in teachers %}
+                    <option value="{{ teacher.id }}" {% if teacher.id in selected_teachers %}selected{% endif %}>
+                        {{ teacher.get_full_name }}
+                    </option>
+                {% endfor %}
+            </select>
+            <div class="form-text">Выберите преподавателей, которые ведут этот предмет в целом.</div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-3 mt-4">
+            <a href="{% url 'admin_subject_detail' subject.id %}" class="btn btn-outline-secondary">
+                <i class="bi bi-x"></i>
+                Отмена
+            </a>
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save"></i>
+                Сохранить изменения
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

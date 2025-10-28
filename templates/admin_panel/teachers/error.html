@@ -1,0 +1,16 @@
+{% extends 'admin_panel/base.html' %}
+{% block title %}Ошибка загрузки преподавателей{% endblock %}
+{% block page_title %}Ошибка{% endblock %}
+
+{% block content %}
+<div class="alert alert-danger">
+    <h4 class="alert-heading">Не удалось загрузить список преподавателей</h4>
+    <p>{{ error }}</p>
+    <hr>
+    <details>
+        <summary>Подробности</summary>
+        <pre style="white-space: pre-wrap; background:#f9f9f9; padding:1rem; border-radius:6px; border:1px solid #ddd;">{{ traceback }}</pre>
+    </details>
+    <a href="{% url 'admin_dashboard' %}" class="btn btn-secondary mt-3">Вернуться на главную</a>
+</div>
+{% endblock %}

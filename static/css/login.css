@@ -237,7 +237,6 @@ body {
 /* Дополнительные опции */
 .remember-me {
     display: flex;
-    align-items: center;
     justify-content: flex-end;
     margin: 1.5rem 0;
 }
@@ -754,14 +753,6 @@ body {
     opacity: 0.6;
     cursor: not-allowed;
     transform: none;
-}
-
-/* Дополнительные опции */
-.remember-me {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin: 1.5rem 0;
 }
 
 .checkbox-wrapper {

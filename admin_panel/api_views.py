@@ -8,7 +8,7 @@ from django.db.models import Q
 from django.core.paginator import Paginator
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
@@ -19,13 +19,15 @@ from datetime import datetime
 from .serializers import (
     StudentSerializer, BulkOperationSerializer, CreateAccessSerializer,
     PasswordResetSerializer, StudentListResponseSerializer, StudentListSerializer,
-    PaginationSerializer, FacultySerializer, FacultyCreateSerializer, 
-    FacultyListSerializer, FacultyBulkOperationSerializer, FacultyListResponseSerializer
+    PaginationSerializer, FacultySerializer, FacultyCreateSerializer,
+    FacultyListSerializer, FacultyBulkOperationSerializer, FacultyListResponseSerializer,
+    TeacherSerializer, TeacherCreateSerializer, TeacherListSerializer,
+    TeacherBulkOperationSerializer, TeacherListResponseSerializer, SubjectSerializer
 )
 
 # Безопасная проверка импорта моделей
 try:
-    from .models import Student, Group, Faculty
+    from .models import Student, Group, Faculty, Teacher, Subject
     MODELS_AVAILABLE = True
 except ImportError:
     MODELS_AVAILABLE = False
@@ -93,6 +95,38 @@ def send_credentials_email(student, username, password):
         print(f"Ошибка отправки email: {e}")
         return False
 
+
+def send_teacher_credentials_email(teacher, username, password):
+    """Отправка учетных данных преподавателю"""
+    try:
+        subject = 'Доступ к системе МПТ Журнал'
+        message = f'''
+Здравствуйте, {teacher.get_full_name()}!
+
+Для вас создан аккаунт в системе МПТ Журнал.
+
+Данные для входа:
+Логин: {username}
+Пароль: {password}
+
+Адрес входа: {getattr(settings, 'SITE_URL', 'http://localhost:8000')}
+
+С уважением,
+Администрация МПТ
+'''
+
+        send_mail(
+            subject,
+            message,
+            getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@mpt.ru'),
+            [teacher.email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"Ошибка отправки email преподавателю: {e}")
+        return False
+
 def send_password_email(student, password):
     """Отправить новый пароль на email"""
     try:
@@ -146,8 +180,37 @@ def apply_student_filters(queryset, filters):
             queryset = queryset.filter(user__is_active=True)
         elif status_filter == 'inactive':
             queryset = queryset.filter(user__is_active=False)
-    
+
     return queryset
+
+
+def apply_teacher_filters(queryset, filters):
+    """Применить фильтры к queryset преподавателей"""
+    search = filters.get('search', '').strip()
+    subject_filter = filters.get('subject', '').strip()
+    status_filter = filters.get('status', '').strip()
+
+    if search:
+        queryset = queryset.filter(
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search) |
+            Q(middle_name__icontains=search) |
+            Q(email__icontains=search) |
+            Q(phone__icontains=search)
+        )
+
+    if subject_filter:
+        queryset = queryset.filter(subjects__id=subject_filter)
+
+    if status_filter:
+        if status_filter == 'active':
+            queryset = queryset.filter(user__isnull=False, user__is_active=True)
+        elif status_filter == 'inactive':
+            queryset = queryset.filter(Q(user__isnull=True) | Q(user__is_active=False))
+        elif status_filter == 'curator':
+            queryset = queryset.filter(is_curator=True)
+
+    return queryset.distinct()
 
 # ====================================
 # API ENDPOINTS ДЛЯ СТУДЕНТОВ
@@ -155,7 +218,9 @@ def apply_student_filters(queryset, filters):
 
 @swagger_auto_schema(
     method='post',
+    operation_summary='Удаление студента',
     operation_description="Удалить студента по ID",
+    tags=['Студенты'],
     responses={
         200: openapi.Response('Студент успешно удален', StudentSerializer),
         404: 'Студент не найден',
@@ -212,7 +277,9 @@ def student_delete_api(request, student_id):
 
 @swagger_auto_schema(
     method='post',
+    operation_summary='Переключение статуса студента',
     operation_description="Переключить статус активности аккаунта студента",
+    tags=['Студенты'],
     responses={
         200: openapi.Response('Статус изменен', StudentSerializer),
         400: 'У студента нет аккаунта',
@@ -277,7 +344,9 @@ def student_toggle_status_api(request, student_id):
 @swagger_auto_schema(
     method='post',
     request_body=CreateAccessSerializer,
+    operation_summary='Создание доступа студенту',
     operation_description="Создать доступ к системе для студента",
+    tags=['Студенты'],
     responses={
         200: openapi.Response('Доступ создан', StudentSerializer),
         400: 'Доступ уже существует или ошибка валидации',
@@ -363,7 +432,9 @@ def student_create_access_api(request, student_id):
 @swagger_auto_schema(
     method='post',
     request_body=PasswordResetSerializer,
+    operation_summary='Сброс пароля студента',
     operation_description="Сбросить пароль студента",
+    tags=['Студенты'],
     responses={
         200: openapi.Response('Пароль сброшен', openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -443,7 +514,9 @@ def student_reset_password_api(request, student_id):
 @swagger_auto_schema(
     method='post',
     request_body=BulkOperationSerializer,
+    operation_summary='Массовая активация студентов',
     operation_description="Массовая активация студентов",
+    tags=['Студенты'],
     responses={
         200: openapi.Response('Студенты активированы', openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -509,7 +582,9 @@ def student_bulk_activate_api(request):
 @swagger_auto_schema(
     method='post',
     request_body=BulkOperationSerializer,
+    operation_summary='Массовая деактивация студентов',
     operation_description="Массовая деактивация студентов",
+    tags=['Студенты'],
     responses={200: 'Студенты деактивированы', 400: 'Ошибка валидации', 500: 'Ошибка сервера'}
 )
 @api_view(['POST'])
@@ -562,7 +637,9 @@ def student_bulk_deactivate_api(request):
 @swagger_auto_schema(
     method='post',
     request_body=BulkOperationSerializer,
+    operation_summary='Массовое удаление студентов',
     operation_description="Массовое удаление студентов",
+    tags=['Студенты'],
     responses={200: 'Студенты удалены', 400: 'Ошибка валидации', 500: 'Ошибка сервера'}
 )
 @api_view(['POST'])
@@ -623,7 +700,9 @@ def student_bulk_delete_api(request):
 @swagger_auto_schema(
     method='post',
     request_body=BulkOperationSerializer,
+    operation_summary='Массовое создание доступа студентам',
     operation_description="Массовое создание доступа для студентов",
+    tags=['Студенты'],
     responses={200: 'Доступ создан', 400: 'Ошибка валидации', 500: 'Ошибка сервера'}
 )
 @api_view(['POST'])
@@ -697,7 +776,9 @@ def student_bulk_create_access_api(request):
 
 @swagger_auto_schema(
     method='get',
+    operation_summary='Экспорт студентов',
     operation_description="Экспорт студентов в Excel",
+    tags=['Студенты'],
     manual_parameters=[
         openapi.Parameter('search', openapi.IN_QUERY, description="Поиск по имени/фамилии/email", type=openapi.TYPE_STRING),
         openapi.Parameter('group', openapi.IN_QUERY, description="Фильтр по группе", type=openapi.TYPE_STRING),
@@ -850,7 +931,9 @@ def student_export_view(request):
 
 @swagger_auto_schema(
     method='get',
+    operation_summary='Список студентов (AJAX)',
     operation_description="Получить список студентов (для AJAX)",
+    tags=['Студенты'],
     manual_parameters=[
         openapi.Parameter('search', openapi.IN_QUERY, description="Поиск", type=openapi.TYPE_STRING),
         openapi.Parameter('page', openapi.IN_QUERY, description="Номер страницы", type=openapi.TYPE_INTEGER),
@@ -913,10 +996,373 @@ def student_list_api(request):
         }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+
+
+# ====================================
+# ПРЕПОДАВАТЕЛИ API
+# ====================================
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary='Удаление преподавателя',
+    operation_description="Удалить преподавателя по ID",
+    tags=['Преподаватели'],
+    responses={
+        200: 'Преподаватель удалён',
+        404: 'Преподаватель не найден',
+        500: 'Ошибка сервера'
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def teacher_delete_api(request, teacher_id):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    try:
+        teacher = get_object_or_404(Teacher, id=teacher_id)
+        if teacher.user:
+            teacher.user.delete()
+        teacher.delete()
+        return Response({'success': True, 'message': 'Преподаватель удалён'}, status=status.HTTP_200_OK)
+    except Exception as exc:
+        return Response({'success': False, 'message': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary='Переключение статуса преподавателя',
+    operation_description="Переключить статус аккаунта преподавателя",
+    tags=['Преподаватели'],
+    responses={
+        200: 'Статус изменён',
+        400: 'Нет аккаунта',
+        404: 'Преподаватель не найден'
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def teacher_toggle_status_api(request, teacher_id):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    teacher = get_object_or_404(Teacher, id=teacher_id)
+    if not teacher.user:
+        return Response({'success': False, 'message': 'У преподавателя нет аккаунта'}, status=status.HTTP_400_BAD_REQUEST)
+    teacher.user.is_active = not teacher.user.is_active
+    teacher.user.save()
+    return Response({
+        'success': True,
+        'message': 'Статус обновлён',
+        'is_active': teacher.user.is_active
+    }, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='post',
+    request_body=CreateAccessSerializer,
+    operation_summary='Создание доступа преподавателю',
+    operation_description="Создать доступ к системе для преподавателя",
+    tags=['Преподаватели'],
+    responses={
+        200: 'Доступ создан',
+        400: 'Ошибка валидации',
+        404: 'Преподаватель не найден'
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def teacher_create_access_api(request, teacher_id):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    teacher = get_object_or_404(Teacher, id=teacher_id)
+    if teacher.user:
+        return Response({'success': False, 'message': 'У преподавателя уже есть доступ'}, status=status.HTTP_400_BAD_REQUEST)
+    serializer = CreateAccessSerializer(data=request.data or {})
+    serializer.is_valid(raise_exception=True)
+    username = generate_username(teacher.first_name, teacher.last_name)
+    password = generate_password()
+    user = User.objects.create_user(
+        username=username,
+        email=teacher.email,
+        password=password,
+        first_name=teacher.first_name,
+        last_name=teacher.last_name
+    )
+    user.is_active = True
+    user.save()
+    teacher.user = user
+    teacher.save()
+    email_sent = False
+    if serializer.validated_data.get('send_email', True):
+        email_sent = send_teacher_credentials_email(teacher, username, password)
+    return Response({
+        'success': True,
+        'message': 'Доступ создан',
+        'email_sent': email_sent,
+        'credentials': None if email_sent else {'username': username, 'password': password}
+    }, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='post',
+    request_body=PasswordResetSerializer,
+    operation_summary='Сброс пароля преподавателя',
+    operation_description="Сбросить пароль преподавателя",
+    tags=['Преподаватели'],
+    responses={
+        200: 'Пароль сброшен',
+        400: 'Нет аккаунта',
+        404: 'Преподаватель не найден'
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def teacher_reset_password_api(request, teacher_id):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    teacher = get_object_or_404(Teacher, id=teacher_id)
+    if not teacher.user:
+        return Response({'success': False, 'message': 'У преподавателя нет доступа к системе'}, status=status.HTTP_400_BAD_REQUEST)
+    serializer = PasswordResetSerializer(data=request.data or {})
+    serializer.is_valid(raise_exception=True)
+    password = generate_password()
+    teacher.user.set_password(password)
+    teacher.user.save()
+    email_sent = False
+    if serializer.validated_data.get('send_email', True):
+        email_sent = send_teacher_credentials_email(teacher, teacher.user.username, password)
+    return Response({
+        'success': True,
+        'message': 'Пароль обновлён',
+        'email_sent': email_sent,
+        'password': None if email_sent else password
+    }, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='post',
+    request_body=TeacherBulkOperationSerializer,
+    operation_summary='Массовая активация преподавателей',
+    operation_description="Массовая активация преподавателей",
+    tags=['Преподаватели'],
+    responses={200: 'Готово'}
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def teacher_bulk_activate_api(request):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    serializer = TeacherBulkOperationSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    queryset = Teacher.objects.select_related('user')
+    if serializer.validated_data['mode'] == 'selected':
+        queryset = queryset.filter(id__in=serializer.validated_data['teacher_ids'])
+    else:
+        queryset = apply_teacher_filters(queryset, serializer.validated_data.get('filters', {}))
+    updated = 0
+    for teacher in queryset:
+        if teacher.user and not teacher.user.is_active:
+            teacher.user.is_active = True
+            teacher.user.save()
+            updated += 1
+    return Response({'success': True, 'message': f'Активировано {updated} преподавателей', 'updated_count': updated})
+
+
+@swagger_auto_schema(
+    method='post',
+    request_body=TeacherBulkOperationSerializer,
+    operation_summary='Массовая деактивация преподавателей',
+    operation_description="Массовая деактивация преподавателей",
+    tags=['Преподаватели'],
+    responses={200: 'Готово'}
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def teacher_bulk_deactivate_api(request):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    serializer = TeacherBulkOperationSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    queryset = Teacher.objects.select_related('user')
+    if serializer.validated_data['mode'] == 'selected':
+        queryset = queryset.filter(id__in=serializer.validated_data['teacher_ids'])
+    else:
+        queryset = apply_teacher_filters(queryset, serializer.validated_data.get('filters', {}))
+    updated = 0
+    for teacher in queryset:
+        if teacher.user and teacher.user.is_active:
+            teacher.user.is_active = False
+            teacher.user.save()
+            updated += 1
+    return Response({'success': True, 'message': f'Деактивировано {updated} преподавателей', 'updated_count': updated})
+
+
+@swagger_auto_schema(
+    method='post',
+    request_body=TeacherBulkOperationSerializer,
+    operation_summary='Массовое удаление преподавателей',
+    operation_description="Массовое удаление преподавателей",
+    tags=['Преподаватели'],
+    responses={200: 'Готово'}
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def teacher_bulk_delete_api(request):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    serializer = TeacherBulkOperationSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    queryset = Teacher.objects.select_related('user')
+    if serializer.validated_data['mode'] == 'selected':
+        queryset = queryset.filter(id__in=serializer.validated_data['teacher_ids'])
+    else:
+        queryset = apply_teacher_filters(queryset, serializer.validated_data.get('filters', {}))
+    deleted = 0
+    for teacher in queryset:
+        if teacher.user:
+            teacher.user.delete()
+        teacher.delete()
+        deleted += 1
+    return Response({'success': True, 'message': f'Удалено {deleted} преподавателей', 'deleted_count': deleted})
+
+
+@swagger_auto_schema(
+    method='post',
+    request_body=TeacherBulkOperationSerializer,
+    operation_summary='Массовое создание доступа преподавателям',
+    operation_description="Массовое создание доступа преподавателям",
+    tags=['Преподаватели'],
+    responses={200: 'Готово'}
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def teacher_bulk_create_access_api(request):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    serializer = TeacherBulkOperationSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    queryset = Teacher.objects.select_related('user')
+    if serializer.validated_data['mode'] == 'selected':
+        queryset = queryset.filter(id__in=serializer.validated_data['teacher_ids'])
+    else:
+        queryset = apply_teacher_filters(queryset, serializer.validated_data.get('filters', {}))
+    created = 0
+    for teacher in queryset:
+        if teacher.user:
+            continue
+        username = generate_username(teacher.first_name, teacher.last_name)
+        password = generate_password()
+        user = User.objects.create_user(
+            username=username,
+            email=teacher.email,
+            password=password,
+            first_name=teacher.first_name,
+            last_name=teacher.last_name,
+        )
+        user.is_active = True
+        user.save()
+        teacher.user = user
+        teacher.save()
+        send_teacher_credentials_email(teacher, username, password)
+        created += 1
+    return Response({'success': True, 'message': f'Создан доступ для {created} преподавателей', 'created_count': created})
+
+
+@swagger_auto_schema(
+    method='get',
+    operation_summary='Экспорт преподавателей',
+    operation_description="Экспорт преподавателей в Excel",
+    tags=['Преподаватели'],
+    manual_parameters=[
+        openapi.Parameter('search', openapi.IN_QUERY, description='Поиск', type=openapi.TYPE_STRING),
+        openapi.Parameter('subject', openapi.IN_QUERY, description='Предмет', type=openapi.TYPE_STRING),
+        openapi.Parameter('status', openapi.IN_QUERY, description='Статус', type=openapi.TYPE_STRING),
+    ],
+    responses={200: 'Файл Excel'}
+)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def teacher_export_view(request):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    teachers = Teacher.objects.select_related('user').prefetch_related('subjects', 'groups', 'groups__faculty')
+    filters = {
+        'search': request.GET.get('search', ''),
+        'subject': request.GET.get('subject', ''),
+        'status': request.GET.get('status', ''),
+    }
+    teachers = apply_teacher_filters(teachers, filters)
+    selected_ids = request.GET.getlist('ids')
+    if selected_ids:
+        teachers = teachers.filter(id__in=selected_ids)
+    data = []
+    for teacher in teachers:
+        data.append({
+            'ФИО': teacher.get_full_name(),
+            'Email': teacher.email,
+            'Телефон': teacher.phone or '',
+            'Должность': teacher.position or '',
+            'Статус': 'Активен' if teacher.is_active_account else 'Неактивен',
+        })
+    df = pd.DataFrame(data)
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Преподаватели', index=False)
+    output.seek(0)
+    response = HttpResponse(
+        output.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    filename = f"teachers_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    return response
+
+
+@swagger_auto_schema(
+    method='get',
+    operation_summary='Список преподавателей',
+    operation_description="Получить список преподавателей",
+    tags=['Преподаватели'],
+    manual_parameters=[
+        openapi.Parameter('search', openapi.IN_QUERY, description='Поиск', type=openapi.TYPE_STRING),
+        openapi.Parameter('page', openapi.IN_QUERY, description='Номер страницы', type=openapi.TYPE_INTEGER),
+    ],
+    responses={200: TeacherListResponseSerializer}
+)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def teacher_list_api(request):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    teachers = Teacher.objects.select_related('user')
+    filters = {
+        'search': request.GET.get('search', ''),
+        'subject': request.GET.get('subject', ''),
+        'status': request.GET.get('status', ''),
+    }
+    teachers = apply_teacher_filters(teachers, filters)
+    paginator = Paginator(teachers, 20)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    serializer = TeacherListSerializer(page_obj, many=True)
+    pagination_data = {
+        'page': page_obj.number,
+        'pages': paginator.num_pages,
+        'has_next': page_obj.has_next(),
+        'has_previous': page_obj.has_previous(),
+        'count': paginator.count,
+    }
+    return Response({
+        'success': True,
+        'teachers': serializer.data,
+        'pagination': pagination_data
+    }, status=status.HTTP_200_OK)
+
 # Факультеты
 @swagger_auto_schema(
     method='post',
+    operation_summary='Удаление специальности',
     operation_description="Удалить факультет по ID",
+    tags=['Специальности'],
     responses={
         200: openapi.Response('Факультет удален', FacultySerializer),
         400: 'Есть связанные группы или студенты',
@@ -982,7 +1428,9 @@ def faculty_delete_api(request, faculty_id):
 
 @swagger_auto_schema(
     method='post',
+    operation_summary='Переключение статуса специальности',
     operation_description="Переключить статус активности факультета",
+    tags=['Специальности'],
     responses={
         200: openapi.Response('Статус изменен', FacultySerializer),
         404: 'Факультет не найден',
@@ -1040,7 +1488,9 @@ def faculty_toggle_status_api(request, faculty_id):
 @swagger_auto_schema(
     method='post',
     request_body=FacultyBulkOperationSerializer,
+    operation_summary='Массовая активация специальностей',
     operation_description="Массовая активация факультетов",
+    tags=['Специальности'],
     responses={
         200: openapi.Response('Факультеты активированы', openapi.Schema(
             type=openapi.TYPE_OBJECT,
@@ -1093,7 +1543,9 @@ def faculty_bulk_activate_api(request):
 @swagger_auto_schema(
     method='post',
     request_body=FacultyBulkOperationSerializer,
+    operation_summary='Массовая деактивация специальностей',
     operation_description="Массовая деактивация факультетов",
+    tags=['Специальности'],
     responses={200: 'Факультеты деактивированы', 400: 'Ошибка валидации', 500: 'Ошибка сервера'}
 )
 @api_view(['POST'])
@@ -1134,7 +1586,9 @@ def faculty_bulk_deactivate_api(request):
 @swagger_auto_schema(
     method='post',
     request_body=FacultyBulkOperationSerializer,
+    operation_summary='Массовое удаление специальностей',
     operation_description="Массовое удаление факультетов",
+    tags=['Специальности'],
     responses={200: 'Факультеты удалены', 400: 'Ошибка валидации или есть связанные данные', 500: 'Ошибка сервера'}
 )
 @api_view(['POST'])
@@ -1211,7 +1665,9 @@ def faculty_bulk_delete_api(request):
 
 @swagger_auto_schema(
     method='get',
+    operation_summary='Экспорт специальностей',
     operation_description="Экспорт факультетов в Excel",
+    tags=['Специальности'],
     manual_parameters=[
         openapi.Parameter('search', openapi.IN_QUERY, description="Поиск по названию/коду", type=openapi.TYPE_STRING),
         openapi.Parameter('status', openapi.IN_QUERY, description="Фильтр по статусу", type=openapi.TYPE_STRING),
@@ -1370,6 +1826,7 @@ def faculty_export_view(request):
 @swagger_auto_schema(
     method='get',
     operation_description="Получить список факультетов (для AJAX)",
+    tags=['Специальности'],
     manual_parameters=[
         openapi.Parameter('search', openapi.IN_QUERY, description="Поиск", type=openapi.TYPE_STRING),
         openapi.Parameter('page', openapi.IN_QUERY, description="Номер страницы", type=openapi.TYPE_INTEGER),
@@ -1443,70 +1900,307 @@ def faculty_list_api(request):
 
 
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
-from .models import Group, Student
-from .serializers import GroupSerializer
-import json
+from .models import Group, Student, Subject
+from .serializers import GroupSerializer, SubjectSerializer
 
+@swagger_auto_schema(
+    method='get',
+    operation_summary='Список учебных групп',
+    tags=['Группы'],
+    operation_description='Возвращает полный перечень учебных групп с основными сведениями и привязанными специальностями.',
+    manual_parameters=[
+        openapi.Parameter('faculty', openapi.IN_QUERY, description='ID специальности для фильтрации', type=openapi.TYPE_INTEGER),
+        openapi.Parameter('is_active', openapi.IN_QUERY, description='Статус активности группы (true/false)', type=openapi.TYPE_BOOLEAN)
+    ],
+    responses={200: openapi.Response('Список групп', GroupSerializer(many=True))}
+)
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def group_list_api(request):
-    groups = Group.objects.all().order_by('faculty__name', 'profession', 'code')
-    serializer = GroupSerializer(groups, many=True)
-    return Response(serializer.data)
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    groups = Group.objects.select_related('faculty').order_by('faculty__name', 'profession', 'code')
+
+    faculty_id = request.GET.get('faculty', '').strip()
+    if faculty_id.isdigit():
+        groups = groups.filter(faculty_id=int(faculty_id))
+
+    is_active = request.GET.get('is_active', '').strip().lower()
+    if is_active in ('true', 'false'):
+        groups = groups.filter(is_active=(is_active == 'true'))
+
+    serializer = GroupSerializer(groups, many=True, context={'request': request})
+    return Response({'success': True, 'groups': serializer.data}, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='get',
+    operation_summary='Информация о группе',
+    tags=['Группы'],
+    responses={200: openapi.Response('Данные группы', GroupSerializer())}
+)
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def group_detail_api(request, group_id):
-    group = get_object_or_404(Group, id=group_id)
-    serializer = GroupSerializer(group)
-    return Response(serializer.data)
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    group = get_object_or_404(Group.objects.select_related('faculty'), id=group_id)
+    serializer = GroupSerializer(group, context={'request': request})
+    return Response({'success': True, 'group': serializer.data}, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary='Создание группы',
+    tags=['Группы'],
+    request_body=GroupSerializer,
+    responses={201: openapi.Response('Группа создана', GroupSerializer())}
+)
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def group_create_api(request):
-    serializer = GroupSerializer(data=request.data)
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    serializer = GroupSerializer(data=request.data, context={'request': request})
     if serializer.is_valid():
-        serializer.save()
-        return Response({'success': True, 'data': serializer.data}, status=status.HTTP_201_CREATED)
+        group = serializer.save()
+        return Response({'success': True, 'group': GroupSerializer(group, context={'request': request}).data}, status=status.HTTP_201_CREATED)
     return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
+
+@swagger_auto_schema(
+    method='put',
+    operation_summary='Полное обновление группы',
+    tags=['Группы'],
+    request_body=GroupSerializer,
+    responses={200: openapi.Response('Группа обновлена', GroupSerializer())}
+)
+@swagger_auto_schema(
+    method='patch',
+    operation_summary='Частичное обновление группы',
+    tags=['Группы'],
+    request_body=GroupSerializer,
+    responses={200: openapi.Response('Группа обновлена', GroupSerializer())}
+)
 @api_view(['PUT', 'PATCH'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def group_update_api(request, group_id):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     group = get_object_or_404(Group, id=group_id)
-    serializer = GroupSerializer(group, data=request.data, partial=True)
+    serializer = GroupSerializer(group, data=request.data, partial=True, context={'request': request})
     if serializer.is_valid():
-        serializer.save()
-        return Response({'success': True, 'data': serializer.data})
+        group = serializer.save()
+        return Response({'success': True, 'group': GroupSerializer(group, context={'request': request}).data}, status=status.HTTP_200_OK)
     return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
+
+@swagger_auto_schema(
+    method='delete',
+    operation_summary='Удаление группы',
+    tags=['Группы'],
+    responses={200: openapi.Response('Группа удалена', openapi.Schema(type=openapi.TYPE_OBJECT, properties={'success': openapi.Schema(type=openapi.TYPE_BOOLEAN), 'message': openapi.Schema(type=openapi.TYPE_STRING)}))}
+)
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser])
 def group_delete_api(request, group_id):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     group = get_object_or_404(Group, id=group_id)
     group.delete()
-    return Response({'success': True, 'message': 'Группа удалена'})
+    return Response({'success': True, 'message': 'Группа удалена'}, status=status.HTTP_200_OK)
 
-# Пример API для перевода студента
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary='Перевод студента в другую группу',
+    tags=['Группы'],
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        required=['student_id', 'target_group_id'],
+        properties={
+            'student_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID студента'),
+            'target_group_id': openapi.Schema(type=openapi.TYPE_INTEGER, description='ID группы назначения')
+        }
+    ),
+    responses={200: openapi.Response('Студент переведен', openapi.Schema(type=openapi.TYPE_OBJECT, properties={'success': openapi.Schema(type=openapi.TYPE_BOOLEAN), 'message': openapi.Schema(type=openapi.TYPE_STRING)}))}
+)
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminUser])
 def transfer_student_api(request):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     try:
-        data = request.data
+        data = request.data or {}
         student_id = data.get('student_id')
         target_group_id = data.get('target_group_id')
+
+        if not student_id or not target_group_id:
+            return Response({'success': False, 'message': 'Необходимы student_id и target_group_id'}, status=status.HTTP_400_BAD_REQUEST)
 
         student = get_object_or_404(Student, id=student_id)
         target_group = get_object_or_404(Group, id=target_group_id)
 
         student.group = target_group
+        if target_group.enrollment_date:
+            student.enrollment_date = target_group.enrollment_date
+        if target_group.graduation_date:
+            student.graduation_date = target_group.graduation_date
         student.save()
 
-        return Response({'success': True, 'message': 'Студент переведен'}, status=status.HTTP_200_OK)
+        return Response({'success': True, 'message': 'Студент успешно переведен'}, status=status.HTTP_200_OK)
     except Exception as e:
-        return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'success': False, 'message': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+
+@swagger_auto_schema(
+    method='get',
+    operation_summary='Список предметов',
+    tags=['Предметы'],
+    operation_description='Возвращает перечень предметов с возможностью фильтрации по активности и поиску.',
+    manual_parameters=[
+        openapi.Parameter('search', openapi.IN_QUERY, description='Поиск по названию или короткому названию', type=openapi.TYPE_STRING),
+        openapi.Parameter('is_active', openapi.IN_QUERY, description='Статус предмета (true/false)', type=openapi.TYPE_BOOLEAN)
+    ],
+    responses={200: openapi.Response('Список предметов', SubjectSerializer(many=True))}
+)
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def subject_list_api(request):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    subjects = Subject.objects.all().prefetch_related('assignments').order_by('name')
+
+    search = request.GET.get('search', '').strip()
+    if search:
+        subjects = subjects.filter(Q(name__icontains=search) | Q(short_name__icontains=search))
+
+    is_active = request.GET.get('is_active', '').strip().lower()
+    if is_active in ('true', 'false'):
+        subjects = subjects.filter(is_active=(is_active == 'true'))
+
+    serializer = SubjectSerializer(subjects, many=True, context={'request': request})
+    return Response({'success': True, 'subjects': serializer.data}, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='get',
+    operation_summary='Информация о предмете',
+    tags=['Предметы'],
+    responses={200: openapi.Response('Данные предмета', SubjectSerializer())}
+)
+@api_view(['GET'])
+@permission_classes([IsAdminUser])
+def subject_detail_api(request, subject_id):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    subject = get_object_or_404(Subject.objects.prefetch_related('assignments'), id=subject_id)
+    serializer = SubjectSerializer(subject, context={'request': request})
+    return Response({'success': True, 'subject': serializer.data}, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary='Создание предмета',
+    tags=['Предметы'],
+    request_body=SubjectSerializer,
+    responses={201: openapi.Response('Предмет создан', SubjectSerializer())}
+)
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def subject_create_api(request):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    serializer = SubjectSerializer(data=request.data, context={'request': request})
+    if serializer.is_valid():
+        subject = serializer.save()
+        return Response({'success': True, 'subject': SubjectSerializer(subject, context={'request': request}).data}, status=status.HTTP_201_CREATED)
+    return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@swagger_auto_schema(
+    method='put',
+    operation_summary='Полное обновление предмета',
+    tags=['Предметы'],
+    request_body=SubjectSerializer,
+    responses={200: openapi.Response('Предмет обновлен', SubjectSerializer())}
+)
+@swagger_auto_schema(
+    method='patch',
+    operation_summary='Частичное обновление предмета',
+    tags=['Предметы'],
+    request_body=SubjectSerializer,
+    responses={200: openapi.Response('Предмет обновлен', SubjectSerializer())}
+)
+@api_view(['PUT', 'PATCH'])
+@permission_classes([IsAdminUser])
+def subject_update_api(request, subject_id):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    subject = get_object_or_404(Subject.objects.prefetch_related('assignments'), id=subject_id)
+    serializer = SubjectSerializer(subject, data=request.data, partial=True, context={'request': request})
+    if serializer.is_valid():
+        subject = serializer.save()
+        return Response({'success': True, 'subject': SubjectSerializer(subject, context={'request': request}).data}, status=status.HTTP_200_OK)
+    return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary='Смена статуса предмета',
+    tags=['Предметы'],
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'is_active': openapi.Schema(type=openapi.TYPE_BOOLEAN, description='Новый статус активности (опционально). Если не задан – статус переключится.')
+        }
+    ),
+    responses={200: openapi.Response('Статус обновлен', SubjectSerializer())}
+)
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def subject_toggle_status_api(request, subject_id):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    subject = get_object_or_404(Subject.objects.prefetch_related('assignments'), id=subject_id)
+    payload = request.data or {}
+    if 'is_active' in payload:
+        subject.is_active = bool(payload.get('is_active'))
+    else:
+        subject.is_active = not subject.is_active
+    subject.save(update_fields=['is_active'])
+    return Response({'success': True, 'subject': SubjectSerializer(subject, context={'request': request}).data}, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='delete',
+    operation_summary='Удаление предмета',
+    tags=['Предметы'],
+    responses={200: openapi.Response('Предмет удален', openapi.Schema(type=openapi.TYPE_OBJECT, properties={'success': openapi.Schema(type=openapi.TYPE_BOOLEAN), 'message': openapi.Schema(type=openapi.TYPE_STRING)}))}
+)
+@api_view(['DELETE'])
+@permission_classes([IsAdminUser])
+def subject_delete_api(request, subject_id):
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    subject = get_object_or_404(Subject.objects.prefetch_related('assignments'), id=subject_id)
+    if subject.assignments.exists():
+        return Response({'success': False, 'message': 'Нельзя удалить предмет, пока он назначен группам.'}, status=status.HTTP_400_BAD_REQUEST)
+
+    subject.delete()
+    return Response({'success': True, 'message': 'Предмет удален'}, status=status.HTTP_200_OK)

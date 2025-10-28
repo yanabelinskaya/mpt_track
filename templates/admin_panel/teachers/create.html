@@ -1,0 +1,377 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Добавить преподавателя - МПТ Журнал{% endblock %}
+{% block page_title %}Добавить нового преподавателя{% endblock %}
+{% block mobile_title %}Преподаватель{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<style>
+.form-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.form-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-row.single {
+    grid-template-columns: 1fr;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 500;
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.form-label.required::after {
+    content: '*';
+    color: var(--bs-danger);
+    margin-left: 4px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-select {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-select:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+}
+
+.info-card {
+    background: rgba(59, 130, 246, 0.08);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-card .info-title {
+    font-weight: 600;
+    color: #2563eb;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.info-card ul {
+    margin-bottom: 0;
+    padding-left: 1rem;
+}
+
+.info-card li {
+    color: var(--bs-body-color);
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--sidebar-bg);
+    color: var(--nav-link-color);
+    border: 1px solid var(--sidebar-border);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.secondary-actions,
+.primary-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.error-message {
+    color: var(--bs-danger);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .form-card {
+        padding: 1.5rem;
+    }
+    
+    .form-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .secondary-actions,
+    .primary-actions {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    .btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <div class="form-card">
+        <div class="info-card">
+            <div class="info-title">
+                <i class="bi bi-person-plus"></i>
+                Создание нового преподавателя
+            </div>
+            <ul>
+                <li>Обязательные поля: <strong>Фамилия, Имя и Email.</strong></li>
+                <li>Email используется как уникальный идентификатор.</li>
+                <li>Можно сразу назначить предметы и группы.</li>
+                <li>При включении «Создать учетную запись» логин будет отправлен на почту.</li>
+            </ul>
+        </div>
+        <form method="post">
+            {% csrf_token %}
+            
+            <div class="section-title">
+                <i class="bi bi-person-workspace"></i>
+                Основная информация
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label required">Фамилия</label>
+                    <input type="text" name="last_name" class="form-control" value="{{ form_data.last_name|default:'' }}" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label required">Имя</label>
+                    <input type="text" name="first_name" class="form-control" value="{{ form_data.first_name|default:'' }}" required>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Отчество</label>
+                    <input type="text" name="middle_name" class="form-control" value="{{ form_data.middle_name|default:'' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label required">Email</label>
+                    <input type="email" name="email" class="form-control" value="{{ form_data.email|default:'' }}" required>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Телефон</label>
+                    <input type="text" name="phone" class="form-control" value="{{ form_data.phone|default:'' }}">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Дата приема на работу</label>
+                    <input type="date" name="hire_date" class="form-control" value="{{ form_data.hire_date|default:'' }}">
+                </div>
+            </div>
+            
+            <div class="section-title">
+                <i class="bi bi-journal-bookmark"></i>
+                Профессиональные данные
+            </div>
+            
+            <div class="form-row single">
+                <div class="form-group">
+                    <label class="form-label">Должность</label>
+                    <input type="text" name="position" class="form-control" value="{{ form_data.position|default:'' }}" placeholder="Например: Преподаватель спецдисциплин">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Предметы</label>
+                    <select name="subjects" class="form-select" multiple size="6">
+                        {% for subject in subjects %}
+                            <option value="{{ subject.id }}" {% if subject.id|stringformat:"s" in selected_subjects %}selected{% endif %}>{{ subject.short_name|default:subject.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Удерживайте Ctrl/Cmd для выбора нескольких предметов</div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Группы</label>
+                    <select name="groups" class="form-select" multiple size="6">
+                        {% for group in groups %}
+                            <option value="{{ group.id }}" {% if group.id|stringformat:"s" in selected_groups %}selected{% endif %}>{{ group.code }} — {{ group.profession }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Группы, с которыми работает преподаватель</div>
+                </div>
+            </div>
+            
+            <div class="section-title">
+                <i class="bi bi-card-checklist"></i>
+                Дополнительные настройки
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Заметки</label>
+                    <textarea name="notes" class="form-control" rows="4">{{ form_data.notes|default:'' }}</textarea>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group form-check">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" name="is_curator" {% if form_data.is_curator == 'on' %}checked{% endif %}>
+                        <span class="checkbox-label">Преподаватель является куратором групп</span>
+                    </label>
+                </div>
+                <div class="form-group form-check">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" name="is_active" {% if form_data.is_active != 'off' %}checked{% endif %}>
+                        <span class="checkbox-label">Активен в системе</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="section-title">
+                <i class="bi bi-shield-lock"></i>
+                Доступ к системе
+            </div>
+            
+            <div class="info-card">
+                <div class="info-title">
+                    <i class="bi bi-info-circle"></i>
+                    Создание учетной записи
+                </div>
+                <ul>
+                    <li>Логин будет сгенерирован автоматически на основе имени и фамилии.</li>
+                    <li>Пароль можно отправить на email преподавателя.</li>
+                    <li>Учетная запись позволит преподавателю входить в систему.</li>
+                </ul>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group form-check">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" name="create_account" {% if form_data.create_account == 'on' %}checked{% endif %}>
+                        <span class="checkbox-label">Создать учетную запись для преподавателя</span>
+                    </label>
+                </div>
+                <div class="form-group form-check">
+                    <label class="checkbox-wrapper">
+                        <input type="checkbox" name="send_email" {% if form_data.send_email == 'on' or not form_data %}checked{% endif %}>
+                        <span class="checkbox-label">Отправить логин и пароль на email</span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="form-actions">
+                <a href="{% url 'admin_teachers' %}" class="btn btn-secondary">
+                    <i class="bi bi-arrow-left"></i>
+                    Отмена
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save"></i>
+                    Сохранить
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

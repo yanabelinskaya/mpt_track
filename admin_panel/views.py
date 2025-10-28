@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.core.mail import send_mail
+from django.core.exceptions import ValidationError
 from django.conf import settings
 from django.db import transaction
 import json
@@ -31,7 +32,7 @@ from django.views.decorators.http import require_POST
 
 # Безопасная проверка импорта моделей
 try:
-    from .models import Student, Group, Faculty
+    from .models import Student, Group, Faculty, Teacher, Subject, SubjectAssignment
     MODELS_AVAILABLE = True
 except:
     MODELS_AVAILABLE = False
@@ -196,6 +197,491 @@ def students_list_view(request):
             'error': str(e),
             'traceback': trace,
         }, status=500)
+
+
+@login_required
+def teachers_list_view(request):
+    """Список преподавателей с фильтрацией и поиском"""
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели не загружены. Выполните миграции.')
+        return redirect('admin_dashboard')
+
+    try:
+        search = request.GET.get('search', '').strip()
+        subject_filter = request.GET.get('subject', '').strip()
+        status_filter = request.GET.get('status', '').strip()
+
+        teachers = Teacher.objects.select_related('user').prefetch_related(
+            'subjects',
+            'groups',
+            'groups__faculty'
+        ).all()
+
+        if search:
+            teachers = teachers.filter(
+                Q(first_name__icontains=search) |
+                Q(last_name__icontains=search) |
+                Q(middle_name__icontains=search) |
+                Q(email__icontains=search) |
+                Q(phone__icontains=search)
+            )
+
+        if subject_filter:
+            teachers = teachers.filter(subjects__id=subject_filter)
+
+        if status_filter == 'active':
+            teachers = teachers.filter(user__isnull=False, user__is_active=True)
+        elif status_filter == 'inactive':
+            teachers = teachers.filter(Q(user__isnull=True) | Q(user__is_active=False))
+        elif status_filter == 'curator':
+            teachers = teachers.filter(is_curator=True)
+
+        teachers = teachers.distinct().order_by('last_name', 'first_name')
+        subjects = Subject.objects.filter(is_active=True).order_by('name')
+
+        total_teachers = teachers.count()
+        paginator = Paginator(teachers, 20)
+        page_number = request.GET.get('page')
+        page_obj = paginator.get_page(page_number)
+
+        context = {
+            'page_obj': page_obj,
+            'subjects': subjects,
+            'search': search,
+            'subject_filter': subject_filter,
+            'status_filter': status_filter,
+            'total_teachers': total_teachers,
+        }
+
+        return render(request, 'admin_panel/teachers/list.html', context)
+
+    except Exception as e:
+        import logging, traceback
+        logging.exception("Ошибка загрузки списка преподавателей")
+        trace = traceback.format_exc()
+        if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': str(e),
+                'traceback': trace,
+            }, status=500)
+        messages.error(request, f'Ошибка загрузки преподавателей: {str(e)}')
+        return render(request, 'admin_panel/teachers/error.html', {
+            'error': str(e),
+            'traceback': trace,
+        }, status=500)
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def teacher_create_view(request):
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели не загружены. Выполните миграции.')
+        return redirect('admin_dashboard')
+
+    subjects = Subject.objects.filter(is_active=True).order_by('name')
+    groups = Group.objects.filter(is_active=True).order_by('code')
+
+    if request.method == 'POST':
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        middle_name = request.POST.get('middle_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        position = request.POST.get('position', '').strip()
+        hire_date = request.POST.get('hire_date')
+        notes = request.POST.get('notes', '').strip()
+        subject_ids = [int(pk) for pk in request.POST.getlist('subjects') if pk.isdigit()]
+        group_ids = [int(pk) for pk in request.POST.getlist('groups') if pk.isdigit()]
+        selected_subject_ids = [str(pk) for pk in subject_ids]
+        selected_group_ids = [str(pk) for pk in group_ids]
+        selected_subject_ids = [str(pk) for pk in subject_ids]
+        selected_group_ids = [str(pk) for pk in group_ids]
+        is_curator = request.POST.get('is_curator') == 'on'
+        is_active = request.POST.get('is_active') != 'off'
+        create_account = request.POST.get('create_account') == 'on'
+        send_email_flag = request.POST.get('send_email') == 'on'
+
+        errors = {}
+        if not first_name:
+            errors['first_name'] = 'Имя обязательно для заполнения'
+        if not last_name:
+            errors['last_name'] = 'Фамилия обязательна для заполнения'
+        if not email:
+            errors['email'] = 'Email обязателен для заполнения'
+        elif Teacher.objects.filter(email=email).exists():
+            errors['email'] = 'Преподаватель с таким email уже существует'
+
+        hire_date_value = None
+        if hire_date:
+            try:
+                hire_date_value = datetime.strptime(hire_date, '%Y-%m-%d').date()
+            except ValueError:
+                errors['hire_date'] = 'Неверный формат даты приема'
+
+        if errors:
+            for msg in errors.values():
+                messages.error(request, msg)
+            context = {
+                'subjects': subjects,
+                'groups': groups,
+                'form_data': request.POST,
+                'errors': errors,
+                'selected_subjects': selected_subject_ids,
+                'selected_groups': selected_group_ids,
+            }
+            return render(request, 'admin_panel/teachers/create.html', context)
+
+        try:
+            with transaction.atomic():
+                teacher = Teacher.objects.create(
+                    first_name=first_name,
+                    last_name=last_name,
+                    middle_name=middle_name,
+                    email=email,
+                    phone=phone,
+                    position=position,
+                    hire_date=hire_date_value,
+                    notes=notes,
+                    is_curator=is_curator,
+                    is_active=is_active,
+                    created_by=request.user
+                )
+
+                if subject_ids:
+                    teacher.subjects.set(Subject.objects.filter(id__in=subject_ids))
+                if group_ids:
+                    teacher.groups.set(Group.objects.filter(id__in=group_ids))
+
+                if create_account:
+                    username = generate_username(first_name, last_name)
+                    password = generate_password()
+                    user = User.objects.create_user(
+                        username=username,
+                        email=email,
+                        password=password,
+                        first_name=first_name,
+                        last_name=last_name,
+                    )
+                    user.is_active = True
+                    user.save()
+                    teacher.user = user
+                    teacher.save()
+
+                    if send_email_flag:
+                        send_teacher_credentials_email(teacher, username, password)
+
+            messages.success(request, f'Преподаватель "{teacher.get_full_name()}" успешно создан')
+            return redirect('admin_teachers')
+
+        except Exception as exc:
+            messages.error(request, f'Ошибка при создании преподавателя: {str(exc)}')
+            context = {
+                'subjects': subjects,
+                'groups': groups,
+                'form_data': request.POST,
+                'errors': {'common': str(exc)},
+            }
+            return render(request, 'admin_panel/teachers/create.html', context)
+
+    context = {
+        'subjects': subjects,
+        'groups': groups,
+        'selected_subjects': [],
+        'selected_groups': [],
+        'form_data': {},
+    }
+    return render(request, 'admin_panel/teachers/create.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def teacher_edit_view(request, teacher_id):
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели не загружены. Выполните миграции.')
+        return redirect('admin_dashboard')
+
+    teacher = get_object_or_404(Teacher, id=teacher_id)
+    subjects = Subject.objects.filter(is_active=True).order_by('name')
+    groups = Group.objects.filter(is_active=True).order_by('code')
+
+    if request.method == 'POST':
+        first_name = request.POST.get('first_name', '').strip()
+        last_name = request.POST.get('last_name', '').strip()
+        middle_name = request.POST.get('middle_name', '').strip()
+        email = request.POST.get('email', '').strip()
+        phone = request.POST.get('phone', '').strip()
+        position = request.POST.get('position', '').strip()
+        hire_date = request.POST.get('hire_date')
+        notes = request.POST.get('notes', '').strip()
+        subject_ids = [int(pk) for pk in request.POST.getlist('subjects') if pk.isdigit()]
+        group_ids = [int(pk) for pk in request.POST.getlist('groups') if pk.isdigit()]
+        is_curator = request.POST.get('is_curator') == 'on'
+        is_active = request.POST.get('is_active') != 'off'
+        create_account = request.POST.get('create_account') == 'on'
+        send_email_flag = request.POST.get('send_email') == 'on'
+
+        errors = {}
+        if not first_name:
+            errors['first_name'] = 'Имя обязательно для заполнения'
+        if not last_name:
+            errors['last_name'] = 'Фамилия обязательна для заполнения'
+        if not email:
+            errors['email'] = 'Email обязателен для заполнения'
+        elif Teacher.objects.filter(email=email).exclude(id=teacher.id).exists():
+            errors['email'] = 'Преподаватель с таким email уже существует'
+
+        hire_date_value = None
+        if hire_date:
+            try:
+                hire_date_value = datetime.strptime(hire_date, '%Y-%m-%d').date()
+            except ValueError:
+                errors['hire_date'] = 'Неверный формат даты приема'
+
+        if errors:
+            for msg in errors.values():
+                messages.error(request, msg)
+            context = {
+                'teacher': teacher,
+                'subjects': subjects,
+                'groups': groups,
+                'form_data': request.POST,
+                'errors': errors,
+                'selected_subjects': subject_ids,
+                'selected_groups': group_ids,
+            }
+            return render(request, 'admin_panel/teachers/edit.html', context)
+
+        try:
+            with transaction.atomic():
+                teacher.first_name = first_name
+                teacher.last_name = last_name
+                teacher.middle_name = middle_name
+                teacher.email = email
+                teacher.phone = phone
+                teacher.position = position
+                teacher.hire_date = hire_date_value
+                teacher.notes = notes
+                teacher.is_curator = is_curator
+                teacher.is_active = is_active
+                teacher.save()
+
+                teacher.subjects.set(Subject.objects.filter(id__in=subject_ids))
+                teacher.groups.set(Group.objects.filter(id__in=group_ids))
+
+                if create_account and not teacher.user:
+                    username = generate_username(first_name, last_name)
+                    password = generate_password()
+                    user = User.objects.create_user(
+                        username=username,
+                        email=email,
+                        password=password,
+                        first_name=first_name,
+                        last_name=last_name,
+                    )
+                    user.is_active = True
+                    user.save()
+                    teacher.user = user
+                    teacher.save()
+
+                    if send_email_flag:
+                        send_teacher_credentials_email(teacher, username, password)
+                elif teacher.user:
+                    teacher.user.email = email
+                    teacher.user.first_name = first_name
+                    teacher.user.last_name = last_name
+                    teacher.user.is_active = is_active
+                    teacher.user.save()
+
+            messages.success(request, f'Преподаватель "{teacher.get_full_name()}" успешно обновлен')
+            return redirect('admin_teacher_detail', teacher_id=teacher.id)
+
+        except Exception as exc:
+            messages.error(request, f'Ошибка при сохранении преподавателя: {str(exc)}')
+            context = {
+                'teacher': teacher,
+                'subjects': subjects,
+                'groups': groups,
+                'form_data': request.POST,
+                'errors': {'common': str(exc)},
+                'selected_subjects': selected_subject_ids,
+                'selected_groups': selected_group_ids,
+            }
+            return render(request, 'admin_panel/teachers/edit.html', context)
+
+    context = {
+        'teacher': teacher,
+        'subjects': subjects,
+        'groups': groups,
+        'selected_subjects': [str(pk) for pk in teacher.subjects.values_list('id', flat=True)],
+        'selected_groups': [str(pk) for pk in teacher.groups.values_list('id', flat=True)],
+        'form_data': {},
+    }
+    return render(request, 'admin_panel/teachers/edit.html', context)
+
+
+@login_required
+def teacher_detail_view(request, teacher_id):
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели не загружены. Выполните миграции.')
+        return redirect('admin_dashboard')
+
+    teacher = get_object_or_404(
+        Teacher.objects.select_related('user').prefetch_related('subjects', 'groups', 'groups__faculty'),
+        id=teacher_id
+    )
+
+    context = {
+        'teacher': teacher,
+        'subjects': teacher.subjects.all(),
+        'groups': teacher.groups.all(),
+    }
+    return render(request, 'admin_panel/teachers/detail.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def teacher_import_view(request):
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели не загружены. Выполните миграции.')
+        return redirect('admin_dashboard')
+
+    if request.method == 'POST':
+        file = request.FILES.get('file')
+        if not file:
+            messages.error(request, 'Выберите файл для импорта')
+            return redirect('admin_teacher_import')
+
+        try:
+            df = pd.read_excel(file)
+        except Exception as exc:
+            messages.error(request, f'Не удалось прочитать файл: {str(exc)}')
+            return redirect('admin_teacher_import')
+
+        df.columns = [str(col).strip().lower() for col in df.columns]
+
+        def resolve_column(possible_names):
+            for name in possible_names:
+                if name in df.columns:
+                    return name
+            return None
+
+        full_name_column = resolve_column(['full_name', 'fio', 'фио'])
+        email_column = resolve_column(['email', 'e-mail', 'почта', 'электронная почта'])
+        phone_column = resolve_column(['phone', 'телефон', 'tel', 'telephone'])
+
+        missing_columns = []
+        if not full_name_column:
+            missing_columns.append('ФИО')
+        if not email_column:
+            missing_columns.append('Email')
+
+        if missing_columns:
+            messages.error(
+                request,
+                f"Отсутствуют обязательные столбцы: {', '.join(missing_columns)}"
+            )
+            return redirect('admin_teacher_import')
+
+        created, updated, errors = 0, 0, []
+
+        def clean_value(value):
+            if pd.isna(value):
+                return ''
+            return str(value).strip()
+
+        def split_full_name(full_name):
+            parts = [part for part in full_name.replace(',', ' ').split() if part]
+            if not parts:
+                return '', '', ''
+            if len(parts) == 1:
+                return parts[0], 'Имя', ''
+            last_name = parts[0]
+            first_name = parts[1]
+            middle_name = ' '.join(parts[2:]) if len(parts) > 2 else ''
+            return last_name, first_name, middle_name
+
+        for index, row in df.iterrows():
+            try:
+                full_name = clean_value(row.get(full_name_column, ''))
+                email = clean_value(row.get(email_column, ''))
+                phone = clean_value(row.get(phone_column, '')) if phone_column else ''
+
+                if not full_name:
+                    errors.append(f'Строка {index + 2}: ФИО обязательно')
+                    continue
+
+                if not email:
+                    errors.append(f'Строка {index + 2}: Email обязателен')
+                    continue
+
+                last_name, first_name, middle_name = split_full_name(full_name)
+                if not last_name or not first_name:
+                    errors.append(f'Строка {index + 2}: невозможно распознать фамилию и имя в значении "{full_name}"')
+                    continue
+
+                teacher, created_flag = Teacher.objects.get_or_create(
+                    email=email,
+                    defaults={
+                        'first_name': first_name or 'Имя',
+                        'last_name': last_name or 'Фамилия',
+                        'middle_name': middle_name,
+                        'phone': phone,
+                        'is_active': True,
+                        'created_by': request.user,
+                    }
+                )
+
+                if not created_flag:
+                    teacher.first_name = first_name or teacher.first_name
+                    teacher.last_name = last_name or teacher.last_name
+                    teacher.middle_name = middle_name
+                    teacher.phone = phone
+                    teacher.save()
+                    updated += 1
+                else:
+                    created += 1
+
+            except Exception as row_exc:
+                errors.append(f'Строка {index + 2}: {row_exc}')
+
+        if created:
+            messages.success(request, f'Создано преподавателей: {created}')
+        if updated:
+            messages.info(request, f'Обновлено преподавателей: {updated}')
+        if errors:
+            messages.warning(request, f'Ошибки импорта: {"; ".join(errors[:10])}')
+
+        return redirect('admin_teachers')
+
+    context = {
+        'subjects': Subject.objects.filter(is_active=True).order_by('name'),
+        'groups': Group.objects.filter(is_active=True).order_by('code'),
+    }
+    return render(request, 'admin_panel/teachers/import.html', context)
+
+
+@login_required
+def download_teacher_sample(request):
+    """Скачать образец Excel-файла для импорта преподавателей"""
+    data = {
+        'ФИО': ['Иванов Иван Петрович', 'Петрова Мария Ивановна'],
+        'Email': ['ivanov@example.com', 'petrova@example.com'],
+        'Телефон': ['+7 (900) 123-45-67', '+7 (900) 234-56-78'],
+    }
+
+    df = pd.DataFrame(data)
+    buffer = io.BytesIO()
+    with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+        df.to_excel(writer, sheet_name='Преподаватели', index=False)
+    buffer.seek(0)
+
+    response = HttpResponse(
+        buffer.read(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = 'attachment; filename="teachers_import_sample.xlsx"'
+    return response
 
 # ====================================
 # СТУДЕНТЫ - HTML СТРАНИЦЫ
@@ -1924,7 +2410,6 @@ def redirect_user_after_login(request):
 # ====================================
 # УТИЛИТЫ
 # ====================================
-@login_required
 def generate_username(first_name, last_name):
     """Генерация уникального username"""
     base = f"{first_name.lower()}.{last_name.lower()}"
@@ -1947,13 +2432,11 @@ def generate_username(first_name, last_name):
         counter += 1
     
     return username
-@login_required
 def generate_password(length=8):
     """Генерация случайного пароля"""
     characters = string.ascii_letters + string.digits
     return ''.join(secrets.choice(characters) for _ in range(length))
 
-@login_required
 def send_credentials_email(student, username, password):
     """Отправка учетных данных студенту"""
     try:
@@ -1983,6 +2466,38 @@ def send_credentials_email(student, username, password):
         return True
     except Exception as e:
         print(f"Ошибка отправки email: {e}")
+        return False
+
+
+def send_teacher_credentials_email(teacher, username, password):
+    """Отправка учетных данных преподавателю"""
+    try:
+        subject = 'Доступ к системе МПТ Журнал'
+        message = f'''
+Здравствуйте, {teacher.get_full_name()}!
+
+Для вас создан аккаунт в системе МПТ Журнал.
+
+Данные для входа:
+Логин: {username}
+Пароль: {password}
+
+Адрес входа: {settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'http://localhost:8000'}
+
+С уважением,
+Администрация МПТ
+'''
+
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL if hasattr(settings, 'DEFAULT_FROM_EMAIL') else 'noreply@mpt.ru',
+            [teacher.email],
+            fail_silently=False,
+        )
+        return True
+    except Exception as e:
+        print(f"Ошибка отправки email преподавателю: {e}")
         return False
 
 
@@ -2724,6 +3239,300 @@ def backup_download_view(request, backup_id):
 
 
 
+
+
+@login_required
+def subjects_main_view(request):
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели не загружены. Выполните миграции.')
+        return redirect('admin_dashboard')
+
+    search_query = request.GET.get('search', '').strip()
+    specialty_filter = request.GET.get('specialty', '').strip()
+    course_filter = request.GET.get('course', '').strip() or '1'
+
+    faculties = list(Faculty.objects.filter(is_active=True).order_by('name'))
+    faculty_ids = [faculty.id for faculty in faculties]
+
+    # Профессии для каждого факультета (для фильтра и выпадающих списков)
+    faculty_professions_map = {
+        faculty.id: set(filter(None, faculty.get_professions_list() or []))
+        for faculty in faculties
+    }
+
+    if faculty_ids:
+        for faculty_id, profession in (
+            SubjectAssignment.objects.filter(faculty_id__in=faculty_ids)
+            .values_list('faculty_id', 'profession')
+            .distinct()
+        ):
+            if profession:
+                faculty_professions_map.setdefault(faculty_id, set()).add(profession)
+
+    base_assignments = SubjectAssignment.objects.select_related('subject', 'faculty').prefetch_related('teachers')
+    assignments_qs = base_assignments.filter(is_active=True)
+
+    total_assignments = assignments_qs.count()
+    total_unique_subjects = assignments_qs.values('subject_id').distinct().count()
+    total_teachers = assignments_qs.filter(teachers__isnull=False).values('teachers').distinct().count()
+
+    assignments_list = list(
+        assignments_qs.order_by('faculty__name', 'profession', 'subject__name', 'subject__short_name')
+    )
+
+    assignments_by_faculty = {}
+    for assignment in assignments_list:
+        faculty_bucket = assignments_by_faculty.setdefault(assignment.faculty_id, {})
+        faculty_bucket.setdefault(assignment.profession, []).append(assignment)
+
+    subjects_data = []
+    for faculty in faculties:
+        professions = sorted(faculty_professions_map.get(faculty.id, []))
+        faculty_assignments = assignments_by_faculty.get(faculty.id, {})
+
+        profession_entries = []
+        for profession in professions:
+            assignments_for_profession = faculty_assignments.get(profession, [])
+            profession_entries.append({
+                'name': profession,
+                'assignments': assignments_for_profession,
+                'assignments_count': len(assignments_for_profession),
+            })
+
+        subjects_data.append({
+            'faculty': faculty,
+            'professions': profession_entries,
+        })
+
+    # JSON для frontend
+    specialties_meta = {
+        str(faculty.id): {
+            'name': faculty.name,
+            'professions': sorted(faculty_professions_map.get(faculty.id, []))
+        }
+        for faculty in faculties
+    }
+
+    current_filters = {
+        'search': search_query,
+        'specialty': specialty_filter,
+        'course': course_filter,
+    }
+
+    context = {
+        'faculties': faculties,
+        'all_faculties': faculties,
+        'subjects_data': subjects_data,
+        'search_query': search_query,
+        'specialty_filter': specialty_filter,
+        'course_filter': course_filter,
+        'total_faculties': len(faculties),
+        'total_assignments': total_assignments,
+        'total_subjects': total_unique_subjects,
+        'total_teachers': total_teachers,
+        'subjects_map_json': json.dumps(specialties_meta, ensure_ascii=False),
+        'current_filters_json': json.dumps(current_filters, ensure_ascii=False),
+    }
+
+    return render(request, 'admin_panel/subjects/subjects_main.html', context)
+
+
+@login_required
+def subject_create_view(request):
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели не загружены. Выполните миграции.')
+        return redirect('admin_dashboard')
+
+    faculties = Faculty.objects.filter(is_active=True).order_by('name')
+    subjects = Subject.objects.filter(is_active=True).order_by('name')
+    teachers = Teacher.objects.filter(is_active=True).order_by('last_name', 'first_name')
+
+    faculty_professions = {
+        faculty.id: sorted(filter(None, faculty.get_professions_list() or []))
+        for faculty in faculties
+    }
+
+    if request.method == 'POST':
+        faculty_id = request.POST.get('faculty')
+        profession = request.POST.get('profession', '').strip()
+        course = request.POST.get('course')
+        subject_id = request.POST.get('subject')
+        subject_name = request.POST.get('subject_name', '').strip()
+        subject_short_name = request.POST.get('subject_short_name', '').strip()
+        subject_description = request.POST.get('subject_description', '').strip()
+        teacher_ids = [pk for pk in request.POST.getlist('teachers') if pk.isdigit()]
+
+        if not faculty_id or not profession or not course:
+            messages.error(request, 'Заполните специальность, профессию и курс.')
+            return redirect('admin_subject_create')
+
+        faculty = get_object_or_404(Faculty, id=faculty_id)
+
+        try:
+            course_value = int(course)
+        except (TypeError, ValueError):
+            messages.error(request, 'Некорректное значение курса.')
+            return redirect('admin_subject_create')
+
+        if subject_id:
+            subject = get_object_or_404(Subject, id=subject_id)
+        elif subject_name:
+            subject, created = Subject.objects.get_or_create(
+                name=subject_name,
+                defaults={
+                    'short_name': subject_short_name or subject_name,
+                    'description': subject_description,
+                    'created_by': request.user,
+                }
+            )
+            if not created:
+                updated_fields = []
+                if subject_short_name and subject.short_name != subject_short_name:
+                    subject.short_name = subject_short_name
+                    updated_fields.append('short_name')
+                if subject_description and not subject.description:
+                    subject.description = subject_description
+                    updated_fields.append('description')
+                if updated_fields:
+                    subject.save(update_fields=updated_fields)
+        else:
+            messages.error(request, 'Выберите существующий предмет или укажите новое название.')
+            return redirect('admin_subject_create')
+
+        try:
+            assignment, created = SubjectAssignment.objects.get_or_create(
+                subject=subject,
+                faculty=faculty,
+                profession=profession,
+                course=course_value,
+                defaults={'created_by': request.user}
+            )
+
+            if teacher_ids:
+                assignment.teachers.set(Teacher.objects.filter(id__in=teacher_ids))
+            else:
+                assignment.teachers.clear()
+
+            teacher_union = Teacher.objects.filter(
+                subject_assignments__subject=subject
+            ).distinct()
+            subject.teachers.set(teacher_union)
+
+            if created:
+                messages.success(
+                    request,
+                    f'Предмет "{subject}" добавлен для {faculty.name} — {profession} ({assignment.get_course_display()}).'
+                )
+            else:
+                messages.warning(
+                    request,
+                    'Такой предмет уже был назначен этой специальности и курсу. Преподаватели обновлены.'
+                )
+
+            params = {'course': course_value, 'specialty': faculty.id}
+            return redirect(f"{reverse('admin_subjects')}?{urlencode(params)}")
+
+        except ValidationError as exc:
+            messages.error(request, '; '.join(exc.messages))
+        except Exception as exc:
+            messages.error(request, f'Ошибка при добавлении предмета: {exc}')
+
+    context = {
+        'faculties': faculties,
+        'subjects': subjects,
+        'teachers': teachers,
+        'course_choices': SubjectAssignment.COURSE_CHOICES,
+        'professions_json': json.dumps(faculty_professions, ensure_ascii=False),
+    }
+    return render(request, 'admin_panel/subjects/subject_create.html', context)
+
+
+@login_required
+def subject_detail_view(request, subject_id):
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели не загружены. Выполните миграции.')
+        return redirect('admin_dashboard')
+
+    subject = get_object_or_404(
+        Subject.objects.prefetch_related('teachers', 'assignments__faculty', 'assignments__teachers'),
+        id=subject_id
+    )
+
+    assignments = list(
+        subject.assignments.select_related('faculty').prefetch_related('teachers').order_by('faculty__name', 'profession', 'course')
+    )
+
+    all_teachers = Teacher.objects.filter(is_active=True).order_by('last_name', 'first_name')
+    return_course = str(assignments[0].course) if assignments else ''
+
+    if request.method == 'POST':
+        assignment_id = request.POST.get('assignment_id')
+        teacher_ids = [pk for pk in request.POST.getlist('teachers') if pk.isdigit()]
+
+        assignment = get_object_or_404(SubjectAssignment, id=assignment_id, subject=subject)
+
+        teachers = Teacher.objects.filter(id__in=teacher_ids)
+        assignment.teachers.set(teachers)
+
+        # Обновляем глобальную связь предмета с преподавателями
+        teacher_union = Teacher.objects.filter(
+            subject_assignments__subject=subject
+        ).distinct()
+        subject.teachers.set(teacher_union)
+
+        messages.success(request, 'Список преподавателей обновлен.')
+        return redirect('admin_subject_detail', subject_id=subject.id)
+
+    context = {
+        'subject': subject,
+        'assignments': assignments,
+        'teachers': all_teachers,
+        'return_course': return_course,
+    }
+    return render(request, 'admin_panel/subjects/subject_detail.html', context)
+
+
+@login_required
+def subject_edit_view(request, subject_id):
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели не загружены. Выполните миграции.')
+        return redirect('admin_dashboard')
+
+    subject = get_object_or_404(Subject, id=subject_id)
+    teachers = Teacher.objects.filter(is_active=True).order_by('last_name', 'first_name')
+
+    if request.method == 'POST':
+        name = request.POST.get('name', '').strip()
+        short_name = request.POST.get('short_name', '').strip()
+        description = request.POST.get('description', '').strip()
+        is_active = request.POST.get('is_active') == 'on'
+        teacher_ids = [pk for pk in request.POST.getlist('teachers') if pk.isdigit()]
+
+        if not name:
+            messages.error(request, 'Название предмета обязательно.')
+        else:
+            try:
+                with transaction.atomic():
+                    subject.name = name
+                    subject.short_name = short_name
+                    subject.description = description
+                    subject.is_active = is_active
+                    subject.save()
+
+                    selected_teachers = Teacher.objects.filter(id__in=teacher_ids)
+                    subject.teachers.set(selected_teachers)
+
+                messages.success(request, 'Предмет обновлён.')
+                return redirect('admin_subject_detail', subject_id=subject.id)
+            except Exception as exc:
+                messages.error(request, f'Ошибка при сохранении предмета: {exc}')
+
+    context = {
+        'subject': subject,
+        'teachers': teachers,
+        'selected_teachers': set(subject.teachers.values_list('id', flat=True)),
+    }
+    return render(request, 'admin_panel/subjects/subject_edit.html', context)
 
 
 @login_required

@@ -1,0 +1,304 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}{{ subject.name }} - МПТ Журнал{% endblock %}
+{% block page_title %}Предмет {{ subject.short_name|default:subject.name }}{% endblock %}
+{% block mobile_title %}{{ subject.short_name|default:subject.name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<link rel="stylesheet" href="{% static 'css/subjects.css' %}">
+<style>
+.subject-detail-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 1rem;
+}
+
+.subject-detail-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+    margin-bottom: 2rem;
+}
+
+.subject-header {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.subject-avatar {
+    width: 120px;
+    height: 120px;
+    border-radius: 24px;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+    font-weight: 700;
+    box-shadow: 0 12px 30px rgba(99, 102, 241, 0.25);
+}
+
+.subject-info h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.5rem;
+}
+
+.subject-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    color: var(--bs-secondary);
+    font-size: 0.95rem;
+}
+
+.subject-meta-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.subject-description {
+    margin-top: 1rem;
+    color: var(--bs-body-color);
+    line-height: 1.6;
+}
+
+.assignments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 1.25rem;
+}
+
+.assignment-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 14px;
+    padding: 1.5rem;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.assignment-head {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.assignment-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.assignment-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--bs-primary);
+}
+
+.assignment-course {
+    background: rgba(16, 185, 129, 0.12);
+    color: #0f766e;
+}
+
+.assignment-profession {
+    background: rgba(59, 130, 246, 0.12);
+    color: #1d4ed8;
+}
+
+.assignment-faculty {
+    background: rgba(148, 163, 184, 0.16);
+    color: var(--bs-secondary);
+}
+
+.teachers-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.teachers-list .badge {
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.teacher-form select {
+    min-height: 140px;
+}
+
+.detail-actions {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+}
+
+.detail-actions .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+@media (max-width: 768px) {
+    .subject-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .subject-avatar {
+        width: 90px;
+        height: 90px;
+        font-size: 30px;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="subject-detail-container">
+    <div class="detail-actions">
+        <a href="{% if return_course %}{% url 'admin_subjects' %}?course={{ return_course }}{% else %}{% url 'admin_subjects' %}{% endif %}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i>
+            Назад к предметам
+        </a>
+        <a href="{% url 'admin_subject_edit' subject.id %}" class="btn btn-primary">
+            <i class="bi bi-pencil"></i>
+            Редактировать
+        </a>
+        <a href="{% if return_course %}{% url 'admin_subjects' %}?course={{ return_course }}{% else %}{% url 'admin_subjects' %}{% endif %}" class="btn btn-outline-primary d-none d-md-inline-flex">
+            <i class="bi bi-collection"></i>
+            Все назначения
+        </a>
+    </div>
+
+    <div class="subject-detail-card">
+        <div class="subject-header">
+            <div class="subject-avatar">
+                {{ subject.short_name|default:subject.name|slice:":2"|upper }}
+            </div>
+            <div class="subject-info">
+                <h1>{{ subject.name }}</h1>
+                {% if subject.short_name and subject.short_name != subject.name %}
+                    <div class="text-muted mb-2">Короткое название: {{ subject.short_name }}</div>
+                {% endif %}
+                <div class="subject-meta">
+                    <span class="subject-meta-item">
+                        <i class="bi bi-collection"></i>
+                        {{ assignments|length }} назначений
+                    </span>
+                    <span class="subject-meta-item">
+                        <i class="bi bi-person-workspace"></i>
+                        {{ subject.teachers.count }} преподавател{{ subject.teachers.count|pluralize:"ь,я,ей" }}
+                    </span>
+                    <span class="subject-meta-item">
+                        <i class="bi bi-clock-history"></i>
+                        Обновлён: {{ subject.updated_at|date:"d.m.Y H:i" }}
+                    </span>
+                </div>
+                {% if subject.description %}
+                    <div class="subject-description">
+                        {{ subject.description }}
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {% if assignments %}
+        <div class="subject-detail-card">
+            <h2 class="section-title">
+                <i class="bi bi-diagram-3"></i>
+                Назначения предмета
+            </h2>
+            <div class="assignments-grid">
+                {% for assignment in assignments %}
+                    <div class="assignment-card">
+                        <div class="assignment-head">
+                            <div class="assignment-badges">
+                                <span class="assignment-badge assignment-course">
+                                    <i class="bi bi-mortarboard"></i>
+                                    {{ assignment.get_course_display }}
+                                </span>
+                                <span class="assignment-badge assignment-profession">
+                                    <i class="bi bi-person-badge"></i>
+                                    {{ assignment.profession }}
+                                </span>
+                                <span class="assignment-badge assignment-faculty">
+                                    <i class="bi bi-building"></i>
+                                    {{ assignment.faculty.name }} ({{ assignment.faculty.code }})
+                                </span>
+                            </div>
+                            <div class="text-muted small">
+                                Назначение создано: {{ assignment.created_at|date:"d.m.Y H:i" }}
+                            </div>
+                        </div>
+
+                        <div>
+                            <h6 class="text-uppercase text-secondary fw-semibold mb-2">Текущие преподаватели</h6>
+                            {% if assignment.teachers.all %}
+                                <div class="teachers-list">
+                                    {% for teacher in assignment.teachers.all %}
+                                        <span class="badge rounded-pill bg-primary-subtle text-primary">
+                                            {{ teacher.get_short_name }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-muted fst-italic">Преподаватели не назначены</div>
+                            {% endif %}
+                        </div>
+
+                        <form method="post" class="teacher-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="assignment_id" value="{{ assignment.id }}">
+                            <label class="form-label">Обновить преподавателей</label>
+                            <select name="teachers" class="form-select" multiple size="6">
+                                {% for teacher in teachers %}
+                                    <option value="{{ teacher.id }}"
+                                            {% if teacher in assignment.teachers.all %}selected{% endif %}>
+                                        {{ teacher.get_full_name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">
+                                Выберите всех преподавателей, ведущих этот предмет в рамках назначения.
+                            </div>
+                            <div class="d-flex justify-content-end gap-2 mt-3">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check2-circle"></i>
+                                    Сохранить изменения
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="subject-detail-card">
+            <div class="empty-state">
+                <h4>Нет назначений</h4>
+                <p>Для этого предмета пока не создано назначений. Добавьте предмет в нужную специальность и курс.</p>
+                <a href="{% url 'admin_subjects' %}" class="action-btn">
+                    Добавить назначение
+                </a>
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

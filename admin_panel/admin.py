@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Faculty, Group, Student
+from .models import Faculty, Group, Student, Subject, Teacher, SubjectAssignment
 from admin_panel.models import Backup
 
 
@@ -212,3 +212,29 @@ class BackupAdmin(admin.ModelAdmin):
     def file_size_mb(self, obj):
         return f"{obj.file_size_mb} МБ"
     file_size_mb.short_description = 'Размер файла'
+
+
+@admin.register(Subject)
+class SubjectAdmin(admin.ModelAdmin):
+    list_display = ['name', 'short_name', 'is_active', 'created_at']
+    search_fields = ['name', 'short_name']
+    list_filter = ['is_active', 'created_at']
+    ordering = ['name']
+
+
+@admin.register(SubjectAssignment)
+class SubjectAssignmentAdmin(admin.ModelAdmin):
+    list_display = ['subject', 'faculty', 'profession', 'course', 'is_active', 'created_at']
+    list_filter = ['faculty', 'profession', 'course', 'is_active']
+    search_fields = ['subject__name', 'subject__short_name', 'faculty__name', 'profession']
+    filter_horizontal = ['teachers']
+    ordering = ['faculty__name', 'profession', 'course', 'subject__name']
+
+
+@admin.register(Teacher)
+class TeacherAdmin(admin.ModelAdmin):
+    list_display = ['get_full_name', 'email', 'position', 'is_curator', 'is_active']
+    search_fields = ['first_name', 'last_name', 'middle_name', 'email', 'phone', 'position']
+    list_filter = ['is_curator', 'is_active', 'subjects', 'groups']
+    filter_horizontal = ['subjects', 'groups']
+    ordering = ['last_name', 'first_name']

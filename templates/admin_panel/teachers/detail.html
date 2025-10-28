@@ -1,0 +1,961 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}{{ teacher.get_full_name }} - Преподаватель{% endblock %}
+{% block page_title %}Профиль преподавателя{% endblock %}
+{% block mobile_title %}{{ teacher.get_short_name }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<style>
+.profile-container {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.profile-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.profile-header {
+    display: flex;
+    align-items: flex-start;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.teacher-avatar {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(135deg, var(--bs-primary), #6366f1);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: white;
+    position: relative;
+    flex-shrink: 0;
+}
+
+.status-indicator {
+    position: absolute;
+    bottom: 10px;
+    right: 10px;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 3px solid var(--sidebar-bg);
+}
+
+.status-indicator.active {
+    background: #22c55e;
+}
+
+.status-indicator.inactive {
+    background: #ef4444;
+}
+
+.teacher-info {
+    flex: 1;
+    min-width: 260px;
+}
+
+.teacher-name {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+}
+
+.teacher-meta {
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+    margin-bottom: 1.25rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.teacher-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.status-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.15rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.status-pill.status-active {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.status-pill.status-inactive {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.info-section {
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+}
+
+.info-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.info-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--bs-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+}
+
+.info-value {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--bs-body-color);
+}
+
+.info-value.empty {
+    color: var(--bs-secondary);
+    font-style: italic;
+}
+
+.access-section {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.access-status {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.access-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+}
+
+.access-icon.granted {
+    background: #dcfce7;
+    color: #166534;
+}
+
+.access-icon.denied {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.access-details h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+    color: var(--bs-body-color);
+}
+
+.access-details p {
+    font-size: 0.85rem;
+    color: var(--bs-secondary);
+    margin: 0;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--sidebar-bg);
+    color: var(--nav-link-color);
+    border: 1px solid var(--sidebar-border);
+}
+
+.btn-success {
+    background: #10b981;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #059669;
+}
+
+.btn-warning {
+    background: #f59e0b;
+    color: white;
+}
+
+.btn-warning:hover {
+    background: #d97706;
+}
+
+.btn-danger {
+    background: #ef4444;
+    color: white;
+}
+
+.btn-danger:hover {
+    background: #dc2626;
+}
+
+.page-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.back-actions,
+.main-actions {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.tag-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.tag-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    background: var(--nav-link-hover);
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+}
+
+.empty-text {
+    color: var(--bs-secondary);
+    font-style: italic;
+}
+
+.notes-text {
+    color: var(--bs-body-color);
+    line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+    .page-actions {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1rem;
+    }
+
+    .back-actions,
+    .main-actions {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+[data-bs-theme="dark"] .access-section {
+    background: #1e293b;
+    border-color: #334155;
+}
+
+[data-bs-theme="dark"] .access-icon.granted {
+    background: #064e3b;
+    color: #6ee7b7;
+}
+
+[data-bs-theme="dark"] .access-icon.denied {
+    background: #7f1d1d;
+    color: #fecaca;
+}
+
+@media (max-width: 768px) {
+    .profile-card {
+        padding: 1.5rem;
+    }
+
+    .teacher-avatar {
+        width: 96px;
+        height: 96px;
+        font-size: 2rem;
+    }
+
+    .status-indicator {
+        width: 20px;
+        height: 20px;
+    }
+
+    .action-buttons .btn {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .action-buttons {
+        width: 100%;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+    <div class="profile-card">
+        <div class="profile-header">
+            <div class="teacher-avatar">
+                {{ teacher.first_name|first }}{{ teacher.last_name|first }}
+                <span class="status-indicator {% if teacher.is_active_account %}active{% else %}inactive{% endif %}"></span>
+            </div>
+            <div class="teacher-info">
+                <div class="teacher-name">{{ teacher.get_full_name }}</div>
+                <div class="teacher-meta">
+                    <span>
+                        <i class="bi bi-briefcase"></i>
+                        {{ teacher.position|default:"Преподаватель" }}
+                    </span>
+                    <span>
+                        <i class="bi bi-calendar-event"></i>
+                        {% if teacher.hire_date %}{{ teacher.hire_date|date:"d.m.Y" }}{% else %}Дата приема не указана{% endif %}
+                    </span>
+                    {% if teacher.is_curator %}
+                    <span>
+                        <i class="bi bi-people"></i>
+                        Куратор групп
+                    </span>
+                    {% endif %}
+                </div>
+
+                <div class="status-group">
+                    <span class="status-pill {% if teacher.is_active %}status-active{% else %}status-inactive{% endif %}">
+                        <i class="bi {% if teacher.is_active %}bi-check-circle{% else %}bi-x-circle{% endif %}"></i>
+                        {% if teacher.is_active %}Активен в системе{% else %}Деактивирован{% endif %}
+                    </span>
+                    {% if teacher.user %}
+                        <span class="status-pill {% if teacher.user.is_active %}status-active{% else %}status-inactive{% endif %}">
+                            <i class="bi {% if teacher.user.is_active %}bi-person-check{% else %}bi-person-x{% endif %}"></i>
+                            {% if teacher.user.is_active %}Учетная запись активна{% else %}Учетная запись заблокирована{% endif %}
+                        </span>
+                    {% else %}
+                        <span class="status-pill status-inactive">
+                            <i class="bi bi-person-dash"></i>
+                            Учетная запись не создана
+                        </span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="section-title">
+                <i class="bi bi-envelope"></i>
+                Контактная информация
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Email</span>
+                    <span class="info-value">
+                        <a href="mailto:{{ teacher.email }}">{{ teacher.email }}</a>
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Телефон</span>
+                    <span class="info-value {% if not teacher.phone %}empty{% endif %}">
+                        {{ teacher.phone|default:"Не указан" }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="section-title">
+                <i class="bi bi-briefcase"></i>
+                Рабочая информация
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <span class="info-label">Должность</span>
+                    <span class="info-value">
+                        {{ teacher.position|default:"Преподаватель" }}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Дата приема</span>
+                    <span class="info-value {% if not teacher.hire_date %}empty{% endif %}">
+                        {% if teacher.hire_date %}{{ teacher.hire_date|date:"d.m.Y" }}{% else %}Не указана{% endif %}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Предметы</span>
+                    <span class="info-value">
+                        {{ subjects|length }}
+                    </span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Группы</span>
+                    <span class="info-value">
+                        {{ groups|length }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="info-section">
+            <div class="section-title">
+                <i class="bi bi-journal-bookmark"></i>
+                Предметы
+            </div>
+            {% if subjects %}
+                <div class="tag-list">
+                    {% for subject in subjects %}
+                        <span class="tag-pill">
+                            <i class="bi bi-journal"></i>
+                            {{ subject.short_name|default:subject.name }}
+                        </span>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="empty-text">Предметы не назначены</p>
+            {% endif %}
+        </div>
+
+        <div class="info-section">
+            <div class="section-title">
+                <i class="bi bi-collection"></i>
+                Группы
+            </div>
+            {% if groups %}
+                <div class="tag-list">
+                    {% for group in groups %}
+                        <span class="tag-pill">
+                            <i class="bi bi-collection"></i>
+                            {{ group.code }}{% if group.profession %} • {{ group.profession }}{% endif %}
+                        </span>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="empty-text">Группы не назначены</p>
+            {% endif %}
+        </div>
+
+        {% if teacher.notes %}
+            <div class="info-section">
+                <div class="section-title">
+                    <i class="bi bi-card-text"></i>
+                    Заметки
+                </div>
+                <p class="notes-text">{{ teacher.notes }}</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="profile-card">
+        <div class="section-title">
+            <i class="bi bi-key"></i>
+            Доступ к системе
+        </div>
+        <div class="access-section">
+            {% if teacher.has_system_access %}
+                <div class="access-status">
+                    <div class="access-icon granted">
+                        <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div class="access-details">
+                        <h4>Доступ создан</h4>
+                        <p>Преподаватель может входить в систему</p>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Логин</span>
+                        <span class="info-value">{{ teacher.username }}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Статус аккаунта</span>
+                        <span class="info-value">
+                            {% if teacher.is_active_account %}
+                                <span style="color: #166534;">Активен</span>
+                            {% else %}
+                                <span style="color: #991b1b;">Заблокирован</span>
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Последний вход</span>
+                        <span class="info-value {% if not teacher.last_login %}empty{% endif %}">
+                            {% if teacher.last_login %}
+                                {{ teacher.last_login|date:"d.m.Y H:i" }}
+                            {% else %}
+                                Еще не входил
+                            {% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-warning" onclick="showResetPasswordModal({{ teacher.id }})">
+                        <i class="bi bi-arrow-clockwise"></i>
+                        Сбросить пароль
+                    </button>
+                    {% if teacher.is_active_account %}
+                        <button class="btn btn-secondary" onclick="showToggleAccessModal({{ teacher.id }}, false)">
+                            <i class="bi bi-lock"></i>
+                            Заблокировать
+                        </button>
+                    {% else %}
+                        <button class="btn btn-success" onclick="showToggleAccessModal({{ teacher.id }}, true)">
+                            <i class="bi bi-unlock"></i>
+                            Активировать
+                        </button>
+                    {% endif %}
+                </div>
+            {% else %}
+                <div class="access-status">
+                    <div class="access-icon denied">
+                        <i class="bi bi-x-circle"></i>
+                    </div>
+                    <div class="access-details">
+                        <h4>Доступ не создан</h4>
+                        <p>Преподаватель не может входить в систему</p>
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-success" onclick="showCreateAccessModal({{ teacher.id }})">
+                        <i class="bi bi-key"></i>
+                        Создать доступ к системе
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="page-actions">
+    <div class="back-actions">
+        <a href="{% url 'admin_teachers' %}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i>
+            Назад к списку
+        </a>
+    </div>
+    <div class="main-actions">
+        <a href="{% url 'admin_teacher_edit' teacher.id %}" class="btn btn-primary">
+            <i class="bi bi-pencil"></i>
+            Редактировать
+        </a>
+        <button class="btn btn-danger" onclick="showDeleteModal({{ teacher.id }})">
+            <i class="bi bi-trash"></i>
+            Удалить
+        </button>
+    </div>
+</div>
+
+<!-- Модальные окна -->
+<div class="modal fade" id="createAccessModal" tabindex="-1" aria-labelledby="createAccessModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createAccessModalLabel">Создание доступа</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-success">
+                    <i class="bi bi-key"></i>
+                </div>
+                <p><strong>Создать доступ к системе для преподавателя?</strong></p>
+                <p class="text-muted">На указанный email будут отправлены логин и пароль для входа в систему.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-success" id="confirmCreateAccess">
+                    <i class="bi bi-key"></i>
+                    Создать доступ
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resetPasswordModalLabel">Сброс пароля</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-warning">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </div>
+                <p><strong>Сбросить пароль преподавателя?</strong></p>
+                <p class="text-muted">Новый пароль будет сгенерирован и отправлен на email преподавателя.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-warning" id="confirmResetPassword">
+                    <i class="bi bi-arrow-clockwise"></i>
+                    Сбросить пароль
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="toggleAccessModal" tabindex="-1" aria-labelledby="toggleAccessModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="toggleAccessModalLabel">Изменение доступа</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-warning" id="toggleAccessIcon">
+                    <i class="bi bi-lock"></i>
+                </div>
+                <p id="toggleAccessText"><strong>Заблокировать доступ преподавателя?</strong></p>
+                <p class="text-muted" id="toggleAccessDescription">Преподаватель не сможет войти в систему до активации.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-warning" id="confirmToggleAccess">
+                    <i class="bi bi-lock"></i>
+                    Заблокировать
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteModalLabel">Удаление преподавателя</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-danger">
+                    <i class="bi bi-trash"></i>
+                </div>
+                <p><strong>Удалить преподавателя?</strong></p>
+                <p class="text-muted">Это действие нельзя отменить. Все данные преподавателя будут безвозвратно удалены.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">
+                    <i class="bi bi-trash"></i>
+                    Удалить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+const csrftoken = getCookie('csrftoken');
+let currentTeacherId = null;
+let currentToggleAction = null;
+
+const CREATE_ACCESS_URL = "{% url 'teacher_create_access_api' teacher.id %}";
+const RESET_PASSWORD_URL = "{% url 'teacher_reset_password_api' teacher.id %}";
+const TOGGLE_STATUS_URL = "{% url 'teacher_toggle_status_api' teacher.id %}";
+const DELETE_TEACHER_URL = "{% url 'teacher_delete_api' teacher.id %}";
+
+function showNotification(message, type = 'success') {
+    const alertClass = type === 'error' ? 'alert-danger' : 'alert-success';
+    const icon = type === 'error' ? 'bi-exclamation-triangle' : 'bi-check-circle';
+
+    const alertHtml = `
+        <div class="alert ${alertClass} alert-dismissible fade show" role="alert" style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
+            <i class="bi ${icon} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', alertHtml);
+
+    setTimeout(() => {
+        const alert = document.querySelector('.alert:last-child');
+        if (alert) {
+            alert.remove();
+        }
+    }, 5000);
+}
+
+function showCreateAccessModal(teacherId) {
+    currentTeacherId = teacherId;
+    const modal = new bootstrap.Modal(document.getElementById('createAccessModal'));
+    modal.show();
+}
+
+function showResetPasswordModal(teacherId) {
+    currentTeacherId = teacherId;
+    const modal = new bootstrap.Modal(document.getElementById('resetPasswordModal'));
+    modal.show();
+}
+
+function showToggleAccessModal(teacherId, activate) {
+    currentTeacherId = teacherId;
+    currentToggleAction = activate;
+
+    const modal = new bootstrap.Modal(document.getElementById('toggleAccessModal'));
+    const icon = document.getElementById('toggleAccessIcon');
+    const text = document.getElementById('toggleAccessText');
+    const description = document.getElementById('toggleAccessDescription');
+    const button = document.getElementById('confirmToggleAccess');
+
+    if (activate) {
+        icon.innerHTML = '<i class="bi bi-unlock"></i>';
+        icon.className = 'modal-icon-success';
+        text.innerHTML = '<strong>Активировать доступ преподавателя?</strong>';
+        description.textContent = 'Преподаватель сможет войти в систему и использовать электронный журнал.';
+        button.className = 'btn btn-success';
+        button.innerHTML = '<i class="bi bi-unlock"></i> Активировать';
+    } else {
+        icon.innerHTML = '<i class="bi bi-lock"></i>';
+        icon.className = 'modal-icon-warning';
+        text.innerHTML = '<strong>Заблокировать доступ преподавателя?</strong>';
+        description.textContent = 'Преподаватель не сможет войти в систему до активации.';
+        button.className = 'btn btn-warning';
+        button.innerHTML = '<i class="bi bi-lock"></i> Заблокировать';
+    }
+
+    modal.show();
+}
+
+function showDeleteModal(teacherId) {
+    currentTeacherId = teacherId;
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+document.getElementById('confirmCreateAccess').addEventListener('click', function() {
+    if (!currentTeacherId) return;
+
+    const modal = bootstrap.Modal.getInstance(document.getElementById('createAccessModal'));
+    modal.hide();
+
+    fetch(CREATE_ACCESS_URL, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Доступ создан! Логин и пароль отправлены на email преподавателя.');
+                setTimeout(() => window.location.reload(), 2000);
+            } else {
+                showNotification(data.error || 'Ошибка при создании доступа', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Произошла ошибка при создании доступа', 'error');
+        });
+});
+
+document.getElementById('confirmResetPassword').addEventListener('click', function() {
+    if (!currentTeacherId) return;
+
+    const modal = bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal'));
+    modal.hide();
+
+    fetch(RESET_PASSWORD_URL, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Пароль сброшен! Новый пароль отправлен на email преподавателя.');
+            } else {
+                showNotification(data.error || 'Ошибка при сбросе пароля', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Произошла ошибка при сбросе пароля', 'error');
+        });
+});
+
+document.getElementById('confirmToggleAccess').addEventListener('click', function() {
+    if (!currentTeacherId) return;
+
+    const modal = bootstrap.Modal.getInstance(document.getElementById('toggleAccessModal'));
+    modal.hide();
+
+    fetch(TOGGLE_STATUS_URL, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification(`Доступ ${currentToggleAction ? 'активирован' : 'заблокирован'}`);
+                setTimeout(() => window.location.reload(), 1500);
+            } else {
+                showNotification(data.error || 'Ошибка при изменении доступа', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Произошла ошибка при изменении доступа', 'error');
+        });
+});
+
+document.getElementById('confirmDelete').addEventListener('click', function() {
+    if (!currentTeacherId) return;
+
+    const modal = bootstrap.Modal.getInstance(document.getElementById('deleteModal'));
+    modal.hide();
+
+    fetch(DELETE_TEACHER_URL, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        },
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showNotification('Преподаватель удален');
+                setTimeout(() => {
+                    window.location.href = "{% url 'admin_teachers' %}";
+                }, 1500);
+            } else {
+                showNotification(data.error || 'Ошибка при удалении преподавателя', 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('Произошла ошибка при удалении преподавателя', 'error');
+        });
+});
+
+document.addEventListener('show.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+});
+
+document.addEventListener('hidden.bs.modal', function(e) {
+    const modal = e.target;
+    modal.removeAttribute('aria-hidden');
+    currentTeacherId = null;
+    currentToggleAction = null;
+});
+</script>
+{% endblock %}

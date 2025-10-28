@@ -22,7 +22,15 @@ urlpatterns = [
     path('students/import/', views.student_import_view, name='admin_student_import'),
     path('students/<int:student_id>/', views.student_detail_view, name='admin_student_detail'),
     path('students/<int:student_id>/edit/', views.student_edit_view, name='admin_student_edit'),
-    
+
+    # Преподаватели
+    path('teachers/', views.teachers_list_view, name='admin_teachers'),
+    path('teachers/create/', views.teacher_create_view, name='admin_teacher_create'),
+    path('teachers/import/', views.teacher_import_view, name='admin_teacher_import'),
+    path('teachers/import/sample/', views.download_teacher_sample, name='download_teacher_sample'),
+    path('teachers/<int:teacher_id>/', views.teacher_detail_view, name='admin_teacher_detail'),
+    path('teachers/<int:teacher_id>/edit/', views.teacher_edit_view, name='admin_teacher_edit'),
+
     # === ЗАГРУЗКА ФАЙЛОВ ===
     path('download/students-sample/', views.download_sample_excel, name='download_sample_excel'),
     
@@ -67,6 +75,12 @@ urlpatterns = [
     path('groups/<int:group_id>/edit/', views.group_edit_view, name='group_edit'),
     path('groups/<int:group_id>/', views.group_detail_view, name='group_detail'),
     path('groups/create/', views.group_create_view, name='group_create'),
+
+    # Предметы
+    path('subjects/', views.subjects_main_view, name='admin_subjects'),
+    path('subjects/create/', views.subject_create_view, name='admin_subject_create'),
+    path('subjects/<int:subject_id>/', views.subject_detail_view, name='admin_subject_detail'),
+    path('subjects/<int:subject_id>/edit/', views.subject_edit_view, name='admin_subject_edit'),
 
     # API endpoints example:
     path('groups/transfer-student/', views.transfer_student_api, name='transfer_student_api'),

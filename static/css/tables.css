@@ -663,7 +663,7 @@
 
 .teachers-table .table-header,
 .teachers-table .teacher-row {
-    grid-template-columns: 40px 3fr 1.5fr 1.8fr 1.2fr 120px;
+    grid-template-columns: 40px 3fr 1.5fr 1.5fr 1fr;
 }
 
 .faculties-table .table-header,
