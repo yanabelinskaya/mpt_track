@@ -1,0 +1,98 @@
+/* subject_create.css — дополнительные стили для страницы создания предмета */
+
+.subject-create-container .section-divider {
+    margin: 0 0 16px 0;
+    padding: 8px 0;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.subject-create-container .section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin: 0;
+}
+
+.subject-create-container .section-title i {
+    color: var(--bs-primary);
+    font-size: 20px;
+}
+
+.subject-create-container .section-subtitle {
+    margin: 6px 0 0 0;
+    color: var(--bs-secondary);
+    font-size: 13px;
+}
+
+.subject-create-container .field-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--bs-secondary);
+}
+
+.subject-create-container .select-options-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.subject-create-container .profession-message.hidden {
+    display: none;
+}
+
+.subject-create-container .hidden {
+    display: none !important;
+}
+
+.subject-create-container .custom-select.is-disabled .select-trigger {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+.subject-create-container .custom-select.is-disabled .select-trigger:hover {
+    border-color: var(--sidebar-border);
+    background: var(--sidebar-bg);
+}
+
+.subject-create-container .custom-select.is-disabled .select-arrow {
+    color: var(--bs-secondary);
+}
+
+.teachers-selection .students-header {
+    align-items: flex-start;
+}
+
+.teachers-selection .students-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.teachers-selection .students-controls .control-btn {
+    white-space: nowrap;
+}
+
+.teachers-selection .students-list {
+    max-height: 260px;
+}
+
+.teacher-item .student-details {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+@media (max-width: 992px) {
+    .subject-create-container .form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .teachers-selection .students-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+}

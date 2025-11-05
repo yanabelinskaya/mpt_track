@@ -28,22 +28,53 @@
                 <button type="button" class="filter-trigger" id="filterTrigger">
                     <i class="bi bi-funnel"></i>
                     <span>Фильтры</span>
+                    {% if active_filters %}
+                        <span class="filter-badge">{{ active_filters }}</span>
+                    {% endif %}
                     <i class="bi bi-chevron-down"></i>
                 </button>
                 
                 <div class="filter-menu" id="filterMenu">
-                    <div class="filter-section">
+                                        <div class="filter-section">
                         <label class="filter-title">По предметам</label>
-                        <select name="subject" class="filter-select" onchange="this.form.submit()">
-                            <option value="">Все предметы</option>
-                            {% for subject in subjects %}
-                                <option value="{{ subject.id }}" {% if subject_filter == subject.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ subject.name }}
-                                </option>
-                            {% endfor %}
-                        </select>
+                        <div class="custom-select filter-custom-select" id="teacherSubjectFilter" data-auto-submit="true">
+                            <select name="subject">
+                                <option value="" {% if not subject_filter %}selected{% endif %}>Все предметы</option>
+                                {% for subject in subjects %}
+                                    <option value="{{ subject.id }}" {% if subject_filter == subject.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ subject.short_name|default:subject.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="select-trigger {% if not subject_filter %}placeholder{% endif %}" data-placeholder="Все предметы">
+                                <span class="select-text">
+                                    {% if subject_filter %}
+                                        {% for subject in subjects %}
+                                            {% if subject_filter == subject.id|stringformat:"s" %}
+                                                {{ subject.short_name|default:subject.name }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        Все предметы
+                                    {% endif %}
+                                </span>
+                                <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                            </div>
+                            <div class="select-dropdown">
+                                <div class="select-option {% if not subject_filter %}selected{% endif %}" data-value="">
+                                    <div class="select-option-text">Все предметы</div>
+                                </div>
+                                {% for subject in subjects %}
+                                    <div class="select-option {% if subject_filter == subject.id|stringformat:"s" %}selected{% endif %}" data-value="{{ subject.id }}">
+                                        <div class="select-option-content">
+                                            <div class="select-option-text">{{ subject.short_name|default:subject.name }}</div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
-                    
+
                     <div class="filter-section">
                         <label class="filter-title">Статус</label>
                         <div class="status-filters">
@@ -368,6 +399,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/custom_select.js' %}"></script>
 <script>
 window.TEACHER_CREATE_URL = "{% url 'admin_teacher_create' %}";
 window.TEACHER_VIEW_URL = "{% url 'admin_teacher_detail' 0 %}".replace('0', '{id}');

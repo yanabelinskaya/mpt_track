@@ -9,8 +9,6 @@
 <link rel="stylesheet" href="{% static 'css/forms.css' %}">
 <style>
 .form-container {
-    max-width: 720px;
-    margin: 0 auto;
     display: grid;
     grid-template-columns: 1fr;
     gap: 2rem;
@@ -143,6 +141,128 @@
     margin-top: 0.25rem;
 }
 
+.import-results {
+    margin-top: 2rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 1.75rem;
+    background: var(--bs-body-bg);
+    border-left: 6px solid var(--bs-primary);
+}
+
+.result-success {
+    border-left-color: #22c55e;
+}
+
+.result-warning {
+    border-left-color: #f59e0b;
+}
+
+.result-error {
+    border-left-color: #ef4444;
+}
+
+.result-title {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1.25rem;
+    color: var(--bs-body-color);
+}
+
+.result-title i {
+    font-size: 1.4rem;
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-card {
+    background: var(--nav-link-hover);
+    border-radius: 10px;
+    padding: 1rem;
+    text-align: center;
+}
+
+.stat-number {
+    display: block;
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--bs-primary);
+}
+
+.stat-label {
+    font-size: 0.85rem;
+    color: var(--bs-secondary);
+}
+
+.import-subsection {
+    margin-top: 1.5rem;
+}
+
+.import-subsection h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--bs-body-color);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.result-list,
+.errors-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 10px;
+    max-height: 240px;
+    overflow-y: auto;
+    background: var(--sidebar-bg);
+}
+
+.result-item,
+.error-item {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--sidebar-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.result-item:last-child,
+.error-item:last-child {
+    border-bottom: none;
+}
+
+.result-item strong {
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.result-meta {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+}
+
+.error-row {
+    font-weight: 600;
+    color: #ef4444;
+}
+
+.result-note {
+    margin-top: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+}
+
 @media (max-width: 768px) {
     .form-card {
         padding: 1.5rem;
@@ -177,9 +297,9 @@
                     Инструкция по импорту
                 </div>
                 <ul>
-                    <li>Файл должен содержать только столбцы: <strong>ФИО</strong>, <strong>Email</strong>, <strong>Телефон</strong>.</li>
-                    <li>ФИО указывается в формате «Фамилия Имя Отчество». Телефон можно оставить пустым.</li>
-                    <li>Email используется для обновления данных при повторном импорте.</li>
+                    <li>Вы можете указать преподователей либо в одном столбце <strong>ФИО</strong>, либо в отдельных столбцах <strong>last_name</strong>, <strong>first_name</strong>, <strong>middle_name</strong>.</li>
+                    <li>Названия столбцов могут быть в любом регистре, допускаются эквиваленты на русском языке.</li>
+                    <li>Email используется для обновления данных при повторном импорте, телефон можно оставить пустым.</li>
                 </ul>
                 <a href="{% url 'download_teacher_sample' %}" class="btn btn-secondary" style="margin-top: 0.75rem;">
                     <i class="bi bi-file-earmark-arrow-down"></i>
@@ -208,6 +328,110 @@
                 </div>
             </div>
         </form>
+
+        {% if import_result %}
+        <div class="import-results result-{{ import_result.status }}">
+            <div class="result-title">
+                {% if import_result.status == 'success' %}
+                    <i class="bi bi-check-circle-fill text-success"></i>
+                {% elif import_result.status == 'warning' %}
+                    <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+                {% else %}
+                    <i class="bi bi-x-circle-fill text-danger"></i>
+                {% endif %}
+                {{ import_result.summary }}
+            </div>
+
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-number">{{ import_result.rows_total }}</span>
+                    <span class="stat-label">Строк в файле</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">{{ import_result.processed_count }}</span>
+                    <span class="stat-label">Обработано</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">{{ import_result.created_count }}</span>
+                    <span class="stat-label">Создано</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">{{ import_result.updated_count }}</span>
+                    <span class="stat-label">Обновлено</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">{{ import_result.unchanged_count }}</span>
+                    <span class="stat-label">Без изменений</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-number">{{ import_result.errors_count }}</span>
+                    <span class="stat-label">Ошибок</span>
+                </div>
+            </div>
+
+            {% if import_result.created %}
+            <div class="import-subsection">
+                <h4><i class="bi bi-person-plus"></i> Добавлены преподаватели</h4>
+                <ul class="result-list">
+                    {% for item in import_result.created|slice:":20" %}
+                    <li class="result-item">
+                        <strong>{{ item.name }}</strong>
+                        <span class="result-meta">
+                            Email: {{ item.email }} • Строка {{ item.row }}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if import_result.created|length > 20 %}
+                    <div class="result-note">Показаны первые 20 записей.</div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if import_result.updated %}
+            <div class="import-subsection">
+                <h4><i class="bi bi-arrow-repeat"></i> Обновлены данные</h4>
+                <ul class="result-list">
+                    {% for item in import_result.updated|slice:":20" %}
+                    <li class="result-item">
+                        <strong>{{ item.name }}</strong>
+                        <span class="result-meta">
+                            Email: {{ item.email }} • Строка {{ item.row }} • Поля: {{ item.fields|join:', ' }}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if import_result.updated|length > 20 %}
+                    <div class="result-note">Показаны первые 20 записей.</div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if import_result.errors %}
+            <div class="import-subsection">
+                <h4><i class="bi bi-exclamation-octagon"></i> Ошибки</h4>
+                <ul class="errors-list">
+                    {% for error in import_result.errors|slice:":25" %}
+                    <li class="error-item">
+                        <span class="error-row">Строка {{ error.row }}</span>
+                        <span>{{ error.message }}</span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% if import_result.errors|length > 25 %}
+                    <div class="result-note">Показаны первые 25 ошибок.</div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if import_result.unchanged_count %}
+            <div class="result-note">
+                <i class="bi bi-info-circle"></i>
+                {{ import_result.unchanged_count }} записей совпали с текущими данными и пропущены без изменений.
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}

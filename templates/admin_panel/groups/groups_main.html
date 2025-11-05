@@ -352,6 +352,7 @@
 window.groupsData = {
     specialties: {{ specialties_data_json|safe }}
 };
+window.groupsIndex = JSON.parse('{{ groups_index_json|escapejs }}');
 
 // Текущие значения фильтров
 window.currentFilters = {

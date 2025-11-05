@@ -8,6 +8,9 @@ urlpatterns = [
     path('admin-panel/', views.admin_dashboard_view, name='admin_dashboard'),  # Админ-панель
     path('student-cabinet/', views.student_dashboard_view, name='student_dashboard'),  # Кабинет студента
     path('accounts/', include('django.contrib.auth.urls')),
+    path('activity-logs/add/', views.activity_log_add_view, name='activity_log_add'),
+    path('activity-logs/remove/', views.activity_log_remove_view, name='activity_log_remove'),
+    path('activity-logs/clear/', views.activity_log_clear_view, name='activity_log_clear'),
     
     # === ОСНОВНЫЕ HTML СТРАНИЦЫ ===
     # Факультеты
@@ -69,12 +72,16 @@ urlpatterns = [
     path('backups/create/', views.backup_create_view, name='admin_backup_create'),
     path('backups/<int:backup_id>/delete/', views.backup_delete_view, name='admin_backup_delete'),
     path('backups/<int:backup_id>/download/', views.backup_download_view, name='admin_backup_download'),
+    path('backups/<int:backup_id>/restore/', views.backup_restore_view, name='admin_backup_restore'),
 
 
     path('groups/', views.groups_main_view, name='groups_main'),
     path('groups/<int:group_id>/edit/', views.group_edit_view, name='group_edit'),
     path('groups/<int:group_id>/', views.group_detail_view, name='group_detail'),
     path('groups/create/', views.group_create_view, name='group_create'),
+
+    # Расписание
+    path('schedule/', views.schedule_main_view, name='admin_schedule'),
 
     # Предметы
     path('subjects/', views.subjects_main_view, name='admin_subjects'),

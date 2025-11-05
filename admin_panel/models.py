@@ -675,6 +675,58 @@ class Teacher(models.Model):
         return self.groups.all()
 
 
+class ActivityLog(models.Model):
+    """Журнал действий пользователей админ-панели"""
+
+    ACTION_CREATE = 'create'
+    ACTION_UPDATE = 'update'
+    ACTION_DELETE = 'delete'
+    ACTION_VIEW = 'view'
+    ACTION_NAVIGATION = 'navigation'
+    ACTION_OTHER = 'other'
+
+    ACTION_CHOICES = [
+        (ACTION_CREATE, 'Создание'),
+        (ACTION_UPDATE, 'Изменение'),
+        (ACTION_DELETE, 'Удаление'),
+        (ACTION_VIEW, 'Просмотр'),
+        (ACTION_NAVIGATION, 'Навигация'),
+        (ACTION_OTHER, 'Другое'),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='activity_logs',
+        verbose_name='Пользователь'
+    )
+    action_type = models.CharField(
+        'Тип действия',
+        max_length=32,
+        choices=ACTION_CHOICES,
+        default=ACTION_OTHER
+    )
+    description = models.TextField('Описание действия')
+    icon = models.CharField('Иконка', max_length=64, blank=True)
+    metadata = models.JSONField('Дополнительные данные', null=True, blank=True)
+    created_at = models.DateTimeField('Дата и время', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Запись активности'
+        verbose_name_plural = 'Журнал активности'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        user_display = self.user.get_full_name() if self.user and self.user.get_full_name() else (self.user.username if self.user else 'Система')
+        return f'{user_display}: {self.description}'
+
+    @property
+    def icon_name(self):
+        return self.icon or 'bi-clock-history'
+
+
 class Backup(models.Model):
     """Модель для хранения информации о резервных копиях - оставляем как есть"""
     

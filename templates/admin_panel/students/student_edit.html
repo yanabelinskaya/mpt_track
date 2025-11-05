@@ -7,10 +7,9 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<link rel="stylesheet" href="{% static 'css/custom_select.css' %}">
 <style>
 .edit-container {
-    max-width: 1000px;
-    margin: 0 auto;
     display: grid;
     grid-template-columns: 1fr;
     gap: 2rem;
@@ -531,14 +530,48 @@
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label" for="group">Группа</label>
-                    <select class="form-select" id="group" name="group">
-                        <option value="">Не назначена</option>
-                        {% for group in groups %}
-                            <option value="{{ group.id }}" {% if student.group_id == group.id %}selected{% endif %}>
-                                {{ group.code }} ({{ group.faculty.name }})
-                            </option>
-                        {% endfor %}
-                    </select>
+                    <div class="custom-select" id="groupSelect">
+                        <select id="group" name="group">
+                            <option value="" {% if not student.group_id %}selected{% endif %}>Не назначена</option>
+                            {% for group in groups %}
+                                <option value="{{ group.id }}" {% if student.group_id == group.id %}selected{% endif %}>{{ group.code }}{% if group.name %} — {{ group.name }}{% endif %}{% if group.faculty %} ({{ group.faculty.name }}){% endif %}</option>
+                            {% endfor %}
+                        </select>
+                        <div class="select-trigger {% if not student.group_id %}placeholder{% endif %}" data-placeholder="Не назначена">
+                            <span class="select-text">
+                                {% if student.group_id %}
+                                    {% for group in groups %}
+                                        {% if student.group_id == group.id %}
+                                            {{ group.code }}{% if group.name %} — {{ group.name }}{% endif %}
+                                            {% if group.faculty %} ({{ group.faculty.name }}){% endif %}
+                                        {% endif %}
+                                    {% endfor %}
+                                {% else %}
+                                    Не назначена
+                                {% endif %}
+                            </span>
+                            <div class="select-arrow">
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                        </div>
+                        <div class="select-dropdown">
+                            <div class="select-option {% if not student.group_id %}selected{% endif %}" data-value="">
+                                <div class="select-option-text">Не назначена</div>
+                            </div>
+                            {% for group in groups %}
+                            <div class="select-option {% if student.group_id == group.id %}selected{% endif %}" data-value="{{ group.id }}">
+                                <div class="select-option-content">
+                                    <div class="select-option-text">{{ group.code }}{% if group.name %} — {{ group.name }}{% endif %}</div>
+                                    {% if group.faculty %}
+                                    <div class="select-option-meta">
+                                        <span>{{ group.faculty.name }}</span>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
                     <div class="form-text">Можно изменить или оставить без группы</div>
                 </div>
                 
@@ -567,11 +600,38 @@
                 
                 <div class="form-group">
                     <label class="form-label" for="gender">Пол</label>
-                    <select class="form-select" id="gender" name="gender">
-                        <option value="">Не указано</option>
-                        <option value="M" {% if student.gender == 'M' %}selected{% endif %}>Мужской</option>
-                        <option value="F" {% if student.gender == 'F' %}selected{% endif %}>Женский</option>
-                    </select>
+                    <div class="custom-select" id="genderSelect">
+                        <select id="gender" name="gender">
+                            <option value="" {% if not student.gender %}selected{% endif %}>Не указано</option>
+                            <option value="M" {% if student.gender == 'M' %}selected{% endif %}>Мужской</option>
+                            <option value="F" {% if student.gender == 'F' %}selected{% endif %}>Женский</option>
+                        </select>
+                        <div class="select-trigger {% if not student.gender %}placeholder{% endif %}" data-placeholder="Не указано">
+                            <span class="select-text">
+                                {% if student.gender == 'M' %}
+                                    Мужской
+                                {% elif student.gender == 'F' %}
+                                    Женский
+                                {% else %}
+                                    Не указано
+                                {% endif %}
+                            </span>
+                            <div class="select-arrow">
+                                <i class="bi bi-chevron-down"></i>
+                            </div>
+                        </div>
+                        <div class="select-dropdown">
+                            <div class="select-option {% if not student.gender %}selected{% endif %}" data-value="">
+                                <div class="select-option-text">Не указано</div>
+                            </div>
+                            <div class="select-option {% if student.gender == 'M' %}selected{% endif %}" data-value="M">
+                                <div class="select-option-text">Мужской</div>
+                            </div>
+                            <div class="select-option {% if student.gender == 'F' %}selected{% endif %}" data-value="F">
+                                <div class="select-option-text">Женский</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             
@@ -652,6 +712,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/custom_select.js' %}"></script>
 <script>
 // CSRF токен
 function getCookie(name) {

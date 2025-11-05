@@ -8,10 +8,6 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/forms.css' %}">
 <style>
-.form-container {
-    max-width: 600px;
-    margin: 0 auto;
-}
 
 .form-card {
     background: var(--sidebar-bg);
@@ -216,7 +212,7 @@
 
 .char-counter {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     font-size: 0.75rem;
     color: var(--bs-secondary);
     margin-top: 0.25rem;
@@ -296,16 +292,6 @@
             <li>Студенты смогут выбирать профессии из указанного списка</li>
         </ul>
     </div>
-
-    <!-- Отображение ошибок Django -->
-    {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
 
     <form method="post" id="createFacultyForm">
         {% csrf_token %}

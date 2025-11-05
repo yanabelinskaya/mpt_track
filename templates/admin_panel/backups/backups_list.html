@@ -67,6 +67,36 @@
     overflow: hidden;
 }
 
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.65);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    z-index: 1055;
+    backdrop-filter: blur(2px);
+}
+
+.loading-overlay.show {
+    display: flex;
+}
+
+.loading-overlay .loading-text {
+    margin-top: 1rem;
+    color: #f8fafc;
+    font-weight: 500;
+}
+
+.backup-table-body {
+    max-height: 420px;
+    overflow-y: auto;
+}
+
 .table-header {
     background: var(--nav-link-hover);
     padding: 1rem;
@@ -92,7 +122,7 @@
     background: var(--nav-link-hover);
 }
 
-.backup-row:last-child {
+.backup-table-body .backup-row:last-child {
     border-bottom: none;
 }
 
@@ -170,6 +200,15 @@
     background: #dc2626;
 }
 
+.restore-btn {
+    background: #2563eb;
+    color: white;
+}
+
+.restore-btn:hover {
+    background: #1d4ed8;
+}
+
 .empty-state {
     text-align: center;
     padding: 3rem;
@@ -180,6 +219,12 @@
     font-size: 3rem;
     margin-bottom: 1rem;
     opacity: 0.5;
+}
+
+.modal-icon-warning {
+    font-size: 3rem;
+    color: #f59e0b;
+    margin-bottom: 1rem;
 }
 
 .create-backup-form {
@@ -277,6 +322,10 @@
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+    
+    .backup-table-body {
+        max-height: none;
+    }
 }
 </style>
 {% endblock %}
@@ -325,7 +374,7 @@
             Создать резервную копию
         </h3>
         
-        <form method="post" action="{% url 'admin_backup_create' %}">
+        <form id="backupCreateForm" method="post" action="{% url 'admin_backup_create' %}">
             {% csrf_token %}
             <div class="form-group">
                 <label class="form-label" for="description">Описание (необязательно)</label>
@@ -351,7 +400,8 @@
             <div>Действия</div>
         </div>
         
-        {% if page_obj %}
+        {% if page_obj and page_obj.object_list %}
+        <div class="backup-table-body">
             {% for backup in page_obj %}
             <div class="backup-row">
                 <div>
@@ -389,6 +439,11 @@
                 
                 <div class="backup-actions-cell">
                     {% if backup.status == 'completed' and backup.file_exists %}
+                    <button class="action-btn restore-btn" 
+                            onclick="restoreBackup({{ backup.id }}, '{{ backup.name|escapejs }}')" 
+                            title="Восстановить">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </button>
                     <a href="{% url 'admin_backup_download' backup.id %}" 
                        class="action-btn download-btn" title="Скачать">
                         <i class="bi bi-download"></i>
@@ -405,12 +460,13 @@
                 </div>
             </div>
             {% endfor %}
+        </div>
         {% else %}
-            <div class="empty-state">
-                <i class="bi bi-hdd-stack"></i>
-                <h3>Резервных копий пока нет</h3>
-                <p>Создайте первую резервную копию с помощью формы выше</p>
-            </div>
+        <div class="empty-state">
+            <i class="bi bi-hdd-stack"></i>
+            <h3>Резервных копий пока нет</h3>
+            <p>Создайте первую резервную копию с помощью формы выше</p>
+        </div>
         {% endif %}
     </div>
 
@@ -484,6 +540,43 @@
         </div>
     </div>
 </div>
+
+<!-- Модальное окно восстановления -->
+<div class="modal fade" id="restoreModal" tabindex="-1" aria-labelledby="restoreModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="restoreModalLabel">Восстановление резервной копии</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="modal-icon-warning">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </div>
+                <p><strong>Восстановить данные из резервной копии?</strong></p>
+                <p class="text-muted" id="restoreModalText">
+                    Текущие данные будут перезаписаны выбранной копией.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x"></i>
+                    Отмена
+                </button>
+                <button type="button" class="btn btn-primary" id="confirmRestore">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                    Восстановить
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="globalLoadingOverlay" class="loading-overlay" aria-hidden="true">
+    <div class="spinner-border text-light" role="status">
+        <span class="visually-hidden">Выполняется восстановление...</span>
+    </div>
+    <div class="loading-text">Выполняется восстановление...</div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -507,16 +600,48 @@ function getCookie(name) {
 const csrftoken = getCookie('csrftoken');
 let currentBackupId = null;
 let currentBackupName = null;
+let restoreBackupId = null;
+let restoreBackupName = null;
+let restoreInProgress = false;
+let creationStatusNotified = false;
+const globalLoadingOverlay = document.getElementById('globalLoadingOverlay');
+const globalLoadingText = globalLoadingOverlay ? globalLoadingOverlay.querySelector('.loading-text') : null;
+
+function toggleLoadingOverlay(show, message = '') {
+    if (!globalLoadingOverlay) return;
+    if (globalLoadingText && message) {
+        globalLoadingText.textContent = message;
+    }
+    if (show) {
+        globalLoadingOverlay.classList.add('show');
+    } else {
+        globalLoadingOverlay.classList.remove('show');
+    }
+}
+
+function schedulePageReload(delay = 1500) {
+    if (window.backupReloadScheduled) {
+        return;
+    }
+    window.backupReloadScheduled = true;
+    setTimeout(() => window.location.reload(), delay);
+}
 
 // Показать уведомление
 function showNotification(message, type = 'success') {
-    const alertClass = type === 'error' || type === 'danger' ? 'alert-danger' : 'alert-success';
-    const icon = type === 'error' || type === 'danger' ? 'bi-exclamation-triangle' : 'bi-check-circle';
+    const variants = {
+        success: { alertClass: 'alert-success', icon: 'bi-check-circle' },
+        danger: { alertClass: 'alert-danger', icon: 'bi-exclamation-triangle' },
+        error: { alertClass: 'alert-danger', icon: 'bi-exclamation-triangle' },
+        warning: { alertClass: 'alert-warning', icon: 'bi-exclamation-triangle' },
+        info: { alertClass: 'alert-info', icon: 'bi-info-circle' }
+    };
+    const variant = variants[type] || variants.success;
     
     const alertHtml = `
-        <div class="alert ${alertClass} alert-dismissible fade show" role="alert" 
+        <div class="alert ${variant.alertClass} alert-dismissible fade show" role="alert" 
              style="position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;">
-            <i class="bi ${icon} me-2"></i>
+            <i class="bi ${variant.icon} me-2"></i>
             ${message}
             <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
         </div>
@@ -568,9 +693,7 @@ document.getElementById('confirmDelete').addEventListener('click', function() {
     .then(data => {
         if (data.success) {
             showNotification('Резервная копия удалена');
-            setTimeout(() => {
-                window.location.reload();
-            }, 1500);
+            schedulePageReload(1500);
         } else {
             showNotification(data.message, 'danger');
         }
@@ -580,6 +703,68 @@ document.getElementById('confirmDelete').addEventListener('click', function() {
         showNotification('Произошла ошибка при удалении', 'danger');
     });
 });
+
+// Показать модальное окно восстановления
+function restoreBackup(backupId, backupName) {
+    if (restoreInProgress) return;
+    restoreBackupId = backupId;
+    restoreBackupName = backupName;
+    
+    const modalText = document.getElementById('restoreModalText');
+    if (modalText) {
+        modalText.innerHTML = `Резервная копия "<strong>${backupName}</strong>" будет использована для восстановления. Все текущие данные будут перезаписаны.`;
+    }
+    
+    const modal = new bootstrap.Modal(document.getElementById('restoreModal'));
+    modal.show();
+}
+
+// Обработчик подтверждения восстановления
+document.getElementById('confirmRestore').addEventListener('click', function() {
+    if (!restoreBackupId || restoreInProgress) return;
+    
+    const targetBackupId = restoreBackupId;
+    const targetBackupName = restoreBackupName;
+    
+    const modal = bootstrap.Modal.getInstance(document.getElementById('restoreModal'));
+    modal.hide();
+    
+    restoreInProgress = true;
+    toggleLoadingOverlay(true, `Восстановление "${targetBackupName}"...`);
+    
+    fetch(`/backups/${targetBackupId}/restore/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': csrftoken,
+            'Content-Type': 'application/json',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message || 'Восстановление завершено');
+            toggleLoadingOverlay(true, 'Восстановление завершено, обновляем страницу...');
+            schedulePageReload(2000);
+        } else {
+            restoreInProgress = false;
+            toggleLoadingOverlay(false);
+            showNotification(data.message || 'Ошибка при восстановлении', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        restoreInProgress = false;
+        toggleLoadingOverlay(false);
+        showNotification('Произошла ошибка при восстановлении', 'danger');
+    });
+});
+
+const backupCreateForm = document.getElementById('backupCreateForm');
+if (backupCreateForm) {
+    backupCreateForm.addEventListener('submit', function() {
+        toggleLoadingOverlay(true, 'Создание резервной копии, пожалуйста подождите...');
+    });
+}
 
 // Исправление проблемы с aria-hidden для модальных окон
 document.addEventListener('show.bs.modal', function(e) {
@@ -592,15 +777,16 @@ document.addEventListener('hidden.bs.modal', function(e) {
     modal.removeAttribute('aria-hidden');
     currentBackupId = null;
     currentBackupName = null;
+    restoreBackupId = null;
+    restoreBackupName = null;
 });
 
 // Автообновление статуса создающихся бэкапов
 function checkBackupStatus() {
     const creatingRows = document.querySelectorAll('.status-creating');
-    if (creatingRows.length > 0) {
-        setTimeout(() => {
-            window.location.reload();
-        }, 5000); // Обновляем страницу каждые 5 секунд если есть создающиеся бэкапы
+    if (creatingRows.length > 0 && !creationStatusNotified) {
+        creationStatusNotified = true;
+        showNotification('Создание резервной копии выполняется. Пожалуйста, дождитесь завершения процесса — обновите список вручную при необходимости.', 'info');
     }
 }
 

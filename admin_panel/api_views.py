@@ -14,6 +14,7 @@ from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 import secrets
 import string
+import re
 from datetime import datetime
 
 from .serializers import (
@@ -27,10 +28,12 @@ from .serializers import (
 
 # Безопасная проверка импорта моделей
 try:
-    from .models import Student, Group, Faculty, Teacher, Subject
+    from .models import Student, Group, Faculty, Teacher, Subject, ActivityLog
     MODELS_AVAILABLE = True
 except ImportError:
     MODELS_AVAILABLE = False
+
+from .activity import log_activity
 
 # ====================================
 # ФУНКЦИИ ДЛЯ ГЕНЕРАЦИИ УЧЕТНЫХ ДАННЫХ
@@ -165,12 +168,14 @@ def apply_student_filters(queryset, filters):
     status_filter = filters.get('status', '').strip()
     
     if search:
-        search_lower = search.lower()
-        queryset = queryset.filter(
-            Q(first_name__icontains=search) |
-            Q(last_name__icontains=search) |
-            Q(email__icontains=search)
-        )
+        tokens = [token for token in re.split(r'[\s,;]+', search) if token]
+        for token in tokens:
+            queryset = queryset.filter(
+                Q(first_name__icontains=token) |
+                Q(last_name__icontains=token) |
+                Q(email__icontains=token) |
+                Q(student_id__icontains=token)
+            )
     
     if group_filter:
         queryset = queryset.filter(group_id=group_filter)
@@ -191,13 +196,17 @@ def apply_teacher_filters(queryset, filters):
     status_filter = filters.get('status', '').strip()
 
     if search:
-        queryset = queryset.filter(
-            Q(first_name__icontains=search) |
-            Q(last_name__icontains=search) |
-            Q(middle_name__icontains=search) |
-            Q(email__icontains=search) |
-            Q(phone__icontains=search)
-        )
+        tokens = [token for token in re.split(r'[\s,;]+', search) if token]
+        for token in tokens:
+            queryset = queryset.filter(
+                Q(first_name__icontains=token) |
+                Q(last_name__icontains=token) |
+                Q(middle_name__icontains=token) |
+                Q(email__icontains=token) |
+                Q(phone__icontains=token) |
+                Q(subjects__name__icontains=token) |
+                Q(subjects__short_name__icontains=token)
+            )
 
     if subject_filter:
         queryset = queryset.filter(subjects__id=subject_filter)
@@ -320,7 +329,15 @@ def student_toggle_status_api(request, student_id):
         
         # Возвращаем обновленные данные студента
         student_data = StudentSerializer(student).data
-        
+
+        log_activity(
+            request.user,
+            ActivityLog.ACTION_UPDATE,
+            f'Статус студента "{student.get_full_name()}" {status_text}',
+            'bi-person-check' if new_status else 'bi-person-dash',
+            {'student_id': student.id, 'is_active': new_status}
+        )
+
         return Response({
             'success': True,
             'message': f'Студент "{student.get_full_name()}" {status_text}',
@@ -405,7 +422,15 @@ def student_create_access_api(request, student_id):
         
         # Возвращаем обновленные данные студента
         student_data = StudentSerializer(student).data
-        
+
+        log_activity(
+            request.user,
+            ActivityLog.ACTION_CREATE,
+            f'Создан доступ студенту "{student.get_full_name()}"',
+            'bi-key',
+            {'student_id': student.id, 'username': username}
+        )
+
         return Response({
             'success': True,
             'message': 'Доступ создан успешно',
@@ -487,7 +512,15 @@ def student_reset_password_api(request, student_id):
         email_sent = False
         if serializer.validated_data.get('send_email', True):
             email_sent = send_password_email(student, new_password)
-        
+
+        log_activity(
+            request.user,
+            ActivityLog.ACTION_UPDATE,
+            f'Сброшен пароль студента "{student.get_full_name()}"',
+            'bi-shield-lock',
+            {'student_id': student.id, 'email_sent': email_sent}
+        )
+
         return Response({
             'success': True,
             'message': f'Новый пароль {"отправлен на email" if email_sent else "сгенерирован"}',
@@ -1049,6 +1082,13 @@ def teacher_toggle_status_api(request, teacher_id):
         return Response({'success': False, 'message': 'У преподавателя нет аккаунта'}, status=status.HTTP_400_BAD_REQUEST)
     teacher.user.is_active = not teacher.user.is_active
     teacher.user.save()
+    log_activity(
+        request.user,
+        ActivityLog.ACTION_UPDATE,
+        f'Статус преподавателя "{teacher.get_full_name()}" {"активирован" if teacher.user.is_active else "деактивирован"}',
+        'bi-person-check' if teacher.user.is_active else 'bi-person-dash',
+        {'teacher_id': teacher.id, 'is_active': teacher.user.is_active}
+    )
     return Response({
         'success': True,
         'message': 'Статус обновлён',
@@ -1094,6 +1134,13 @@ def teacher_create_access_api(request, teacher_id):
     email_sent = False
     if serializer.validated_data.get('send_email', True):
         email_sent = send_teacher_credentials_email(teacher, username, password)
+    log_activity(
+        request.user,
+        ActivityLog.ACTION_CREATE,
+        f'Создан доступ преподавателю "{teacher.get_full_name()}"',
+        'bi-key',
+        {'teacher_id': teacher.id, 'username': username}
+    )
     return Response({
         'success': True,
         'message': 'Доступ создан',
@@ -1130,6 +1177,13 @@ def teacher_reset_password_api(request, teacher_id):
     email_sent = False
     if serializer.validated_data.get('send_email', True):
         email_sent = send_teacher_credentials_email(teacher, teacher.user.username, password)
+    log_activity(
+        request.user,
+        ActivityLog.ACTION_UPDATE,
+        f'Сброшен пароль преподавателя "{teacher.get_full_name()}"',
+        'bi-shield-lock',
+        {'teacher_id': teacher.id, 'email_sent': email_sent}
+    )
     return Response({
         'success': True,
         'message': 'Пароль обновлён',
@@ -1284,6 +1338,12 @@ def teacher_bulk_create_access_api(request):
 def teacher_export_view(request):
     if not MODELS_AVAILABLE:
         return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    try:
+        import pandas as pd
+        import io
+    except ImportError:
+        return Response({'success': False, 'message': 'Не установлен пакет pandas или openpyxl'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     teachers = Teacher.objects.select_related('user').prefetch_related('subjects', 'groups', 'groups__faculty')
     filters = {
         'search': request.GET.get('search', ''),
@@ -1296,12 +1356,22 @@ def teacher_export_view(request):
         teachers = teachers.filter(id__in=selected_ids)
     data = []
     for teacher in teachers:
+        subjects_list = [
+            subject.short_name or subject.name
+            for subject in teacher.subjects.all()
+        ]
+        groups_list = [
+            f"{group.code} ({group.faculty.code})"
+            for group in teacher.groups.all()
+        ]
         data.append({
             'ФИО': teacher.get_full_name(),
             'Email': teacher.email,
             'Телефон': teacher.phone or '',
             'Должность': teacher.position or '',
             'Статус': 'Активен' if teacher.is_active_account else 'Неактивен',
+            'Предметы': ', '.join(subjects_list),
+            'Группы': ', '.join(groups_list),
         })
     df = pd.DataFrame(data)
     output = io.BytesIO()
@@ -1406,6 +1476,13 @@ def faculty_delete_api(request, faculty_id):
         # Удаляем факультет
         faculty.delete()
         print(f"Факультет удален: {faculty_name}")
+        log_activity(
+            request.user,
+            ActivityLog.ACTION_DELETE,
+            f'Удалена специальность "{faculty_name}"',
+            'bi-trash',
+            {'faculty_id': faculty_id}
+        )
         
         return Response({
             'success': True,
@@ -1464,6 +1541,14 @@ def faculty_toggle_status_api(request, faculty_id):
         
         # Возвращаем обновленные данные факультета
         faculty_data = FacultySerializer(faculty).data
+
+        log_activity(
+            request.user,
+            ActivityLog.ACTION_UPDATE,
+            f'Статус специальности "{faculty.name}" {status_text}',
+            'bi-building',
+            {'faculty_id': faculty.id, 'is_active': new_status}
+        )
         
         return Response({
             'success': True,
@@ -2183,6 +2268,13 @@ def subject_toggle_status_api(request, subject_id):
     else:
         subject.is_active = not subject.is_active
     subject.save(update_fields=['is_active'])
+    log_activity(
+        request.user,
+        ActivityLog.ACTION_UPDATE,
+        f'Статус предмета "{subject}" {"активирован" if subject.is_active else "деактивирован"}',
+        'bi-journal-check' if subject.is_active else 'bi-journal-x',
+        {'subject_id': subject.id, 'is_active': subject.is_active}
+    )
     return Response({'success': True, 'subject': SubjectSerializer(subject, context={'request': request}).data}, status=status.HTTP_200_OK)
 
 
@@ -2203,4 +2295,11 @@ def subject_delete_api(request, subject_id):
         return Response({'success': False, 'message': 'Нельзя удалить предмет, пока он назначен группам.'}, status=status.HTTP_400_BAD_REQUEST)
 
     subject.delete()
+    log_activity(
+        request.user,
+        ActivityLog.ACTION_DELETE,
+        f'Удален предмет "{subject}"',
+        'bi-trash',
+        {'subject_id': subject_id}
+    )
     return Response({'success': True, 'message': 'Предмет удален'}, status=status.HTTP_200_OK)

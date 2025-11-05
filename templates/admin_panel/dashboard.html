@@ -64,8 +64,8 @@
                     <i class="bi {{ log.icon }}"></i>
                 </div>
                 <div class="activity-text">
-                    <div>{{ log.description|safe }}</div>
-                    <div class="activity-time">{{ log.created_at|timesince }} назад</div>
+                    <div><strong>{{ log.user_display }}</strong> — {{ log.description }}</div>
+                    <div class="activity-time" data-created="{{ log.created_iso|default:'' }}">{{ log.created_display }}</div>
                 </div>
                 <button class="remove-activity" onclick="removeActivityItem({{ log.id }})" title="Удалить">
                     <i class="bi bi-x"></i>
@@ -84,7 +84,12 @@
 
 {% block extra_js %}
 <script>
-// CSRF токен для запросов
+const activityLogEndpoints = {
+    add: "{{ activity_log_add_url }}",
+    remove: "{{ activity_log_remove_url }}",
+    clear: "{{ activity_log_clear_url }}"
+};
+
 const csrftoken = getCookie('csrftoken');
 
 function getCookie(name) {
@@ -102,9 +107,12 @@ function getCookie(name) {
     return cookieValue;
 }
 
-// Функция добавления лога активности
-function addActivityLog(actionType, description, icon = null) {
-    fetch('/admin/add-activity-log/', {
+function addActivityLog(actionType, description, icon = null, metadata = null) {
+    if (!activityLogEndpoints.add || !description) {
+        return Promise.resolve(null);
+    }
+
+    return fetch(activityLogEndpoints.add, {
         method: 'POST',
         headers: {
             'X-CSRFToken': csrftoken,
@@ -113,75 +121,123 @@ function addActivityLog(actionType, description, icon = null) {
         body: JSON.stringify({
             action_type: actionType,
             description: description,
-            icon: icon
+            icon: icon,
+            metadata: metadata
         })
     })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            console.log('Activity logged successfully');
-            addActivityToDOM(data.log);
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Failed to log activity');
         }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success && data.log) {
+            addActivityToDOM(data.log);
+            return data.log;
+        }
+        return null;
     })
     .catch(error => {
         console.error('Error logging activity:', error);
+        return null;
     });
 }
 
-// Добавление активности в DOM
 function addActivityToDOM(logData) {
+    if (!logData) {
+        return;
+    }
+
     const activityList = document.getElementById('activityList');
+    if (!activityList) {
+        return;
+    }
+
     const noActivity = document.getElementById('noActivity');
-    
-    // Убираем "нет действий" если есть
     if (noActivity) {
         noActivity.remove();
     }
-    
-    // Создаем новый элемент активности
-    const activityItem = document.createElement('div');
-    activityItem.className = 'activity-item new-activity';
-    activityItem.setAttribute('data-log-id', logData.id);
-    
-    activityItem.innerHTML = `
-        <div class="activity-icon ${logData.action_type}">
-            <i class="bi ${logData.icon}"></i>
-        </div>
-        <div class="activity-text">
-            <div>${logData.description}</div>
-            <div class="activity-time">только что</div>
-        </div>
-        <button class="remove-activity" onclick="removeActivityItem(${logData.id})" title="Удалить">
-            <i class="bi bi-x"></i>
-        </button>
-    `;
-    
-    // Добавляем в начало списка
-    activityList.insertBefore(activityItem, activityList.firstChild);
-    
-    // Анимация появления
+
+    const item = document.createElement('div');
+    item.className = 'activity-item new-activity';
+    item.dataset.logId = logData.id;
+
+    const iconWrapper = document.createElement('div');
+    iconWrapper.className = `activity-icon ${logData.action_type || ''}`.trim();
+    const icon = document.createElement('i');
+    icon.className = `bi ${logData.icon || 'bi-clock-history'}`;
+    iconWrapper.appendChild(icon);
+
+    const textWrapper = document.createElement('div');
+    textWrapper.className = 'activity-text';
+
+    const primaryLine = document.createElement('div');
+    const userStrong = document.createElement('strong');
+    userStrong.textContent = logData.user_display || 'Система';
+    primaryLine.appendChild(userStrong);
+    primaryLine.appendChild(document.createTextNode(' — ' + (logData.description || '')));
+
+    const timeLine = document.createElement('div');
+    timeLine.className = 'activity-time';
+    const createdIso = logData.created_iso || new Date().toISOString();
+    timeLine.dataset.created = createdIso;
+    timeLine.textContent = formatRelativeTime(new Date(createdIso));
+
+    textWrapper.appendChild(primaryLine);
+    textWrapper.appendChild(timeLine);
+
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-activity';
+    removeBtn.title = 'Удалить';
+    removeBtn.innerHTML = '<i class="bi bi-x"></i>';
+    removeBtn.addEventListener('click', () => removeActivityItem(logData.id));
+
+    item.appendChild(iconWrapper);
+    item.appendChild(textWrapper);
+    item.appendChild(removeBtn);
+
+    activityList.insertBefore(item, activityList.firstChild);
+
     setTimeout(() => {
-        activityItem.classList.remove('new-activity');
+        item.classList.remove('new-activity');
     }, 100);
-    
-    // Ограничиваем количество показываемых логов (например, 10)
+
     const items = activityList.querySelectorAll('.activity-item');
     if (items.length > 10) {
         items[items.length - 1].remove();
     }
+
+    updateActivityRelativeTimes();
 }
 
-// Удаление конкретного лога
+function ensureEmptyActivityPlaceholder() {
+    const activityList = document.getElementById('activityList');
+    if (!activityList) {
+        return;
+    }
+    if (activityList.querySelectorAll('.activity-item').length === 0) {
+        activityList.innerHTML = `
+            <div class="no-activity" id="noActivity">
+                <i class="bi bi-clock-history"></i>
+                <p>Пока нет действий</p>
+            </div>
+        `;
+    }
+}
+
 function removeActivityItem(logId) {
-    fetch('/admin/remove-activity-log/', {
+    if (!activityLogEndpoints.remove) {
+        return;
+    }
+
+    fetch(activityLogEndpoints.remove, {
         method: 'POST',
         headers: {
             'X-CSRFToken': csrftoken,
             'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-            log_id: logId
-        })
+        body: JSON.stringify({ log_id: logId })
     })
     .then(response => response.json())
     .then(data => {
@@ -192,18 +248,8 @@ function removeActivityItem(logId) {
                 item.style.transform = 'translateX(20px)';
                 setTimeout(() => {
                     item.remove();
-                    
-                    // Проверяем если список пустой
-                    const activityList = document.getElementById('activityList');
-                    if (activityList.children.length === 0) {
-                        activityList.innerHTML = `
-                            <div class="no-activity" id="noActivity">
-                                <i class="bi bi-clock-history"></i>
-                                <p>Пока нет действий</p>
-                            </div>
-                        `;
-                    }
-                }, 300);
+                    ensureEmptyActivityPlaceholder();
+                }, 200);
             }
         }
     })
@@ -212,13 +258,16 @@ function removeActivityItem(logId) {
     });
 }
 
-// Очистка всех логов
 function clearAllActivity() {
+    if (!activityLogEndpoints.clear) {
+        return;
+    }
+
     if (!confirm('Вы уверены, что хотите очистить все недавние действия?')) {
         return;
     }
-    
-    fetch('/admin/clear-activity-logs/', {
+
+    fetch(activityLogEndpoints.clear, {
         method: 'POST',
         headers: {
             'X-CSRFToken': csrftoken,
@@ -229,12 +278,14 @@ function clearAllActivity() {
     .then(data => {
         if (data.success) {
             const activityList = document.getElementById('activityList');
-            activityList.innerHTML = `
-                <div class="no-activity" id="noActivity">
-                    <i class="bi bi-clock-history"></i>
-                    <p>Пока нет действий</p>
-                </div>
-            `;
+            if (activityList) {
+                activityList.innerHTML = `
+                    <div class="no-activity" id="noActivity">
+                        <i class="bi bi-clock-history"></i>
+                        <p>Пока нет действий</p>
+                    </div>
+                `;
+            }
         }
     })
     .catch(error => {
@@ -242,50 +293,116 @@ function clearAllActivity() {
     });
 }
 
-// Функции быстрых действий с логированием
+function navigateWithLog(url, actionType, message, icon, metadata = null) {
+    if (!url) {
+        return;
+    }
+    addActivityLog(actionType, message, icon, metadata).finally(() => {
+        window.location.href = url;
+    });
+}
+
 function openAddStudent() {
-    addActivityLog('create', 'Переход к добавлению студента', 'bi-person-plus');
-    window.location.href = "{% url 'admin_student_create' %}";
+    navigateWithLog("{% url 'admin_student_create' %}", 'create', 'Переход к добавлению студента', 'bi-person-plus');
 }
 
 function openAddTeacher() {
-    addActivityLog('create', 'Переход к добавлению преподавателя', 'bi-person-workspace');
-    console.log('Добавление преподавателя');
+    navigateWithLog("{% url 'admin_teacher_create' %}", 'create', 'Переход к добавлению преподавателя', 'bi-person-workspace');
 }
 
 function openAddGroup() {
-    addActivityLog('create', 'Переход к созданию группы', 'bi-people');
-    console.log('Создание группы');
+    navigateWithLog("{% url 'group_create' %}", 'create', 'Переход к созданию группы', 'bi-people');
 }
 
 function openSchedule() {
     addActivityLog('view', 'Просмотр расписания', 'bi-calendar-week');
-    console.log('Расписание');
+    console.log('Расписание (раздел в разработке)');
 }
 
 function openGrades() {
     addActivityLog('view', 'Переход к журналу оценок', 'bi-clipboard-data');
-    console.log('Оценки');
+    console.log('Журнал оценок (раздел в разработке)');
 }
 
 function openReports() {
     addActivityLog('view', 'Переход к отчетам', 'bi-bar-chart');
-    console.log('Отчеты');
+    console.log('Отчеты (раздел в разработке)');
 }
 
-// Логирование при переходах по меню (можно добавить глобально)
-document.addEventListener('DOMContentLoaded', function() {
+function formatRelativeTime(date) {
+    if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+        return 'только что';
+    }
+
+    const now = Date.now();
+    let diff = Math.floor((now - date.getTime()) / 1000);
+    if (diff < 0) {
+        diff = 0;
+    }
+
+    if (diff < 60) {
+        return 'только что';
+    }
+
+    const minutes = Math.floor(diff / 60);
+    if (minutes < 60) {
+        return `${minutes} мин назад`;
+    }
+
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) {
+        return `${hours} ч назад`;
+    }
+
+    const days = Math.floor(hours / 24);
+    if (days < 7) {
+        return `${days} дн назад`;
+    }
+
+    const weeks = Math.floor(days / 7);
+    if (weeks < 5) {
+        return `${weeks} нед назад`;
+    }
+
+    const months = Math.floor(days / 30);
+    if (months < 12) {
+        return `${months} мес назад`;
+    }
+
+    const years = Math.floor(days / 365);
+    return `${years} г назад`;
+}
+
+function updateActivityRelativeTimes() {
+    const items = document.querySelectorAll('.activity-time[data-created]');
+    const now = new Date();
+    items.forEach(item => {
+        const iso = item.dataset.created;
+        if (!iso) {
+            return;
+        }
+        const date = new Date(iso);
+        item.textContent = formatRelativeTime(date);
+    });
+}
+
+function bindNavigationLogging() {
     const navLinks = document.querySelectorAll('.nav-link');
     navLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
+        link.addEventListener('click', function() {
             const linkText = this.querySelector('span')?.textContent || this.textContent.trim();
-            const icon = this.querySelector('i')?.className || 'bi-arrow-right';
-            
+            const iconClass = this.querySelector('i')?.classList[1] || 'bi-arrow-right';
             if (linkText && linkText !== 'Панель управления') {
-                addActivityLog('navigation', `Переход в раздел "${linkText}"`, icon.split(' ')[1] || 'bi-arrow-right');
+                addActivityLog('navigation', `Переход в раздел "${linkText}"`, iconClass);
             }
         });
     });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    bindNavigationLogging();
+    updateActivityRelativeTimes();
+    setInterval(updateActivityRelativeTimes, 60000);
 });
 </script>
 {% endblock %}

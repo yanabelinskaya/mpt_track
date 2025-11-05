@@ -84,7 +84,7 @@
             </div>
             
             <div class="nav-item">
-                <a class="nav-link {% if 'schedule' in request.resolver_match.url_name %}active{% endif %}" href="#">
+                <a class="nav-link {% if 'schedule' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_schedule' %}">
                     <i class="bi bi-calendar-week"></i>
                     <span>Расписание</span>
                 </a>

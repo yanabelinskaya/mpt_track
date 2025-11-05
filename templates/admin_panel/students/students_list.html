@@ -7,6 +7,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/tables.css' %}">
+<link rel="stylesheet" href="{% static 'css/custom_select.css' %}">
 <style>
 /* Стили для модальных окон */
 .modal-icon-danger {
@@ -345,14 +346,50 @@
                 <div class="filter-menu" id="filterMenu">
                     <div class="filter-section">
                         <label class="filter-title">Группа</label>
-                        <select name="group" class="filter-select" onchange="this.form.submit()">
-                            <option value="">Все группы</option>
-                            {% for group in groups %}
-                                <option value="{{ group.id }}" {% if group_filter == group.id|stringformat:"s" %}selected{% endif %}>
-                                    {{ group.code }} ({{ group.total_students }})
-                                </option>
-                            {% endfor %}
-                        </select>
+                        <div class="custom-select filter-custom-select" id="studentsGroupFilter" data-auto-submit="true">
+                            <select name="group">
+                                <option value="" {% if not group_filter %}selected{% endif %}>Все группы</option>
+                                {% for group in groups %}
+                                    <option value="{{ group.id }}" {% if group_filter == group.id|stringformat:"s" %}selected{% endif %}>
+                                        {{ group.code }} ({{ group.total_students }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                            <div class="select-trigger {% if not group_filter %}placeholder{% endif %}" data-placeholder="Все группы">
+                                <span class="select-text">
+                                    {% if group_filter %}
+                                        {% for group in groups %}
+                                            {% if group_filter == group.id|stringformat:"s" %}
+                                                {{ group.code }} ({{ group.total_students }})
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        Все группы
+                                    {% endif %}
+                                </span>
+                                <div class="select-arrow">
+                                    <i class="bi bi-chevron-down"></i>
+                                </div>
+                            </div>
+                            <div class="select-dropdown">
+                                <div class="select-option {% if not group_filter %}selected{% endif %}" data-value="">
+                                    <div class="select-option-text">Все группы</div>
+                                </div>
+                                {% for group in groups %}
+                                <div class="select-option {% if group_filter == group.id|stringformat:"s" %}selected{% endif %}" data-value="{{ group.id }}">
+                                    <div class="select-option-content">
+                                        <div class="select-option-text">{{ group.code }}</div>
+                                        <div class="select-option-meta">
+                                            {% if group.faculty %}
+                                                <span>{{ group.faculty.name }}</span>
+                                            {% endif %}
+                                            <span>{{ group.total_students }} студентов</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="filter-section">
@@ -858,6 +895,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/custom_select.js' %}"></script>
 <script src="{% static 'js/tables.js' %}"></script>
 <script>
 // === ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ДЛЯ СТУДЕНТОВ ===
@@ -2150,6 +2188,37 @@ document.addEventListener('DOMContentLoaded', function() {
         const modal = e.target;
         // Окончательно удаляем aria-hidden после закрытия
         modal.removeAttribute('aria-hidden');
+    });
+
+    const searchForm = document.querySelector('.search-form');
+    const searchField = document.querySelector('.search-field');
+    let searchDebounce;
+
+    if (searchForm && searchField) {
+        searchField.addEventListener('input', () => {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => {
+                closeAllDropdowns();
+                searchForm.requestSubmit();
+            }, 300);
+        });
+    }
+
+    const groupSelect = document.querySelector('select[name="group"]');
+    if (groupSelect && searchForm) {
+        groupSelect.addEventListener('change', () => {
+            closeAllDropdowns();
+            searchForm.requestSubmit();
+        });
+    }
+
+    document.querySelectorAll('.status-option input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            closeAllDropdowns();
+            if (searchForm) {
+                searchForm.requestSubmit();
+            }
+        });
     });
 });
 

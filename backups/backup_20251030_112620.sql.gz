@@ -1,0 +1,2435 @@
+--
+-- PostgreSQL database dump
+--
+
+\restrict nkMC6HyydkPBgTcco6dXX77A7Z5lyGddLRR4Mm4WGrjt5F4D3cmJMvxyGucHBt3
+
+-- Dumped from database version 16.1
+-- Dumped by pg_dump version 16.10 (Homebrew)
+
+-- Started on 2025-10-30 11:26:20 UTC
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+ALTER TABLE ONLY public.django_admin_log DROP CONSTRAINT django_admin_log_user_id_c564eba6_fk_auth_user_id;
+ALTER TABLE ONLY public.django_admin_log DROP CONSTRAINT django_admin_log_content_type_id_c4bce8eb_fk_django_co;
+ALTER TABLE ONLY public.auth_user_user_permissions DROP CONSTRAINT auth_user_user_permissions_user_id_a95ead1b_fk_auth_user_id;
+ALTER TABLE ONLY public.auth_user_user_permissions DROP CONSTRAINT auth_user_user_permi_permission_id_1fbb5f2c_fk_auth_perm;
+ALTER TABLE ONLY public.auth_user_groups DROP CONSTRAINT auth_user_groups_user_id_6a12ed8b_fk_auth_user_id;
+ALTER TABLE ONLY public.auth_user_groups DROP CONSTRAINT auth_user_groups_group_id_97559544_fk_auth_group_id;
+ALTER TABLE ONLY public.auth_permission DROP CONSTRAINT auth_permission_content_type_id_2f476e4b_fk_django_co;
+ALTER TABLE ONLY public.auth_group_permissions DROP CONSTRAINT auth_group_permissions_group_id_b120cbf9_fk_auth_group_id;
+ALTER TABLE ONLY public.auth_group_permissions DROP CONSTRAINT auth_group_permissio_permission_id_84c5c92e_fk_auth_perm;
+ALTER TABLE ONLY public.admin_panel_teacher DROP CONSTRAINT admin_panel_teacher_user_id_1ceb8714_fk_auth_user_id;
+ALTER TABLE ONLY public.admin_panel_teacher DROP CONSTRAINT admin_panel_teacher_created_by_id_9e5b2ac5_fk_auth_user_id;
+ALTER TABLE ONLY public.admin_panel_teacher_subjects DROP CONSTRAINT admin_panel_teacher__teacher_id_ed3bea26_fk_admin_pan;
+ALTER TABLE ONLY public.admin_panel_teacher_groups DROP CONSTRAINT admin_panel_teacher__teacher_id_e1022445_fk_admin_pan;
+ALTER TABLE ONLY public.admin_panel_teacher_subjects DROP CONSTRAINT admin_panel_teacher__subject_id_3975d159_fk_admin_pan;
+ALTER TABLE ONLY public.admin_panel_teacher_groups DROP CONSTRAINT admin_panel_teacher__group_id_d70819d9_fk_admin_pan;
+ALTER TABLE ONLY public.admin_panel_subjectassignment_teachers DROP CONSTRAINT admin_panel_subjecta_teacher_id_bb532427_fk_admin_pan;
+ALTER TABLE ONLY public.admin_panel_subjectassignment_teachers DROP CONSTRAINT admin_panel_subjecta_subjectassignment_id_5ef9935b_fk_admin_pan;
+ALTER TABLE ONLY public.admin_panel_subjectassignment DROP CONSTRAINT admin_panel_subjecta_subject_id_d0cb68d5_fk_admin_pan;
+ALTER TABLE ONLY public.admin_panel_subjectassignment DROP CONSTRAINT admin_panel_subjecta_faculty_id_2e6b21b4_fk_admin_pan;
+ALTER TABLE ONLY public.admin_panel_subjectassignment DROP CONSTRAINT admin_panel_subjecta_created_by_id_3a4cb50f_fk_auth_user;
+ALTER TABLE ONLY public.admin_panel_subject DROP CONSTRAINT admin_panel_subject_created_by_id_bfeddc0b_fk_auth_user_id;
+ALTER TABLE ONLY public.admin_panel_student DROP CONSTRAINT admin_panel_student_user_id_4a5a47c1_fk_auth_user_id;
+ALTER TABLE ONLY public.admin_panel_student DROP CONSTRAINT admin_panel_student_group_id_93bdc3f7_fk_admin_panel_group_id;
+ALTER TABLE ONLY public.admin_panel_student DROP CONSTRAINT admin_panel_student_created_by_id_657011be_fk_auth_user_id;
+ALTER TABLE ONLY public.admin_panel_group DROP CONSTRAINT admin_panel_group_faculty_id_9d2c5031_fk_admin_panel_faculty_id;
+ALTER TABLE ONLY public.admin_panel_group DROP CONSTRAINT admin_panel_group_created_by_id_0f7c8d44_fk_auth_user_id;
+ALTER TABLE ONLY public.admin_panel_faculty DROP CONSTRAINT admin_panel_faculty_created_by_id_53d7d262_fk_auth_user_id;
+ALTER TABLE ONLY public.admin_panel_backup DROP CONSTRAINT admin_panel_backup_created_by_id_f9e87668_fk_auth_user_id;
+ALTER TABLE ONLY public.admin_panel_activitylog DROP CONSTRAINT admin_panel_activitylog_user_id_a78e0080_fk_auth_user_id;
+DROP INDEX public.django_session_session_key_c0390e0f_like;
+DROP INDEX public.django_session_expire_date_a5c62663;
+DROP INDEX public.django_admin_log_user_id_c564eba6;
+DROP INDEX public.django_admin_log_content_type_id_c4bce8eb;
+DROP INDEX public.auth_user_username_6821ab7c_like;
+DROP INDEX public.auth_user_user_permissions_user_id_a95ead1b;
+DROP INDEX public.auth_user_user_permissions_permission_id_1fbb5f2c;
+DROP INDEX public.auth_user_groups_user_id_6a12ed8b;
+DROP INDEX public.auth_user_groups_group_id_97559544;
+DROP INDEX public.auth_permission_content_type_id_2f476e4b;
+DROP INDEX public.auth_group_permissions_permission_id_84c5c92e;
+DROP INDEX public.auth_group_permissions_group_id_b120cbf9;
+DROP INDEX public.auth_group_name_a6ea08ec_like;
+DROP INDEX public.admin_panel_teacher_subjects_teacher_id_ed3bea26;
+DROP INDEX public.admin_panel_teacher_subjects_subject_id_3975d159;
+DROP INDEX public.admin_panel_teacher_groups_teacher_id_e1022445;
+DROP INDEX public.admin_panel_teacher_groups_group_id_d70819d9;
+DROP INDEX public.admin_panel_teacher_email_04a89df6_like;
+DROP INDEX public.admin_panel_teacher_created_by_id_9e5b2ac5;
+DROP INDEX public.admin_panel_subjectassignment_teachers_teacher_id_bb532427;
+DROP INDEX public.admin_panel_subjectassignment_subject_id_d0cb68d5;
+DROP INDEX public.admin_panel_subjectassignment_faculty_id_2e6b21b4;
+DROP INDEX public.admin_panel_subjectassignment_created_by_id_3a4cb50f;
+DROP INDEX public.admin_panel_subjectassignm_subjectassignment_id_5ef9935b;
+DROP INDEX public.admin_panel_subject_name_4e352e96_like;
+DROP INDEX public.admin_panel_subject_created_by_id_bfeddc0b;
+DROP INDEX public.admin_panel_student_student_id_ef3b54ca_like;
+DROP INDEX public.admin_panel_student_group_id_93bdc3f7;
+DROP INDEX public.admin_panel_student_created_by_id_657011be;
+DROP INDEX public.admin_panel_group_faculty_id_9d2c5031;
+DROP INDEX public.admin_panel_group_created_by_id_0f7c8d44;
+DROP INDEX public.admin_panel_group_code_de068c45_like;
+DROP INDEX public.admin_panel_faculty_created_by_id_53d7d262;
+DROP INDEX public.admin_panel_faculty_code_24d3185a_like;
+DROP INDEX public.admin_panel_backup_created_by_id_f9e87668;
+DROP INDEX public.admin_panel_activitylog_user_id_a78e0080;
+ALTER TABLE ONLY public.django_session DROP CONSTRAINT django_session_pkey;
+ALTER TABLE ONLY public.django_migrations DROP CONSTRAINT django_migrations_pkey;
+ALTER TABLE ONLY public.django_content_type DROP CONSTRAINT django_content_type_pkey;
+ALTER TABLE ONLY public.django_content_type DROP CONSTRAINT django_content_type_app_label_model_76bd3d3b_uniq;
+ALTER TABLE ONLY public.django_admin_log DROP CONSTRAINT django_admin_log_pkey;
+ALTER TABLE ONLY public.auth_user DROP CONSTRAINT auth_user_username_key;
+ALTER TABLE ONLY public.auth_user_user_permissions DROP CONSTRAINT auth_user_user_permissions_user_id_permission_id_14a6b632_uniq;
+ALTER TABLE ONLY public.auth_user_user_permissions DROP CONSTRAINT auth_user_user_permissions_pkey;
+ALTER TABLE ONLY public.auth_user DROP CONSTRAINT auth_user_pkey;
+ALTER TABLE ONLY public.auth_user_groups DROP CONSTRAINT auth_user_groups_user_id_group_id_94350c0c_uniq;
+ALTER TABLE ONLY public.auth_user_groups DROP CONSTRAINT auth_user_groups_pkey;
+ALTER TABLE ONLY public.auth_permission DROP CONSTRAINT auth_permission_pkey;
+ALTER TABLE ONLY public.auth_permission DROP CONSTRAINT auth_permission_content_type_id_codename_01ab375a_uniq;
+ALTER TABLE ONLY public.auth_group DROP CONSTRAINT auth_group_pkey;
+ALTER TABLE ONLY public.auth_group_permissions DROP CONSTRAINT auth_group_permissions_pkey;
+ALTER TABLE ONLY public.auth_group_permissions DROP CONSTRAINT auth_group_permissions_group_id_permission_id_0cd325b0_uniq;
+ALTER TABLE ONLY public.auth_group DROP CONSTRAINT auth_group_name_key;
+ALTER TABLE ONLY public.admin_panel_teacher DROP CONSTRAINT admin_panel_teacher_user_id_key;
+ALTER TABLE ONLY public.admin_panel_teacher_subjects DROP CONSTRAINT admin_panel_teacher_subjects_pkey;
+ALTER TABLE ONLY public.admin_panel_teacher_subjects DROP CONSTRAINT admin_panel_teacher_subj_teacher_id_subject_id_d737543c_uniq;
+ALTER TABLE ONLY public.admin_panel_teacher DROP CONSTRAINT admin_panel_teacher_pkey;
+ALTER TABLE ONLY public.admin_panel_teacher_groups DROP CONSTRAINT admin_panel_teacher_groups_teacher_id_group_id_44ffec76_uniq;
+ALTER TABLE ONLY public.admin_panel_teacher_groups DROP CONSTRAINT admin_panel_teacher_groups_pkey;
+ALTER TABLE ONLY public.admin_panel_teacher DROP CONSTRAINT admin_panel_teacher_email_key;
+ALTER TABLE ONLY public.admin_panel_subjectassignment_teachers DROP CONSTRAINT admin_panel_subjectassignment_teachers_pkey;
+ALTER TABLE ONLY public.admin_panel_subjectassignment DROP CONSTRAINT admin_panel_subjectassignment_pkey;
+ALTER TABLE ONLY public.admin_panel_subjectassignment_teachers DROP CONSTRAINT admin_panel_subjectassig_subjectassignment_id_tea_c3be0138_uniq;
+ALTER TABLE ONLY public.admin_panel_subjectassignment DROP CONSTRAINT admin_panel_subjectassig_subject_id_faculty_id_pr_f2247f00_uniq;
+ALTER TABLE ONLY public.admin_panel_subject DROP CONSTRAINT admin_panel_subject_pkey;
+ALTER TABLE ONLY public.admin_panel_subject DROP CONSTRAINT admin_panel_subject_name_key;
+ALTER TABLE ONLY public.admin_panel_student DROP CONSTRAINT admin_panel_student_user_id_key;
+ALTER TABLE ONLY public.admin_panel_student DROP CONSTRAINT admin_panel_student_student_id_key;
+ALTER TABLE ONLY public.admin_panel_student DROP CONSTRAINT admin_panel_student_pkey;
+ALTER TABLE ONLY public.admin_panel_group DROP CONSTRAINT admin_panel_group_pkey;
+ALTER TABLE ONLY public.admin_panel_group DROP CONSTRAINT admin_panel_group_code_key;
+ALTER TABLE ONLY public.admin_panel_faculty DROP CONSTRAINT admin_panel_faculty_pkey;
+ALTER TABLE ONLY public.admin_panel_faculty DROP CONSTRAINT admin_panel_faculty_code_key;
+ALTER TABLE ONLY public.admin_panel_backup DROP CONSTRAINT admin_panel_backup_pkey;
+ALTER TABLE ONLY public.admin_panel_activitylog DROP CONSTRAINT admin_panel_activitylog_pkey;
+DROP TABLE public.django_session;
+DROP TABLE public.django_migrations;
+DROP TABLE public.django_content_type;
+DROP TABLE public.django_admin_log;
+DROP TABLE public.auth_user_user_permissions;
+DROP TABLE public.auth_user_groups;
+DROP TABLE public.auth_user;
+DROP TABLE public.auth_permission;
+DROP TABLE public.auth_group_permissions;
+DROP TABLE public.auth_group;
+DROP TABLE public.admin_panel_teacher_subjects;
+DROP TABLE public.admin_panel_teacher_groups;
+DROP TABLE public.admin_panel_teacher;
+DROP TABLE public.admin_panel_subjectassignment_teachers;
+DROP TABLE public.admin_panel_subjectassignment;
+DROP TABLE public.admin_panel_subject;
+DROP TABLE public.admin_panel_student;
+DROP TABLE public.admin_panel_group;
+DROP TABLE public.admin_panel_faculty;
+DROP TABLE public.admin_panel_backup;
+DROP TABLE public.admin_panel_activitylog;
+SET default_tablespace = '';
+
+SET default_table_access_method = heap;
+
+--
+-- TOC entry 255 (class 1259 OID 117405)
+-- Name: admin_panel_activitylog; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_panel_activitylog (
+    id bigint NOT NULL,
+    action_type character varying(32) NOT NULL,
+    description text NOT NULL,
+    icon character varying(64) NOT NULL,
+    metadata jsonb,
+    created_at timestamp with time zone NOT NULL,
+    user_id integer
+);
+
+
+--
+-- TOC entry 254 (class 1259 OID 117404)
+-- Name: admin_panel_activitylog_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_panel_activitylog ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.admin_panel_activitylog_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 241 (class 1259 OID 117253)
+-- Name: admin_panel_backup; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_panel_backup (
+    id bigint NOT NULL,
+    name character varying(200) NOT NULL,
+    file_path character varying(500) NOT NULL,
+    file_size bigint NOT NULL,
+    backup_type character varying(20) NOT NULL,
+    status character varying(20) NOT NULL,
+    tables_count integer NOT NULL,
+    records_count bigint NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    completed_at timestamp with time zone,
+    description text NOT NULL,
+    error_message text NOT NULL,
+    created_by_id integer
+);
+
+
+--
+-- TOC entry 240 (class 1259 OID 117252)
+-- Name: admin_panel_backup_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_panel_backup ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.admin_panel_backup_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 234 (class 1259 OID 92099)
+-- Name: admin_panel_faculty; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_panel_faculty (
+    id bigint NOT NULL,
+    name character varying(200) NOT NULL,
+    code character varying(8) NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    created_by_id integer,
+    description text NOT NULL,
+    is_active boolean NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    professions jsonb NOT NULL
+);
+
+
+--
+-- TOC entry 233 (class 1259 OID 92098)
+-- Name: admin_panel_faculty_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_panel_faculty ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.admin_panel_faculty_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 236 (class 1259 OID 92107)
+-- Name: admin_panel_group; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_panel_group (
+    id bigint NOT NULL,
+    name character varying(50) NOT NULL,
+    code character varying(20) NOT NULL,
+    is_active boolean NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    faculty_id bigint NOT NULL,
+    created_by_id integer,
+    enrollment_date date,
+    graduation_date date,
+    profession character varying(150) NOT NULL,
+    updated_at timestamp with time zone NOT NULL
+);
+
+
+--
+-- TOC entry 235 (class 1259 OID 92106)
+-- Name: admin_panel_group_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_panel_group ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.admin_panel_group_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 238 (class 1259 OID 92115)
+-- Name: admin_panel_student; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_panel_student (
+    id bigint NOT NULL,
+    student_id character varying(20) NOT NULL,
+    first_name character varying(50) NOT NULL,
+    last_name character varying(50) NOT NULL,
+    middle_name character varying(50) NOT NULL,
+    phone character varying(20) NOT NULL,
+    email character varying(254) NOT NULL,
+    date_of_birth date,
+    gender character varying(1) NOT NULL,
+    address text NOT NULL,
+    city character varying(100) NOT NULL,
+    enrollment_date date,
+    graduation_date date,
+    study_status character varying(20) NOT NULL,
+    notes text NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    created_by_id integer,
+    group_id bigint,
+    user_id integer
+);
+
+
+--
+-- TOC entry 237 (class 1259 OID 92114)
+-- Name: admin_panel_student_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_panel_student ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.admin_panel_student_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 243 (class 1259 OID 117277)
+-- Name: admin_panel_subject; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_panel_subject (
+    id bigint NOT NULL,
+    name character varying(150) NOT NULL,
+    short_name character varying(50) NOT NULL,
+    description text NOT NULL,
+    is_active boolean NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    created_by_id integer
+);
+
+
+--
+-- TOC entry 242 (class 1259 OID 117276)
+-- Name: admin_panel_subject_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_panel_subject ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.admin_panel_subject_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 251 (class 1259 OID 117358)
+-- Name: admin_panel_subjectassignment; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_panel_subjectassignment (
+    id bigint NOT NULL,
+    profession character varying(150) NOT NULL,
+    course smallint NOT NULL,
+    is_active boolean NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    created_by_id integer,
+    faculty_id bigint NOT NULL,
+    subject_id bigint NOT NULL,
+    CONSTRAINT admin_panel_subjectassignment_course_check CHECK ((course >= 0))
+);
+
+
+--
+-- TOC entry 250 (class 1259 OID 117357)
+-- Name: admin_panel_subjectassignment_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_panel_subjectassignment ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.admin_panel_subjectassignment_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 253 (class 1259 OID 117365)
+-- Name: admin_panel_subjectassignment_teachers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_panel_subjectassignment_teachers (
+    id bigint NOT NULL,
+    subjectassignment_id bigint NOT NULL,
+    teacher_id bigint NOT NULL
+);
+
+
+--
+-- TOC entry 252 (class 1259 OID 117364)
+-- Name: admin_panel_subjectassignment_teachers_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_panel_subjectassignment_teachers ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.admin_panel_subjectassignment_teachers_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 245 (class 1259 OID 117287)
+-- Name: admin_panel_teacher; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_panel_teacher (
+    id bigint NOT NULL,
+    first_name character varying(50) NOT NULL,
+    last_name character varying(50) NOT NULL,
+    middle_name character varying(50) NOT NULL,
+    email character varying(254) NOT NULL,
+    phone character varying(20) NOT NULL,
+    "position" character varying(150) NOT NULL,
+    academic_title character varying(150) NOT NULL,
+    academic_degree character varying(150) NOT NULL,
+    hire_date date,
+    is_curator boolean NOT NULL,
+    is_active boolean NOT NULL,
+    notes text NOT NULL,
+    created_at timestamp with time zone NOT NULL,
+    updated_at timestamp with time zone NOT NULL,
+    created_by_id integer,
+    user_id integer
+);
+
+
+--
+-- TOC entry 247 (class 1259 OID 117299)
+-- Name: admin_panel_teacher_groups; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_panel_teacher_groups (
+    id bigint NOT NULL,
+    teacher_id bigint NOT NULL,
+    group_id bigint NOT NULL
+);
+
+
+--
+-- TOC entry 246 (class 1259 OID 117298)
+-- Name: admin_panel_teacher_groups_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_panel_teacher_groups ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.admin_panel_teacher_groups_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 244 (class 1259 OID 117286)
+-- Name: admin_panel_teacher_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_panel_teacher ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.admin_panel_teacher_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 249 (class 1259 OID 117305)
+-- Name: admin_panel_teacher_subjects; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.admin_panel_teacher_subjects (
+    id bigint NOT NULL,
+    teacher_id bigint NOT NULL,
+    subject_id bigint NOT NULL
+);
+
+
+--
+-- TOC entry 248 (class 1259 OID 117304)
+-- Name: admin_panel_teacher_subjects_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.admin_panel_teacher_subjects ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.admin_panel_teacher_subjects_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 222 (class 1259 OID 91992)
+-- Name: auth_group; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auth_group (
+    id integer NOT NULL,
+    name character varying(150) NOT NULL
+);
+
+
+--
+-- TOC entry 221 (class 1259 OID 91991)
+-- Name: auth_group_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.auth_group ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_group_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 224 (class 1259 OID 92000)
+-- Name: auth_group_permissions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auth_group_permissions (
+    id bigint NOT NULL,
+    group_id integer NOT NULL,
+    permission_id integer NOT NULL
+);
+
+
+--
+-- TOC entry 223 (class 1259 OID 91999)
+-- Name: auth_group_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.auth_group_permissions ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_group_permissions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 220 (class 1259 OID 91986)
+-- Name: auth_permission; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auth_permission (
+    id integer NOT NULL,
+    name character varying(255) NOT NULL,
+    content_type_id integer NOT NULL,
+    codename character varying(100) NOT NULL
+);
+
+
+--
+-- TOC entry 219 (class 1259 OID 91985)
+-- Name: auth_permission_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.auth_permission ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_permission_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 226 (class 1259 OID 92006)
+-- Name: auth_user; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auth_user (
+    id integer NOT NULL,
+    password character varying(128) NOT NULL,
+    last_login timestamp with time zone,
+    is_superuser boolean NOT NULL,
+    username character varying(150) NOT NULL,
+    first_name character varying(150) NOT NULL,
+    last_name character varying(150) NOT NULL,
+    email character varying(254) NOT NULL,
+    is_staff boolean NOT NULL,
+    is_active boolean NOT NULL,
+    date_joined timestamp with time zone NOT NULL
+);
+
+
+--
+-- TOC entry 228 (class 1259 OID 92014)
+-- Name: auth_user_groups; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auth_user_groups (
+    id bigint NOT NULL,
+    user_id integer NOT NULL,
+    group_id integer NOT NULL
+);
+
+
+--
+-- TOC entry 227 (class 1259 OID 92013)
+-- Name: auth_user_groups_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.auth_user_groups ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_user_groups_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 225 (class 1259 OID 92005)
+-- Name: auth_user_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.auth_user ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_user_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 230 (class 1259 OID 92020)
+-- Name: auth_user_user_permissions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.auth_user_user_permissions (
+    id bigint NOT NULL,
+    user_id integer NOT NULL,
+    permission_id integer NOT NULL
+);
+
+
+--
+-- TOC entry 229 (class 1259 OID 92019)
+-- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.auth_user_user_permissions ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.auth_user_user_permissions_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 232 (class 1259 OID 92078)
+-- Name: django_admin_log; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.django_admin_log (
+    id integer NOT NULL,
+    action_time timestamp with time zone NOT NULL,
+    object_id text,
+    object_repr character varying(200) NOT NULL,
+    action_flag smallint NOT NULL,
+    change_message text NOT NULL,
+    content_type_id integer,
+    user_id integer NOT NULL,
+    CONSTRAINT django_admin_log_action_flag_check CHECK ((action_flag >= 0))
+);
+
+
+--
+-- TOC entry 231 (class 1259 OID 92077)
+-- Name: django_admin_log_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.django_admin_log ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.django_admin_log_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 218 (class 1259 OID 91978)
+-- Name: django_content_type; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.django_content_type (
+    id integer NOT NULL,
+    app_label character varying(100) NOT NULL,
+    model character varying(100) NOT NULL
+);
+
+
+--
+-- TOC entry 217 (class 1259 OID 91977)
+-- Name: django_content_type_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.django_content_type ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.django_content_type_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 216 (class 1259 OID 91970)
+-- Name: django_migrations; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.django_migrations (
+    id bigint NOT NULL,
+    app character varying(255) NOT NULL,
+    name character varying(255) NOT NULL,
+    applied timestamp with time zone NOT NULL
+);
+
+
+--
+-- TOC entry 215 (class 1259 OID 91969)
+-- Name: django_migrations_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+ALTER TABLE public.django_migrations ALTER COLUMN id ADD GENERATED BY DEFAULT AS IDENTITY (
+    SEQUENCE NAME public.django_migrations_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1
+);
+
+
+--
+-- TOC entry 239 (class 1259 OID 92160)
+-- Name: django_session; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.django_session (
+    session_key character varying(40) NOT NULL,
+    session_data text NOT NULL,
+    expire_date timestamp with time zone NOT NULL
+);
+
+
+--
+-- TOC entry 3870 (class 0 OID 117405)
+-- Dependencies: 255
+-- Data for Name: admin_panel_activitylog; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.admin_panel_activitylog (id, action_type, description, icon, metadata, created_at, user_id) FROM stdin;
+2	create	Переход к добавлению студента	bi-person-plus	\N	2025-10-30 14:02:32.716855+03	104
+3	create	Переход к созданию группы	bi-people	\N	2025-10-30 14:02:35.376307+03	104
+4	view	Переход к журналу оценок	bi-clipboard-data	\N	2025-10-30 14:02:38.096269+03	104
+5	view	Переход к отчетам	bi-bar-chart	\N	2025-10-30 14:02:40.367698+03	104
+6	view	Просмотр расписания	bi-calendar-week	\N	2025-10-30 14:02:41.874556+03	104
+7	create	Переход к добавлению преподавателя	bi-person-workspace	\N	2025-10-30 14:02:43.041943+03	104
+8	create	Переход к добавлению преподавателя	bi-person-workspace	\N	2025-10-30 14:14:56.58575+03	104
+9	create	Добавлен студент "sdffg ЫВАdfgd sdf"	bi-person-plus	{"student_id": 132}	2025-10-30 14:15:21.188049+03	104
+10	navigation	Переход в раздел "Студенты"	bi-mortarboard	\N	2025-10-30 14:15:36.026783+03	104
+11	navigation	Переход в раздел "Студенты"	bi-mortarboard	\N	2025-10-30 14:15:54.989137+03	104
+12	navigation	Переход в раздел "Студенты"	bi-mortarboard	\N	2025-10-30 14:16:03.336076+03	104
+13	navigation	Переход в раздел "Резервные копии"	bi-hdd-stack	\N	2025-10-30 14:16:13.262395+03	104
+14	navigation	Переход в раздел "Студенты"	bi-mortarboard	\N	2025-10-30 14:23:06.59882+03	104
+15	navigation	Переход в раздел "Студенты"	bi-mortarboard	\N	2025-10-30 14:23:09.363942+03	104
+16	navigation	Переход в раздел "Резервные копии"	bi-hdd-stack	\N	2025-10-30 14:26:18.181232+03	104
+\.
+
+
+--
+-- TOC entry 3856 (class 0 OID 117253)
+-- Dependencies: 241
+-- Data for Name: admin_panel_backup; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.admin_panel_backup (id, name, file_path, file_size, backup_type, status, tables_count, records_count, created_at, completed_at, description, error_message, created_by_id) FROM stdin;
+10	backup_20251027_092717.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251027_092717.sql.gz	102638	manual	completed	18	298	2025-10-27 12:27:17.391202+03	2025-10-27 12:27:17.777573+03	орро		104
+11	backup_20251030_110114.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251030_110114.sql.gz	118738	manual	completed	21	331	2025-10-30 14:01:14.21081+03	2025-10-30 14:01:14.536596+03			104
+4	backup_20251017_121350.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251017_121350.sql.gz	76361	automatic	completed	14	249	2025-10-17 15:13:50.581936+03	2025-10-17 15:13:50.843357+03	Тест с PostgreSQL 16		\N
+12	backup_20251030_111614.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251030_111614.sql.gz	120211	manual	completed	21	343	2025-10-30 14:16:14.881509+03	2025-10-30 14:16:15.064066+03			104
+5	backup_20251017_121837.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251017_121837.sql.gz	0	manual	failed	0	0	2025-10-17 15:18:37.794065+03	\N		Ошибка при создании бэкапа	104
+6	backup_20251017_122031.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251017_122031.sql.gz	77081	manual	completed	14	252	2025-10-17 15:20:31.496487+03	2025-10-17 15:20:31.671071+03			104
+13	backup_20251030_112620.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251030_112620.sql.gz	0	manual	creating	0	0	2025-10-30 14:26:20.740043+03	\N			104
+3	backup_20251017_121112.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251017_121112.sql.gz	0	automatic	deleted	0	0	2025-10-17 15:11:12.160606+03	\N	Тест с PostgreSQL 16.10	Ошибка при создании бэкапа	\N
+2	backup_20251017_121016.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251017_121016.sql.gz	0	scheduled	deleted	0	0	2025-10-17 15:10:16.626772+03	\N	Ежедневная автоматическая резервная копия	Ошибка при создании бэкапа	\N
+1	backup_20251017_115633.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251017_115633.sql.gz	0	scheduled	deleted	0	0	2025-10-17 14:56:33.200476+03	\N	Ежедневная автоматическая резервная копия	Ошибка при создании бэкапа	\N
+7	backup_20251017_122320.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251017_122320.sql.gz	77354	manual	completed	14	253	2025-10-17 15:23:20.847419+03	2025-10-17 15:23:21.015705+03	Резервная копия перед обновлением		104
+8	backup_20251019_091543.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251019_091543.sql.gz	82013	manual	completed	14	268	2025-10-19 12:15:43.80332+03	2025-10-19 12:15:44.180891+03			104
+9	backup_20251023_115249.sql.gz	/Users/veseliy.hlebushek/student_journal/backups/backup_20251023_115249.sql.gz	83359	manual	completed	14	271	2025-10-23 14:52:49.911746+03	2025-10-23 14:52:50.286715+03			104
+\.
+
+
+--
+-- TOC entry 3849 (class 0 OID 92099)
+-- Dependencies: 234
+-- Data for Name: admin_panel_faculty; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.admin_panel_faculty (id, name, code, created_at, created_by_id, description, is_active, updated_at, professions) FROM stdin;
+11	Юриспруденция	40.02.04	2025-10-17 14:27:00.966462+03	104		t	2025-10-17 14:29:02.290379+03	["Юрист"]
+12	Веб-разработка	09.02.09	2025-10-17 14:29:47.80248+03	104		t	2025-10-17 14:29:47.802508+03	["Разработчик WEB-приложений"]
+13	Информационные системы и программирование	09.02.07	2025-10-17 14:31:45.930427+03	104		t	2025-10-17 14:31:45.930651+03	["Программист", "Специалист по тестированию в области информационных технологий", "Разработчик WEB и мультимедийных приложений", "Администратор баз данных"]
+15	Сетевое и системное администрирование	09.02.06	2025-10-17 15:31:24.835538+03	104		t	2025-10-17 15:31:24.835566+03	["Системный администратор"]
+\.
+
+
+--
+-- TOC entry 3851 (class 0 OID 92107)
+-- Dependencies: 236
+-- Data for Name: admin_panel_group; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.admin_panel_group (id, name, code, is_active, created_at, faculty_id, created_by_id, enrollment_date, graduation_date, profession, updated_at) FROM stdin;
+3	Информационные системы и программирование	П50-2-22	t	2025-10-18 13:47:15.294369+03	13	104	2022-09-01	2026-06-30	Программист	2025-10-18 13:47:15.294387+03
+4	П50-1-22	П50-1-22	t	2025-10-18 14:16:45.4568+03	13	104	2022-09-01	2026-06-30	Программист	2025-10-20 13:25:49.361404+03
+5	П50-3-22	П50-3-22	f	2025-10-26 19:25:03.759661+03	13	\N	2022-09-01	2026-06-30	Специалист по тестированию в области информационных технологий	2025-10-26 19:25:03.759678+03
+9	ыв	ыв	t	2025-10-26 20:01:17.651026+03	12	\N	2025-09-01	2029-06-30	Разработчик WEB-приложений	2025-10-26 20:01:17.651044+03
+\.
+
+
+--
+-- TOC entry 3853 (class 0 OID 92115)
+-- Dependencies: 238
+-- Data for Name: admin_panel_student; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.admin_panel_student (id, student_id, first_name, last_name, middle_name, phone, email, date_of_birth, gender, address, city, enrollment_date, graduation_date, study_status, notes, created_at, updated_at, created_by_id, group_id, user_id) FROM stdin;
+23	STU20561773	Кирилл	Авласов	Юрьевич		avlasov.kirill@mpt.ru	\N	M			2022-09-01	2026-06-30	active		2025-10-06 00:19:40.798795+03	2025-10-18 14:01:50.64234+03	\N	3	23
+24	STU17933354	Эрик	Балбабян	Григорович		balbabyan.erik@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.80191+03	2025-10-18 14:06:17.380552+03	\N	3	24
+13	STU17432063	Андрей	Никитин	Алексеевич		nikitin.andrey@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.762916+03	2025-10-06 00:19:40.762933+03	\N	\N	13
+29	STU17500026	Денис	Дзюба	Алексеевич		dzyuba.denis@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.819817+03	2025-10-18 14:06:17.422882+03	\N	3	29
+33	STU20471767	Василий	Макаров	Дмитриевич		makarov.vasiliy@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.831638+03	2025-10-06 00:19:40.831652+03	\N	\N	33
+3	STU17359911	Павел	Билашенко	Антонович		bilashenko.pavel@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.728501+03	2025-10-20 14:32:15.358622+03	\N	4	3
+40	STU24356303	Руслан	Биктимиров	Олегович		biktimirov.ruslan@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.857017+03	2025-10-06 00:19:40.857033+03	\N	\N	40
+41	STU33902566	Никита	Васюков	Максимович		vasyukov.nikita@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.860395+03	2025-10-06 00:19:40.860412+03	\N	\N	41
+42	STU17022632	Мария	Гаврикова	Анатольевна		gavrikova.mariya@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.863391+03	2025-10-06 00:19:40.863405+03	\N	\N	42
+43	STU16786547	Николай	Кащеев	Игоревич		kasheev.nikolay@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.866171+03	2025-10-06 00:19:40.866185+03	\N	\N	43
+44	STU27908852	Дмитрий	Кирилов	Сергеевич		kirilov.dmitriy@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.86917+03	2025-10-06 00:19:40.869184+03	\N	\N	44
+45	STU21461477	Александр	Костюков	Витальевич		kostyukov.aleksandr@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.872572+03	2025-10-06 00:19:40.872591+03	\N	\N	45
+46	STU24420327	Максим	Лавров	Дмитриевич		lavrov.maksim@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.877051+03	2025-10-06 00:19:40.87707+03	\N	\N	46
+5	STU18498426	Искандер	Данкеев	Ильясович		dankeev.iskander@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.734809+03	2025-10-06 00:19:40.734823+03	\N	4	5
+6	STU24081983	Елизавета	Ильина	Витальевна		ilina.elizaveta@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.738197+03	2025-10-06 00:19:40.738224+03	\N	4	6
+7	STU10317998	Игорь	Ковыков	Игоревич		kovykov.igor@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.742078+03	2025-10-06 00:19:40.742097+03	\N	4	7
+8	STU11294977	Артём	Коргополов	Витальевич		korgopolov.artem@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.74603+03	2025-10-06 00:19:40.746047+03	\N	4	8
+9	STU20037592	Антон	КруговОв	Владимирович		krugovov.anton@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.749264+03	2025-10-06 00:19:40.749279+03	\N	4	9
+10	STU21157424	Елизавета	Ларина	Борисовна		larina.elizaveta@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.752268+03	2025-10-06 00:19:40.752283+03	\N	4	10
+11	STU12823012	Кирилл	Лашев	Игоревич		lashev.kirill@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.756181+03	2025-10-06 00:19:40.756199+03	\N	4	11
+12	STU30395192	Анастасия	Некрасова	Константиновна		nekrasova.anastasiya@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.759343+03	2025-10-06 00:19:40.75936+03	\N	4	12
+4	STU22701557	Владислав	Битюцкий	Дмитриевич		bityutskiy.vladislav@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.731901+03	2025-10-18 14:27:05.382979+03	\N	4	4
+47	STU16744305	Анастасия	Лепилина	Сергеевна		lepilina.anastasiya@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.880395+03	2025-10-06 00:19:40.880409+03	\N	\N	47
+48	STU96321218	Егор	Мазов			mazov.egor@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.88356+03	2025-10-06 00:19:40.883574+03	\N	\N	48
+50	STU23889049	Андрей	Пахтусов	Александрович		pakhtusov.andrey@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.889448+03	2025-10-06 00:19:40.889462+03	\N	\N	50
+51	STU20954572	Сергей	Пилькевич			pilkevich.sergey@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.892203+03	2025-10-06 00:19:40.892216+03	\N	\N	51
+53	STU65491754	Алексей	Проварёнов	Андреевич		provarenov.aleksey@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.897718+03	2025-10-06 00:19:40.897731+03	\N	\N	53
+54	STU16432147	Илья	Пушкин	Александрович		pushkin.ilya@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.900331+03	2025-10-06 00:19:40.900344+03	\N	\N	54
+55	STU87230213	Кира	Савкова	Дмитриевна		savkova.kira@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.902866+03	2025-10-06 00:19:40.90288+03	\N	\N	55
+57	STU31557144	Елизавета	Синицына	Дмитриевна		sinitsyna.elizaveta@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.910319+03	2025-10-06 00:19:40.910337+03	\N	\N	57
+58	STU23859981	Диана	Сливина	Герардовна		slivina.diana@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.913697+03	2025-10-06 00:19:40.913712+03	\N	\N	58
+59	STU15649335	Леонид	Турунцев	Сергеевич		turuntsev.leonid@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.916472+03	2025-10-06 00:19:40.916487+03	\N	\N	59
+22	STU17853281	Айжамал	Абдыбапова	Эрмаматовна		isip_a.e.abdybapova@mpt.ru	\N	F			2022-09-01	2026-06-30	active		2025-10-06 00:19:40.795362+03	2025-10-18 13:59:59.350273+03	\N	3	22
+61	STU32324482	Илья	Артемюк	Ростиславович		artemyuk.ilya@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.921941+03	2025-10-06 00:19:40.921954+03	\N	\N	61
+62	STU32440039	Михаил	Воробьев	Олегович		vorobyev.mihail@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.924493+03	2025-10-06 00:19:40.924506+03	\N	\N	62
+63	STU20767139	Надежда	Григоренко	Ильинична		grigorenko.nadezhda@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.927232+03	2025-10-06 00:19:40.927246+03	\N	\N	63
+64	STU42190390	Юлия	Иванова	Викторовна		ivanova.yuliya@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.929897+03	2025-10-06 00:19:40.929911+03	\N	\N	64
+65	STU16706842	Рауль	Исмаилов			ismailov.raul@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.932522+03	2025-10-06 00:19:40.932536+03	\N	\N	65
+66	STU16927574	Дамир	Кащапов	Анясович		kashchapov.damir@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.935055+03	2025-10-06 00:19:40.935069+03	\N	\N	66
+67	STU14271061	Тимофей	Мурашов	Александрович		murashov.timofey@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.938108+03	2025-10-06 00:19:40.938127+03	\N	\N	67
+68	STU44554562	Никита	Полежаев	Максимович		polezhaev.nikita@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.942003+03	2025-10-06 00:19:40.942022+03	\N	\N	68
+69	STU66754902	Батыржан	Садынов	Алымбаевич		sadynov.batyrzhan@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.945389+03	2025-10-06 00:19:40.945406+03	\N	\N	69
+71	STU18651134	Владислав	Соколов	Сергеевич		sokolov.vladislav@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.950714+03	2025-10-06 00:19:40.950727+03	\N	\N	71
+72	STU16583507	Владислав	Тесла	Андреевич		tesla.vladislav@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.953232+03	2025-10-06 00:19:40.953245+03	\N	\N	72
+73	STU50594183	Алексей	Чеботарев	Павлович		chebotarev.aleksey@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.956126+03	2025-10-06 00:19:40.956141+03	\N	\N	73
+74	STU26085242	Ярослав	ШЕметов	Дмитриевич		shemetov.yaroslav@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.959018+03	2025-10-06 00:19:40.959033+03	\N	\N	74
+75	STU29792475	Ксения	Школьникова	Васильевна		shkolnikova.kseniya@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.962253+03	2025-10-06 00:19:40.96227+03	\N	\N	75
+76	STU25978581	Вячеслав	Юрченко	Валерьевич		yurchenko.vyacheslav@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.965098+03	2025-10-06 00:19:40.965112+03	\N	\N	76
+107	MPT20250001	Яна	Белинская	Валентиновна		isip_ya.v.belinskaya@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-07 13:16:05.881054+03	2025-10-18 14:06:17.388655+03	\N	3	97
+52	STU18708633	Алексей	Полежайковский	Дмитриевич		polezhaykovskiy.aleksey@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.895068+03	2025-10-06 23:19:37.645588+03	\N	\N	52
+26	STU24497462	Марк	Весенков	Александрович		vesenkov.mark@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.809531+03	2025-10-18 14:06:17.398126+03	\N	3	26
+28	STU36292691	Дарья	Демкина	Владимировна		demkina.darya@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.816843+03	2025-10-18 14:06:17.413833+03	\N	3	28
+30	STU17639613	Полина	Жданова	Михайловна		zhdanova.polina@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.822823+03	2025-10-20 13:40:45.149989+03	\N	3	30
+31	STU30485623	Евгения	Клопова	Дмитриевна		klopova.evgeniya@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.825617+03	2025-10-18 14:06:17.437836+03	\N	3	31
+117	MPT20250004	Александра	Николаева	Николаевна		isip_a.n.nikolaeva@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-13 14:08:54.875707+03	2025-10-18 14:06:17.461779+03	\N	3	103
+14	STU81220938	Никита	Нишенко	Константинович		nishenko.nikita@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.766192+03	2025-10-06 00:19:40.766209+03	\N	4	14
+49	STU31627870	Роман	Морарь	Олегович		morary.roman@mpt.ru	\N				\N	\N	expelled		2025-10-06 00:19:40.886437+03	2025-10-06 23:40:35.329238+03	\N	\N	49
+70	STU25013966	Александр	Самарский	Владленович		samarskiy.aleksandr@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.948161+03	2025-10-06 23:19:33.661023+03	\N	\N	70
+56	STU12615368	Глеб	Святов	Андреевич		svyatov.gleb@mpt.ru	\N				\N	\N	active		2025-10-06 00:19:40.906617+03	2025-10-06 23:19:34.52636+03	\N	\N	56
+60	STU31756756	Тимофей	Алексеев	Валентинович		alekseev.timofey@mpt.ru	\N				2025-09-01	2029-06-30	expelled		2025-10-06 00:19:40.919244+03	2025-10-26 20:49:15.917495+03	\N	\N	60
+123	MPT20250008	ыва	ыва	ыва		sdfsdfsdf@asd.asd	\N				\N	\N	active		2025-10-13 19:39:23.910645+03	2025-10-13 19:39:23.910661+03	\N	\N	\N
+27	STU19725131	Геворг	Геворкян	Арамович		gevorkyan.gevorg@mpt.ru	2006-12-22	M	Подоооооольск :))		2022-09-01	2026-06-30	active	он дурачок блин блин	2025-10-06 00:19:40.81347+03	2025-10-18 14:06:17.407048+03	\N	3	27
+32	STU68529993	Александр	Кудинов	Сергеевич		kudinov.aleksandr@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.828681+03	2025-10-18 14:06:17.444819+03	\N	3	32
+131	MPT20250009	Артемий	Лихачев	Алексеевич	+7 (901) 386-55-23	artomlihachev@gmail.com	2005-08-23	M	г. Москва, ул. Медынская 12к1		2022-09-01	2026-06-30	active	дундук	2025-10-16 12:26:28.356412+03	2025-10-18 14:06:17.453641+03	\N	3	109
+35	STU28044050	Ксения	Панкова	Анатольевна		pankova.kseniya@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.837841+03	2025-10-18 14:06:17.469759+03	\N	3	35
+36	STU24930601	Артём	Патырлэу	Александрович		patyrleu.artem@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.842391+03	2025-10-18 14:06:17.476909+03	\N	3	36
+37	STU27048184	Максим	Тхир	Игоревич		txir.maksim@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.846531+03	2025-10-18 14:06:17.484451+03	\N	3	37
+38	STU15074003	Тимофей	Фомкин	Антонович		fomkin.timofey@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.85022+03	2025-10-18 14:06:17.491579+03	\N	3	38
+39	STU21287271	Кирилл	Хлудков	Дмитриевич		hludkov.kirill@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.853499+03	2025-10-18 14:06:17.498035+03	\N	3	39
+15	STU17072508	Александр	Себежко	Андреевич		sebezhko.aleksandr@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.769265+03	2025-10-06 00:19:40.769281+03	\N	4	15
+16	STU25015709	Матвей	Симернин	Хассанович		simernin.matvey@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.773078+03	2025-10-06 00:19:40.773097+03	\N	4	16
+17	STU79579910	Ксения	Спиридонова	Кирилловна		spiridonova.kseniya@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.77754+03	2025-10-06 00:19:40.777559+03	\N	4	17
+18	STU26407647	Максим	Тишкин	Сергеевич		tishkin.maksim@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.781232+03	2025-10-06 00:19:40.781249+03	\N	4	18
+19	STU15846260	Данила	Филимонов	Андреевич		filimonov.danila@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.784256+03	2025-10-06 00:19:40.78427+03	\N	4	19
+20	STU33853110	Никита	Фролов	Александрович		frolov.nikita@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.787301+03	2025-10-06 00:19:40.787316+03	\N	4	20
+21	STU28735456	Максим	Якшин	Евгеньевич		yakshin.maksim@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.791475+03	2025-10-06 00:19:40.791494+03	\N	4	21
+2	STU29270524	Дарья	Андреева	Владимировна		andreeva.darya@mpt.ru	\N				2022-09-01	2026-06-30	active		2025-10-06 00:19:40.725043+03	2025-10-26 19:20:50.813111+03	\N	4	2
+120	MPT20250005	asdasd	adasd	asdasd	+7 (977) 365-87-90	belikbelka2007@gmail.com	\N	M			2025-09-01	2029-06-30	expelled		2025-10-13 19:08:35.621223+03	2025-10-26 20:01:17.656518+03	\N	9	105
+1	STU12821630	Даниил	Анашечев	Дмитриевич		anashechev.daniil@mpt.ru	\N				2022-09-01	2026-06-30	expelled		2025-10-06 00:19:40.719023+03	2025-10-26 20:21:55.832072+03	\N	\N	1
+\.
+
+
+--
+-- TOC entry 3858 (class 0 OID 117277)
+-- Dependencies: 243
+-- Data for Name: admin_panel_subject; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.admin_panel_subject (id, name, short_name, description, is_active, created_at, updated_at, created_by_id) FROM stdin;
+1	Математика			t	2025-10-26 22:03:53.224707+03	2025-10-26 22:03:53.224727+03	\N
+2	Физика			t	2025-10-26 22:03:53.227653+03	2025-10-26 22:03:53.227672+03	\N
+3	Информатика			t	2025-10-26 22:03:53.251025+03	2025-10-26 22:03:53.251045+03	\N
+4	Математическое моделирование	Мат мод		t	2025-10-28 13:16:46.902316+03	2025-10-28 13:16:46.902337+03	104
+5	Экономика отрасли	Экономика		t	2025-10-28 13:25:05.918258+03	2025-10-28 13:25:05.918278+03	104
+6	Технология разработки и защиты баз данных	ТРЗБД		t	2025-10-30 13:26:37.289625+03	2025-10-30 13:26:37.289646+03	104
+7	Внедрение и поддержка компьютерных систем	ВИПКС		t	2025-10-30 13:27:17.142212+03	2025-10-30 13:27:17.142232+03	104
+8	Физическая культура	Физ-ра		t	2025-10-30 13:27:37.267976+03	2025-10-30 13:27:37.267999+03	104
+9	Обеспечение качества функционирования КС	ОКФ КС		t	2025-10-30 13:28:53.922023+03	2025-10-30 13:28:53.922082+03	104
+10	Технология разработки программного обеспечения	ТРПО		t	2025-10-30 13:29:21.309875+03	2025-10-30 13:29:21.3099+03	104
+11	Иностранный язык в профессиональной деятельности	Ин яз		t	2025-10-30 13:30:01.019518+03	2025-10-30 13:30:01.019539+03	104
+\.
+
+
+--
+-- TOC entry 3866 (class 0 OID 117358)
+-- Dependencies: 251
+-- Data for Name: admin_panel_subjectassignment; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.admin_panel_subjectassignment (id, profession, course, is_active, created_at, updated_at, created_by_id, faculty_id, subject_id) FROM stdin;
+1	Программист	4	t	2025-10-28 13:16:46.925671+03	2025-10-28 13:16:46.925718+03	104	13	4
+2	Программист	4	t	2025-10-28 13:25:05.944614+03	2025-10-28 13:25:05.944634+03	104	13	5
+3	Программист	4	t	2025-10-30 13:26:37.302767+03	2025-10-30 13:26:37.302787+03	104	13	6
+4	Программист	4	t	2025-10-30 13:27:17.154684+03	2025-10-30 13:27:17.154705+03	104	13	7
+5	Программист	4	t	2025-10-30 13:27:37.280074+03	2025-10-30 13:27:37.280097+03	104	13	8
+6	Программист	1	t	2025-10-30 13:28:07.861214+03	2025-10-30 13:28:07.861234+03	104	13	8
+7	Программист	4	t	2025-10-30 13:28:53.937976+03	2025-10-30 13:28:53.937998+03	104	13	9
+8	Программист	4	t	2025-10-30 13:29:21.325502+03	2025-10-30 13:29:21.325524+03	104	13	10
+9	Программист	4	t	2025-10-30 13:30:01.027354+03	2025-10-30 13:30:01.027374+03	104	13	11
+\.
+
+
+--
+-- TOC entry 3868 (class 0 OID 117365)
+-- Dependencies: 253
+-- Data for Name: admin_panel_subjectassignment_teachers; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.admin_panel_subjectassignment_teachers (id, subjectassignment_id, teacher_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 3860 (class 0 OID 117287)
+-- Dependencies: 245
+-- Data for Name: admin_panel_teacher; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.admin_panel_teacher (id, first_name, last_name, middle_name, email, phone, "position", academic_title, academic_degree, hire_date, is_curator, is_active, notes, created_at, updated_at, created_by_id, user_id) FROM stdin;
+3	Иван	Иванов	Петрович	ivanov@example.com	+7 (900) 123-45-67				\N	f	t		2025-10-26 22:16:31.983117+03	2025-10-26 22:16:31.983137+03	104	\N
+4	Мария	Петрова	Ивановна	petrova@example.com	+7 (900) 234-56-78				\N	f	t		2025-10-26 22:16:31.992446+03	2025-10-26 22:16:31.992464+03	104	\N
+\.
+
+
+--
+-- TOC entry 3862 (class 0 OID 117299)
+-- Dependencies: 247
+-- Data for Name: admin_panel_teacher_groups; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.admin_panel_teacher_groups (id, teacher_id, group_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 3864 (class 0 OID 117305)
+-- Dependencies: 249
+-- Data for Name: admin_panel_teacher_subjects; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.admin_panel_teacher_subjects (id, teacher_id, subject_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 3837 (class 0 OID 91992)
+-- Dependencies: 222
+-- Data for Name: auth_group; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.auth_group (id, name) FROM stdin;
+\.
+
+
+--
+-- TOC entry 3839 (class 0 OID 92000)
+-- Dependencies: 224
+-- Data for Name: auth_group_permissions; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.auth_group_permissions (id, group_id, permission_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 3835 (class 0 OID 91986)
+-- Dependencies: 220
+-- Data for Name: auth_permission; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.auth_permission (id, name, content_type_id, codename) FROM stdin;
+1	Can add log entry	1	add_logentry
+2	Can change log entry	1	change_logentry
+3	Can delete log entry	1	delete_logentry
+4	Can view log entry	1	view_logentry
+5	Can add permission	2	add_permission
+6	Can change permission	2	change_permission
+7	Can delete permission	2	delete_permission
+8	Can view permission	2	view_permission
+9	Can add group	3	add_group
+10	Can change group	3	change_group
+11	Can delete group	3	delete_group
+12	Can view group	3	view_group
+13	Can add user	4	add_user
+14	Can change user	4	change_user
+15	Can delete user	4	delete_user
+16	Can view user	4	view_user
+17	Can add content type	5	add_contenttype
+18	Can change content type	5	change_contenttype
+19	Can delete content type	5	delete_contenttype
+20	Can view content type	5	view_contenttype
+21	Can add session	6	add_session
+22	Can change session	6	change_session
+23	Can delete session	6	delete_session
+24	Can view session	6	view_session
+25	Can add Факультет	7	add_faculty
+26	Can change Факультет	7	change_faculty
+27	Can delete Факультет	7	delete_faculty
+28	Can view Факультет	7	view_faculty
+29	Can add Группа	8	add_group
+30	Can change Группа	8	change_group
+31	Can delete Группа	8	delete_group
+32	Can view Группа	8	view_group
+33	Can add Студент	9	add_student
+34	Can change Студент	9	change_student
+35	Can delete Студент	9	delete_student
+36	Can view Студент	9	view_student
+37	Can add Резервная копия	10	add_backup
+38	Can change Резервная копия	10	change_backup
+39	Can delete Резервная копия	10	delete_backup
+40	Can view Резервная копия	10	view_backup
+41	Can add Преподаватель	11	add_teacher
+42	Can change Преподаватель	11	change_teacher
+43	Can delete Преподаватель	11	delete_teacher
+44	Can view Преподаватель	11	view_teacher
+45	Can add Предмет	12	add_subject
+46	Can change Предмет	12	change_subject
+47	Can delete Предмет	12	delete_subject
+48	Can view Предмет	12	view_subject
+49	Can add Предмет по курсу	13	add_subjectassignment
+50	Can change Предмет по курсу	13	change_subjectassignment
+51	Can delete Предмет по курсу	13	delete_subjectassignment
+52	Can view Предмет по курсу	13	view_subjectassignment
+53	Can add Запись активности	14	add_activitylog
+54	Can change Запись активности	14	change_activitylog
+55	Can delete Запись активности	14	delete_activitylog
+56	Can view Запись активности	14	view_activitylog
+\.
+
+
+--
+-- TOC entry 3841 (class 0 OID 92006)
+-- Dependencies: 226
+-- Data for Name: auth_user; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.auth_user (id, password, last_login, is_superuser, username, first_name, last_name, email, is_staff, is_active, date_joined) FROM stdin;
+24	!xztCBbRPrRyEplS8m82M5MT6vsqokCFGeZfyd3fe	\N	f	балбабян.эрик	Эрик	Балбабян	balbabyan.erik@mpt.ru	f	t	2025-10-06 00:19:40.8+03
+2	!HrhICrZkc5Su0uHIGXJC310HExXcIVS0HYFuMZbP	\N	f	андреева.дарья	Дарья	Андреева	andreeva.darya@mpt.ru	f	t	2025-10-06 00:19:40.723035+03
+40	!IhwQHv2nnlmbID49HLTEvcQKlSxUe7a1QA5pXRXO	\N	f	биктимиров.руслан	Руслан	Биктимиров	biktimirov.ruslan@mpt.ru	f	t	2025-10-06 00:19:40.854979+03
+3	!jHDarYARUCU3UI9wYoOBtIoG3ZPtrL0X58kWpB1y	\N	f	билашенко.павел	Павел	Билашенко	bilashenko.pavel@mpt.ru	f	t	2025-10-06 00:19:40.72637+03
+4	!G0v6lYMT5n1yzm1vHVUh2tnlGwLRQmoWQR0aVhMR	\N	f	битюцкий.владислав	Владислав	Битюцкий	bityutskiy.vladislav@mpt.ru	f	t	2025-10-06 00:19:40.730017+03
+41	!HjsB31Lk398RrojIe0OyWvyWVFqCH6tXI4uU8B1g	\N	f	васюков.никита	Никита	Васюков	vasyukov.nikita@mpt.ru	f	t	2025-10-06 00:19:40.858348+03
+26	!K3nGM8PbU0iGIMOIijD4YiQ6qLgxFhOcisdUizEc	\N	f	весенков.марк	Марк	Весенков	vesenkov.mark@mpt.ru	f	t	2025-10-06 00:19:40.806926+03
+42	!ZP8EGbWwaeJKbx4BwZdDxx1qYRxm2O6FTnkpjON2	\N	f	гаврикова.мария	Мария	Гаврикова	gavrikova.mariya@mpt.ru	f	t	2025-10-06 00:19:40.861706+03
+22	pbkdf2_sha256$1000000$S5MLAoL4s6T5970GyrelGF$U+p3pztk+V3Om3kQGtzeg/3sKNg+bqAgFdAjiuhIrNI=	2025-10-16 12:03:03.371648+03	f	абдыбапова.айжамал	Айжамал	Абдыбапова	isip_a.e.abdybapova@mpt.ru	f	t	2025-10-06 00:19:40.792974+03
+5	!qgHSAiJsCv4k5aXyEIxsDy9i0l7bAmbZeVjALXhH	\N	f	данкеев.искандер	Искандер	Данкеев	dankeev.iskander@mpt.ru	f	t	2025-10-06 00:19:40.733127+03
+28	!WZ0rkizRkGtC7IbybOJ3x6kPX0WEpTHxbjinLpkl	\N	f	демкина.дарья	Дарья	Демкина	demkina.darya@mpt.ru	f	t	2025-10-06 00:19:40.814874+03
+29	!4qbNKiGM1kifqes3PLyyfUSOLtmUb6NBT82wju9e	\N	f	дзюба.денис	Денис	Дзюба	dzyuba.denis@mpt.ru	f	t	2025-10-06 00:19:40.818101+03
+30	!oEoRInYtsMbtwf71RToqx0VmMlqeZsZi4OSbjNLI	\N	f	жданова.полина	Полина	Жданова	zhdanova.polina@mpt.ru	f	t	2025-10-06 00:19:40.821134+03
+6	!ZjcBy1mFo3AP7FrANRsoGru23HtHfAhloNldS1TF	\N	f	ильина.елизавета	Елизавета	Ильина	ilina.elizaveta@mpt.ru	f	t	2025-10-06 00:19:40.736022+03
+43	!tOnZoz6nAe0RPZ5T9erYAscNx4S8UvuTpYYE32rn	\N	f	кащеев.николай	Николай	Кащеев	kasheev.nikolay@mpt.ru	f	t	2025-10-06 00:19:40.864565+03
+44	!VVm13aHdZNnOq5PSl9zbUQi1Ip1fYFQHXIzAP6LQ	\N	f	кирилов.дмитрий	Дмитрий	Кирилов	kirilov.dmitriy@mpt.ru	f	t	2025-10-06 00:19:40.867406+03
+31	!cV2x61pJwaPkDM12TEtZncIRw11hDpGLFc2bPEUI	\N	f	клопова.евгения	Евгения	Клопова	klopova.evgeniya@mpt.ru	f	t	2025-10-06 00:19:40.823982+03
+7	!fsfZwz481AikZyhDEJJvUlYGwT5CTqBBLeTA3Nwe	\N	f	ковыков.игорь	Игорь	Ковыков	kovykov.igor@mpt.ru	f	t	2025-10-06 00:19:40.739779+03
+8	!9PprK2IHghckpPGKU9erDurJ5tzyJYkvgwLzc6es	\N	f	коргополов.артём	Артём	Коргополов	korgopolov.artem@mpt.ru	f	t	2025-10-06 00:19:40.743687+03
+45	!gREfekquEHwTD1k4yxYu29BO3IZi2Lnvo2nnaiMZ	\N	f	костюков.александр	Александр	Костюков	kostyukov.aleksandr@mpt.ru	f	t	2025-10-06 00:19:40.870377+03
+9	!WChuRtmhcTQV4ca9hXFe19Y6R9mAwAaQaseKVSwO	\N	f	круговов.антон	Антон	КруговОв	krugovov.anton@mpt.ru	f	t	2025-10-06 00:19:40.747477+03
+32	!4WQ5GGFwrf1bS05xEmyE0GQUn36nUbXcHzbkmzj4	\N	f	кудинов.александр	Александр	Кудинов	kudinov.aleksandr@mpt.ru	f	t	2025-10-06 00:19:40.82689+03
+10	!5mr98dFRtoeYi3ruTz7Jm12JetM7JoE1pcFKRv7e	\N	f	ларина.елизавета	Елизавета	Ларина	larina.elizaveta@mpt.ru	f	t	2025-10-06 00:19:40.750506+03
+11	!l4UnJ9vFQyntZx2iM03OHHKfxMp2SDt6BdfBF1xX	\N	f	лашев.кирилл	Кирилл	Лашев	lashev.kirill@mpt.ru	f	t	2025-10-06 00:19:40.753578+03
+33	!vjrEELqLnRyQqZ9ylMoGPOoJOpxJdTpAlwLBdgLB	\N	f	макаров.василий	Василий	Макаров	makarov.vasiliy@mpt.ru	f	t	2025-10-06 00:19:40.829862+03
+13	!Ic1KLLTUE6IphYD1A9Hms93VdJaXOOcVnxn9uBip	\N	f	никитин.андрей	Андрей	Никитин	nikitin.andrey@mpt.ru	f	t	2025-10-06 00:19:40.760842+03
+14	!d1DBDn0lcrW1kfPJKbJGqC6GTC4AhztC3IQL6sNW	\N	f	нишенко.никита	Никита	Нишенко	nishenko.nikita@mpt.ru	f	t	2025-10-06 00:19:40.764213+03
+35	!vxHjJ24MhT3aiVSzpXxyGjMdGwKSkjCg9ifLzgdZ	\N	f	панкова.ксения	Ксения	Панкова	pankova.kseniya@mpt.ru	f	t	2025-10-06 00:19:40.835847+03
+36	!DfNL3phsfRXPlirYgHjAKuVshbx7dU1KhUCQTLLq	\N	f	патырлэу.артём	Артём	Патырлэу	patyrleu.artem@mpt.ru	f	t	2025-10-06 00:19:40.83982+03
+15	!0IbNhNsnQysYig5sDQLHAJxvPP11Gy729wicZ9VD	\N	f	себежко.александр	Александр	Себежко	sebezhko.aleksandr@mpt.ru	f	t	2025-10-06 00:19:40.767453+03
+16	!wDxLCQcJqCSINRaznojm2Rtmaaf4hLpIygOAJnPg	\N	f	симернин.матвей	Матвей	Симернин	simernin.matvey@mpt.ru	f	t	2025-10-06 00:19:40.770616+03
+17	!sglN1Kf40YincYk2A4SUtOoaCHAiSwYyMYCRwHwE	\N	f	спиридонова.ксения	Ксения	Спиридонова	spiridonova.kseniya@mpt.ru	f	t	2025-10-06 00:19:40.774866+03
+18	!vCq032fvm74ePsGXzZZ47epcb6T0y37u3KX5jKFr	\N	f	тишкин.максим	Максим	Тишкин	tishkin.maksim@mpt.ru	f	t	2025-10-06 00:19:40.779146+03
+37	!mQFXtcoGQF2ErASKtxJM6s6236va14q6UaD2DqrQ	\N	f	тхир.максим	Максим	Тхир	txir.maksim@mpt.ru	f	t	2025-10-06 00:19:40.844214+03
+19	!snr85LEfa4MnKm4kiDX7HsF9UepMXdGXYo8h2DNK	\N	f	филимонов.данила	Данила	Филимонов	filimonov.danila@mpt.ru	f	t	2025-10-06 00:19:40.78252+03
+38	!KuOlQAmYxzK2NsQLLNKuzToQS0vuM8hhQBgCbwnu	\N	f	фомкин.тимофей	Тимофей	Фомкин	fomkin.timofey@mpt.ru	f	t	2025-10-06 00:19:40.848004+03
+20	!xw1xKfO0sRqyWNF79Qu3e5eTuWE0M3uIx0Fs4ZdW	\N	f	фролов.никита	Никита	Фролов	frolov.nikita@mpt.ru	f	t	2025-10-06 00:19:40.785495+03
+39	!mHca54PyRFf3ummz9D6tLTlqNESCIeP6YM9G7Spv	\N	f	хлудков.кирилл	Кирилл	Хлудков	hludkov.kirill@mpt.ru	f	t	2025-10-06 00:19:40.851633+03
+21	!fOAO5UELkpBCdNoLdqqsa0t6QQD3hv24TXy8HwyN	\N	f	якшин.максим	Максим	Якшин	yakshin.maksim@mpt.ru	f	t	2025-10-06 00:19:40.788764+03
+27	!kbTNDpsNhKLi0OnIqhTu5cRCX6Z32oFHcNJfUQSX	\N	f	геворкян.геворг	Геворг	Геворкян	gevorkyan.gevorg@mpt.ru	f	t	2025-10-06 00:19:40.81121+03
+23	!S1a3rcRo5RzQwoQ4neqxhbI45utWnKnO9Y9s1FPn	\N	f	авласов.кирилл	Кирилл	Авласов	avlasov.kirill@mpt.ru	f	t	2025-10-06 00:19:40.796763+03
+1	!MyzA464FThp2Scrsgvj2e4KOmq4sGLYiF3I1AKex	\N	f	анашечев.даниил	Даниил	Анашечев	anashechev.daniil@mpt.ru	f	t	2025-10-06 00:19:40.713739+03
+62	!7JiZVyLomZIx775zNfpzNtzFLxcNJOtt0xH6cU0A	\N	f	воробьев.михаил	Михаил	Воробьев	vorobyev.mihail@mpt.ru	f	t	2025-10-06 00:19:40.922981+03
+63	!o2Pi42f1PuNeQ6vsB95DEaWOhMVN4hoK38bef7bP	\N	f	григоренко.надежда	Надежда	Григоренко	grigorenko.nadezhda@mpt.ru	f	t	2025-10-06 00:19:40.925539+03
+47	!WwRHhSKLgkfoGcTpHFBWyQ2d9e1lKl5ITTavFSFk	\N	f	лепилина.анастасия	Анастасия	Лепилина	lepilina.anastasiya@mpt.ru	f	t	2025-10-06 00:19:40.878603+03
+48	!D6qykBUZDHjP6VtswFnqKtesfFuekh2JKRWmkCJ2	\N	f	мазов.егор	Егор	Мазов	mazov.egor@mpt.ru	f	t	2025-10-06 00:19:40.881913+03
+49	!OpO2crCCKgvVFKyrux0UfOUauVpvzxSM6vR5VFFF	\N	f	морарь.роман	Роман	Морарь	morary.roman@mpt.ru	f	t	2025-10-06 00:19:40.884755+03
+67	!9d8R4kplYp4FI1X1QJypLHz6E7npByl5jnpgJgNm	\N	f	мурашов.тимофей	Тимофей	Мурашов	murashov.timofey@mpt.ru	f	t	2025-10-06 00:19:40.93607+03
+12	!QvPwZgC6K0TI7b1ORsyEuOZXABa395YsOsO62kFY	\N	f	некрасова.анастасия	Анастасия	Некрасова	nekrasova.anastasiya@mpt.ru	f	t	2025-10-06 00:19:40.757552+03
+103	pbkdf2_sha256$1000000$3Amfra7CB4Mmo4ypFDLnIy$feVMemgAA6PAKNbhAY4UqvnJwwsAbG9guUuUAI417yg=	\N	f	николаева.александра	Александра	Николаева	isip_a.n.nikolaeva@mpt.ru	f	t	2025-10-13 14:12:45.07169+03
+50	!GgFOWFgKgMgKaqZPCHn8QCbe7EZP7aa3FtQNTJW6	\N	f	пахтусов.андрей	Андрей	Пахтусов	pakhtusov.andrey@mpt.ru	f	t	2025-10-06 00:19:40.887779+03
+68	!LS8LjlvsVSUMxSpSjJeLp1CXTng106ILgJKOPgOA	\N	f	полежаев.никита	Никита	Полежаев	polezhaev.nikita@mpt.ru	f	t	2025-10-06 00:19:40.939769+03
+52	!teCkvzmoZMbYrHVyHoPlReeU1MOTQnoXE1xyRTHD	\N	f	полежайковский.алексей	Алексей	Полежайковский	polezhaykovskiy.aleksey@mpt.ru	f	t	2025-10-06 00:19:40.893459+03
+53	!XDGPf3O49Wr4VSqS0R99gG62lZPiggOqUiJ7v6Du	\N	f	проварёнов.алексей	Алексей	Проварёнов	provarenov.aleksey@mpt.ru	f	t	2025-10-06 00:19:40.896112+03
+54	!O0Dihgwgh4kxyyx22onYTxsdvaH6Lv4yZmSruK4Q	\N	f	пушкин.илья	Илья	Пушкин	pushkin.ilya@mpt.ru	f	t	2025-10-06 00:19:40.898807+03
+55	!W5gi5YPEcvFpQyh2zGUarSkdi6x4fPazwtnznm6J	\N	f	савкова.кира	Кира	Савкова	savkova.kira@mpt.ru	f	t	2025-10-06 00:19:40.901354+03
+69	!HWeXGpquizKlYnnEfHxCxhQO1avWFJniqiJoF82I	\N	f	садынов.батыржан	Батыржан	Садынов	sadynov.batyrzhan@mpt.ru	f	t	2025-10-06 00:19:40.943364+03
+70	!XA78fjqTBQQkTR9Gwxixa3gHcPLsrHxTpDMX3Df4	\N	f	самарский.александр	Александр	Самарский	samarskiy.aleksandr@mpt.ru	f	t	2025-10-06 00:19:40.946592+03
+56	!rlbdbWHDxLNDFVQHvHknXt2eBOlb8TC6KNbBly5e	\N	f	святов.глеб	Глеб	Святов	svyatov.gleb@mpt.ru	f	t	2025-10-06 00:19:40.904159+03
+57	!HkNcNWYEpAxmSj6nazJVajeABicVVYj4AAHr9hNd	\N	f	синицына.елизавета	Елизавета	Синицына	sinitsyna.elizaveta@mpt.ru	f	t	2025-10-06 00:19:40.908386+03
+71	!3Y5Sge6qFKfKHm5Zq130LzSulOSbz5A2irkjMCZI	\N	f	соколов.владислав	Владислав	Соколов	sokolov.vladislav@mpt.ru	f	t	2025-10-06 00:19:40.949202+03
+72	!AI32kGj5UZ8eelmj4g4GlVvmnYLsEnXNaEGWqjQH	\N	f	тесла.владислав	Владислав	Тесла	tesla.vladislav@mpt.ru	f	t	2025-10-06 00:19:40.951735+03
+59	!kBCNN7EwA35AlvWKFSrxQclWzMeojeNHgZoVlgas	\N	f	турунцев.леонид	Леонид	Турунцев	turuntsev.leonid@mpt.ru	f	t	2025-10-06 00:19:40.914774+03
+73	!u5CdWhAOOUaUgy9JTsBG98gPazGxrVVmpsq8md7S	\N	f	чеботарев.алексей	Алексей	Чеботарев	chebotarev.aleksey@mpt.ru	f	t	2025-10-06 00:19:40.954517+03
+74	!VjgX8HhmxSzVd6TVRf75SNHc0P9XL56Ecye2ZTmE	\N	f	шеметов.ярослав	Ярослав	ШЕметов	shemetov.yaroslav@mpt.ru	f	t	2025-10-06 00:19:40.957263+03
+75	!ajrlwgbbIq0eAjxZk2yhZSDXKHueYt3oYVqr6tjA	\N	f	школьникова.ксения	Ксения	Школьникова	shkolnikova.kseniya@mpt.ru	f	t	2025-10-06 00:19:40.960287+03
+76	!SujqoDnzOsYYcOkz5GLGdRfJRbhOMd48AIxPBGDY	\N	f	юрченко.вячеслав	Вячеслав	Юрченко	yurchenko.vyacheslav@mpt.ru	f	t	2025-10-06 00:19:40.963494+03
+104	pbkdf2_sha256$1000000$ZGakjt2Yi96ZqvrBIaxMrt$mIQfHkiXfu95/Ay2UNyUvFEKODcded8pYlgBFdqm3Tw=	2025-10-30 13:54:41.716672+03	t	admin			admin123@mpt.ru	t	t	2025-10-13 14:24:36.440126+03
+109	pbkdf2_sha256$1000000$WG8XKDUdHcniPRZnKz0tDd$Dcto0pgErnWMH03bLYDgcLH5I4tvbcAsYqlw5mHLU3Y=	\N	f	artemiy.lihachev	Артемий	Лихачев	artomlihachev@gmail.com	f	t	2025-10-16 12:29:02.845123+03
+105	pbkdf2_sha256$1000000$K4TYoFGSl5l8DVs63aSsfU$A5vmcpnTrK28u/VzSp+jgqu07zasjOOCro6WdG9cDpc=	\N	f	asdasd.adasd	asdasd	adasd	belikbelka2007@gmail.com	f	t	2025-10-13 19:45:01.551951+03
+97	pbkdf2_sha256$1000000$sn3d7NCM8gv3GMNDmpIY4t$g33QnZVtxxwhHdn4u65+xFo91E+JqVFQN88sfv42RLs=	\N	f	belinskaya.yana	Яна	Белинская	isip_ya.v.belinskaya@mpt.ru	f	t	2025-10-07 13:16:27.111702+03
+64	!dLjlznjwo1erAOHBqPt9sCFRllG52n06egegWF0Q	\N	f	иванова.юлия	Юлия	Иванова	ivanova.yuliya@mpt.ru	f	t	2025-10-06 00:19:40.928296+03
+65	!AoytCs60FcWPKiRxaw98yzzxJtPOMqsOrLlE7irf	\N	f	исмаилов.рауль	Рауль	Исмаилов	ismailov.raul@mpt.ru	f	t	2025-10-06 00:19:40.930989+03
+66	!d2gF8NbbIUcRAJnGUuaGMGE1NSMHtA9r98JLrwcw	\N	f	кащапов.дамир	Дамир	Кащапов	kashchapov.damir@mpt.ru	f	t	2025-10-06 00:19:40.933551+03
+46	!VRyeZXuqPecz7lPjOuAEcHVavsZXRFVGeS3hAmEG	\N	f	лавров.максим	Максим	Лавров	lavrov.maksim@mpt.ru	f	t	2025-10-06 00:19:40.874016+03
+58	!YcfeYNLRFzScDQOFlw9xw99bFxmQoCi5LXAJr8EO	\N	f	сливина.диана	Диана	Сливина	slivina.diana@mpt.ru	f	t	2025-10-06 00:19:40.911893+03
+61	!O7SV1WHNuTTKF8yyisUnSNyMKM7O2WIfhyc0TeAi	\N	f	артемюк.илья	Илья	Артемюк	artemyuk.ilya@mpt.ru	f	t	2025-10-06 00:19:40.920357+03
+60	!jm8bkIObX72moxWXzNqgmh0XCrGbSymUp1grDK1s	\N	f	алексеев.тимофей	Тимофей	Алексеев	alekseev.timofey@mpt.ru	f	t	2025-10-06 00:19:40.917648+03
+51	!av2vapu7WrCRbB8Sfsn0bu3wZYHPKiVXK9F2drh0	\N	f	пилькевич.сергей	Сергей	Пилькевич	pilkevich.sergey@mpt.ru	f	t	2025-10-06 00:19:40.890579+03
+\.
+
+
+--
+-- TOC entry 3843 (class 0 OID 92014)
+-- Dependencies: 228
+-- Data for Name: auth_user_groups; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.auth_user_groups (id, user_id, group_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 3845 (class 0 OID 92020)
+-- Dependencies: 230
+-- Data for Name: auth_user_user_permissions; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.auth_user_user_permissions (id, user_id, permission_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 3847 (class 0 OID 92078)
+-- Dependencies: 232
+-- Data for Name: django_admin_log; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.django_admin_log (id, action_time, object_id, object_repr, action_flag, change_message, content_type_id, user_id) FROM stdin;
+\.
+
+
+--
+-- TOC entry 3833 (class 0 OID 91978)
+-- Dependencies: 218
+-- Data for Name: django_content_type; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.django_content_type (id, app_label, model) FROM stdin;
+1	admin	logentry
+2	auth	permission
+3	auth	group
+4	auth	user
+5	contenttypes	contenttype
+6	sessions	session
+7	admin_panel	faculty
+8	admin_panel	group
+9	admin_panel	student
+10	admin_panel	backup
+11	admin_panel	teacher
+12	admin_panel	subject
+13	admin_panel	subjectassignment
+14	admin_panel	activitylog
+\.
+
+
+--
+-- TOC entry 3831 (class 0 OID 91970)
+-- Dependencies: 216
+-- Data for Name: django_migrations; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.django_migrations (id, app, name, applied) FROM stdin;
+1	contenttypes	0001_initial	2025-10-06 00:07:53.891184+03
+2	auth	0001_initial	2025-10-06 00:07:53.966758+03
+3	admin	0001_initial	2025-10-06 00:07:53.990967+03
+4	admin	0002_logentry_remove_auto_add	2025-10-06 00:07:54.002334+03
+5	admin	0003_logentry_add_action_flag_choices	2025-10-06 00:07:54.012621+03
+6	admin_panel	0001_initial	2025-10-06 00:07:54.073276+03
+7	contenttypes	0002_remove_content_type_name	2025-10-06 00:07:54.097307+03
+8	auth	0002_alter_permission_name_max_length	2025-10-06 00:07:54.113211+03
+9	auth	0003_alter_user_email_max_length	2025-10-06 00:07:54.129652+03
+10	auth	0004_alter_user_username_opts	2025-10-06 00:07:54.145816+03
+11	auth	0005_alter_user_last_login_null	2025-10-06 00:07:54.166159+03
+12	auth	0006_require_contenttypes_0002	2025-10-06 00:07:54.167314+03
+13	auth	0007_alter_validators_add_error_messages	2025-10-06 00:07:54.179884+03
+14	auth	0008_alter_user_username_max_length	2025-10-06 00:07:54.195754+03
+15	auth	0009_alter_user_last_name_max_length	2025-10-06 00:07:54.209991+03
+16	auth	0010_alter_group_name_max_length	2025-10-06 00:07:54.22679+03
+17	auth	0011_update_proxy_permissions	2025-10-06 00:07:54.240831+03
+18	auth	0012_alter_user_first_name_max_length	2025-10-06 00:07:54.252497+03
+19	sessions	0001_initial	2025-10-06 00:07:54.266748+03
+20	admin_panel	0002_auto_20251006_2107	2025-10-07 00:08:22.05633+03
+21	admin_panel	0003_remove_student_is_active_account_alter_student_email_and_more	2025-10-07 00:08:22.195181+03
+22	admin_panel	0004_faculty_created_by_faculty_description_and_more	2025-10-13 11:11:28.760209+03
+23	admin_panel	0005_alter_student_phone	2025-10-16 12:20:24.724486+03
+24	admin_panel	0006_alter_student_phone	2025-10-16 12:23:24.274778+03
+25	admin_panel	0007_alter_student_phone	2025-10-16 12:24:36.58921+03
+26	admin_panel	0008_alter_faculty_code	2025-10-17 13:10:10.392414+03
+27	admin_panel	0009_faculty_professions	2025-10-17 14:10:53.677305+03
+28	admin_panel	0010_student_profession	2025-10-17 14:12:26.644797+03
+29	admin_panel	0011_backup	2025-10-17 14:46:29.379596+03
+30	admin_panel	0012_alter_faculty_options_alter_group_options_and_more	2025-10-17 17:32:11.567987+03
+31	admin_panel	0013_subject_teacher	2025-10-26 21:25:35.997341+03
+32	admin_panel	0014_subjectassignment	2025-10-27 18:51:35.641637+03
+33	admin_panel	0015_activitylog	2025-10-30 13:48:50.325756+03
+\.
+
+
+--
+-- TOC entry 3854 (class 0 OID 92160)
+-- Dependencies: 239
+-- Data for Name: django_session; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+COPY public.django_session (session_key, session_data, expire_date) FROM stdin;
+f89m2b0kfr2iet0cn5n9heyviti7mwqd	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vCkVd:dvnlU3K555E1UdJt78t-Md9JkDXV3o6E-KwrlBOLh_c	2025-10-26 00:05:05.357127+03
+htc2xwcreov66ifv5j2nlz7xo4jc4w4h	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1v8GfX:lzhOQoiNAO1moXLV9oofsZNSOQ7ksRPl_gQvcdZtSvo	2025-10-13 15:24:47.157153+03
+f7tgnayugcpjv1uu5xjj77hprgp8s2bw	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1v9JyE:I_GMaVVi83bFpHElOTOpHPplDRKiy1R18IbpXJp3zDE	2025-10-16 13:08:26.244415+03
+vocekh2em9d7bdkflgsxt54mhtxocojd	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1v9KzX:PqvixhldbrrPGqwQ8UwnD9c4Gh63ZnMKo0K8vC4pzlU	2025-10-16 14:13:51.047101+03
+cg13rsn5mybbf720kb2glp8fmhkx1n8n	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1v9hUx:cwPHwbro9nZNWh_7aHSekMUEQzxf9c1-5U_vMdU9xbI	2025-10-17 14:15:47.346002+03
+triqef1ambv9pwmydkutrlz7pplyxo0b	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1v9iTH:7qXomjyud_5qxnrNy43c5oITP19mDIVIQSNhxbVgX74	2025-10-17 15:18:07.242082+03
+dq3xvha6k6i49oaqhgzu13yjdsbhq58e	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1v9jPl:9le16HwIR2xiFDPOJ5pcj8wAINhuPnp-KKYbVRQE5Bs	2025-10-17 16:18:33.362808+03
+e83f11a7k23axmcpx4r5yraltlgjdxrs	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1v9kyr:ZoZLUmbYXebjZEg55Rwtwifzzh-M7S59hYtfJN46Oiw	2025-10-17 17:58:53.57794+03
+74eyuhjlfg1cb8gyxgb7sa6ycqgk87lg	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1v9lXL:pDJafXFhI7SldZ8X4_rzskrK_PLRDGv_g3XaNbzomqw	2025-10-17 18:34:31.095772+03
+ywkqmwr78yojeu8eyhczfp11gudiyj7n	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1v9lwf:BZOQElCo1nd46ho9ZDAZlB04j0IOb_tZdonP081DzHQ	2025-10-17 19:00:41.821995+03
+zshhq8yqd37g8gd2nj9aafgh6sut0741	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1v9rTH:-8FBEpUT6z-gjR3Wd-46Z8LilLv8eLWmNeQ0yjAfAhQ	2025-10-18 00:54:43.614248+03
+3mwndrml5irvsfmgwxo2dlmf57mrem75	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1v9sPg:fw6P0jaj1fZqScnEqZJs-mO0RY5ErLD-ZYRVUsEGgCY	2025-10-18 01:55:04.644217+03
+ff1vlz4f0ramiqyu3rb96rys3uwnywve	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vA4Bc:8WhWrQFhlytJKMvZ0Pp_JXDKL5ypYeTHADNUiWKcra4	2025-10-18 14:29:20.033866+03
+9wp6djr3jmooc3o9468ptt5ydtvlsy07	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vA57z:c0EZKIIjtengxXHToNp7bJgl8JLAzI08uN7i6yPN77Y	2025-10-18 15:29:39.815737+03
+k84kdb4phmmoqebi89qc3mo5zakfbx95	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vA7NU:ncX8qplaJfRuYupTKZP4cqv68IlvNSxAcbrAED7miV4	2025-10-18 17:53:48.760779+03
+2uujxxax3v05plkgfe0qkac1d2mkw2sy	.eJztkVFrwyAQx7_K4XORWE2T9nEwWGEre9hb7YIxl6ZdoiUmsDL23WdqOlq2tz2ugv5Q__f3vPsgmeq7KusdttmuIAvCIkEml6e50m9ohqtir8zWUm1N1-5yOkjoeOvoky2wvhu1VwaVcpWP5qnKo1wnec5TwRNdYI4qZmo2SyLBmch1OY1KNmcxQ53EsdZznM5Lr0wjr1CDaYPOqS06b7deS5Jle2fN-VSSCUQTEH5KImUfCYYniPQEPoIFqIAIApNxG8BDYNgJfiUZA9MQKIKdmF5JRUAcUFxKeEiKTxegbd03BlTR7Ex2UAbrbNva_uBL3LcOobDowNgO8H3nOinN43J1D2wBlNKglFISOizal3-g_7tffzh-60ql-7o7-l7_ova2_hH4y3j1Bg_L1csC4BnbSh0cHG0PDSrTQWehxRJbNBqhq_BcgF9TpucvDTmdUiWSbCZw6_ut77e-_5e-b8jnFwmt_z8:1vCzv2:O9MWJP7z2DxUpY_sYKknBD3TUp3kQJs0iMl4OmMEp9U	2025-10-26 16:32:20.241208+03
+pecsw18kdh3jaj5ys9eech8chfgfdigg	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vA8Jz:TKX79uVIoRaFdG3yyKoeWxMBjGfmdRuQDqdwvzYevoo	2025-10-18 18:54:15.768855+03
+rxm4au0luqb48tt94t66wsa7mamney9k	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vAPF3:t2vDaRYuZUSMYr666-Hm0bQlhj9otnVv1Dj9-c5rVaw	2025-10-19 12:58:17.730126+03
+pdb8r63qhkxlg9upfm5yfph1vhnczh7y	.eJztUz1vwyAU_CtPLFkcCwzEH2PnduwURxZg7DhxQQrJVPW_1w5YMlIqtXMzWCfeHY939-RP1Ijb9djcnL40Q4sqRDBDyboqhTprM1PtSZjepsqa62WQ6SxJA-vSN9vq8SVoowZH4Y7TbVoIiaXKpaQFo7lqtdSCE7Hb5ZhRwqTqMtyRknCiVc65UqXOym5SFnhSiLnph3ZO9NpN7fb7GjXNyVmzVGuUAE6ATV-N6vqGGaF3YNiDP9EuAgyeJAGzUPYgPBQeFERV7YFFp6BZHtt54Msra5KVgYy4MEAWteELh-7m0CGBn_xn_M_-F3nH8ZZss2yuRDbCbMudME1IpQ3-IcqBxOTaFJXrNosE_8Lberc6GqKIXhXRbsPYIQZahGoebfphVHnULixxWTiOxvfAvDXGK3g3arROt3AVPVgD42A0EFrBRo5WnTcpvFp7HkwPnb1MAg22q2D6e-50-kzj36XBnmk803icBnv-Kas0cv7nNA7o6xsXSqUl:1vAnbY:GvC3sra60wXavMgetzym82OGgaSplnaGXNVVnVxUSP0	2025-10-20 14:59:08.224294+03
+xntpl0hg5sycibuynvso0g05zf693e4x	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vD4cu:0xiguX1rCQ27A2_mRQygdUfGFDq7I9ITPZw9T8NnGTI	2025-10-26 21:33:56.283996+03
+k3iyzdmqhoiq7pwruj17oeuvc7h2yfgh	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vD5uW:uTNyskc87ZvmK-quTPfTm7s5uwTxiv69SmL81lY76mo	2025-10-26 22:56:12.558201+03
+uyah25ejjgjf2nbwpqvfx3ra1ui8060b	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vDJdA:pUTRsZ2lEzuzMYHs2OrNlG5oAHYk_jmzE5DwhstaQgM	2025-10-27 13:35:12.996223+03
+pc07mvg0ek5awt3tgjguriq2rls7ttut	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vBti6:_AUVvUAaS8KTxN9kbIJb3EErfJ02yziOhMWdY8l031w	2025-10-23 15:42:26.37261+03
+rkth0cdyjw7nw7kql0nw7i3neyfik9nj	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vDPnl:x1M2S8Ik5zqlmjMHYlvV7ufDTf3TtENvnOBS821AqOM	2025-10-27 20:10:33.960384+03
+yj8pfgvgvp5d4vhtyxiug1ogljo1op5f	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vDRIp:IruGxozVrgPCHTnZj1fiRwO77OEhnBymZTkE7j7enTQ	2025-10-27 21:46:43.937031+03
+zub3szffyrgi10phbxifw7s6l5ywrc35	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vDgS6:U_-fJJwVPTyzctWxJrXy2zUJfcjCPANMRrZ0_ZsEbUE	2025-10-28 13:57:18.375697+03
+5i8tgrj18qyuuesxft9rmaeu7gz2cftf	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vEPCC:ohl-85kAnfKYZI1ZE17hHovPYUZNwEYewCa3Dp8mkjc	2025-10-30 13:43:52.671725+03
+98m0w90utzp61y3tbdduj7f53ikd61xu	.eJxVzM0OwiAQBOB34WwIW6BQj977DGR3WWzVtEl_TsZ3lyY96HXmm3mrhPs2pH2VJY1ZXRUYpy6_KSE_ZTqq_MDpPmuep20ZSR9En-2q-znL63bav4MB16GubUQyxIHIRmcDZyFBD9i2wTgLjrg0pkAHHoSD98ydNF2pMpoqUH2-PMk4VQ:1vEQIj:R33ZsmXX_iHnr9STS2e9MWxkuD7OlhV44r3AfTVP-Ps	2025-10-30 14:54:41.719057+03
+\.
+
+
+--
+-- TOC entry 3876 (class 0 OID 0)
+-- Dependencies: 254
+-- Name: admin_panel_activitylog_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.admin_panel_activitylog_id_seq', 16, true);
+
+
+--
+-- TOC entry 3877 (class 0 OID 0)
+-- Dependencies: 240
+-- Name: admin_panel_backup_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.admin_panel_backup_id_seq', 13, true);
+
+
+--
+-- TOC entry 3878 (class 0 OID 0)
+-- Dependencies: 233
+-- Name: admin_panel_faculty_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.admin_panel_faculty_id_seq', 16, true);
+
+
+--
+-- TOC entry 3879 (class 0 OID 0)
+-- Dependencies: 235
+-- Name: admin_panel_group_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.admin_panel_group_id_seq', 9, true);
+
+
+--
+-- TOC entry 3880 (class 0 OID 0)
+-- Dependencies: 237
+-- Name: admin_panel_student_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.admin_panel_student_id_seq', 132, true);
+
+
+--
+-- TOC entry 3881 (class 0 OID 0)
+-- Dependencies: 242
+-- Name: admin_panel_subject_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.admin_panel_subject_id_seq', 11, true);
+
+
+--
+-- TOC entry 3882 (class 0 OID 0)
+-- Dependencies: 250
+-- Name: admin_panel_subjectassignment_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.admin_panel_subjectassignment_id_seq', 9, true);
+
+
+--
+-- TOC entry 3883 (class 0 OID 0)
+-- Dependencies: 252
+-- Name: admin_panel_subjectassignment_teachers_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.admin_panel_subjectassignment_teachers_id_seq', 1, false);
+
+
+--
+-- TOC entry 3884 (class 0 OID 0)
+-- Dependencies: 246
+-- Name: admin_panel_teacher_groups_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.admin_panel_teacher_groups_id_seq', 3, true);
+
+
+--
+-- TOC entry 3885 (class 0 OID 0)
+-- Dependencies: 244
+-- Name: admin_panel_teacher_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.admin_panel_teacher_id_seq', 4, true);
+
+
+--
+-- TOC entry 3886 (class 0 OID 0)
+-- Dependencies: 248
+-- Name: admin_panel_teacher_subjects_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.admin_panel_teacher_subjects_id_seq', 3, true);
+
+
+--
+-- TOC entry 3887 (class 0 OID 0)
+-- Dependencies: 221
+-- Name: auth_group_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.auth_group_id_seq', 1, false);
+
+
+--
+-- TOC entry 3888 (class 0 OID 0)
+-- Dependencies: 223
+-- Name: auth_group_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.auth_group_permissions_id_seq', 1, false);
+
+
+--
+-- TOC entry 3889 (class 0 OID 0)
+-- Dependencies: 219
+-- Name: auth_permission_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.auth_permission_id_seq', 56, true);
+
+
+--
+-- TOC entry 3890 (class 0 OID 0)
+-- Dependencies: 227
+-- Name: auth_user_groups_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.auth_user_groups_id_seq', 1, false);
+
+
+--
+-- TOC entry 3891 (class 0 OID 0)
+-- Dependencies: 225
+-- Name: auth_user_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.auth_user_id_seq', 109, true);
+
+
+--
+-- TOC entry 3892 (class 0 OID 0)
+-- Dependencies: 229
+-- Name: auth_user_user_permissions_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.auth_user_user_permissions_id_seq', 1, false);
+
+
+--
+-- TOC entry 3893 (class 0 OID 0)
+-- Dependencies: 231
+-- Name: django_admin_log_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.django_admin_log_id_seq', 1, false);
+
+
+--
+-- TOC entry 3894 (class 0 OID 0)
+-- Dependencies: 217
+-- Name: django_content_type_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.django_content_type_id_seq', 14, true);
+
+
+--
+-- TOC entry 3895 (class 0 OID 0)
+-- Dependencies: 215
+-- Name: django_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.django_migrations_id_seq', 33, true);
+
+
+--
+-- TOC entry 3656 (class 2606 OID 117411)
+-- Name: admin_panel_activitylog admin_panel_activitylog_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_activitylog
+    ADD CONSTRAINT admin_panel_activitylog_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3615 (class 2606 OID 117259)
+-- Name: admin_panel_backup admin_panel_backup_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_backup
+    ADD CONSTRAINT admin_panel_backup_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3589 (class 2606 OID 117240)
+-- Name: admin_panel_faculty admin_panel_faculty_code_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_faculty
+    ADD CONSTRAINT admin_panel_faculty_code_key UNIQUE (code);
+
+
+--
+-- TOC entry 3592 (class 2606 OID 92103)
+-- Name: admin_panel_faculty admin_panel_faculty_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_faculty
+    ADD CONSTRAINT admin_panel_faculty_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3595 (class 2606 OID 92113)
+-- Name: admin_panel_group admin_panel_group_code_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_group
+    ADD CONSTRAINT admin_panel_group_code_key UNIQUE (code);
+
+
+--
+-- TOC entry 3599 (class 2606 OID 92111)
+-- Name: admin_panel_group admin_panel_group_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_group
+    ADD CONSTRAINT admin_panel_group_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3603 (class 2606 OID 92121)
+-- Name: admin_panel_student admin_panel_student_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_student
+    ADD CONSTRAINT admin_panel_student_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3606 (class 2606 OID 92123)
+-- Name: admin_panel_student admin_panel_student_student_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_student
+    ADD CONSTRAINT admin_panel_student_student_id_key UNIQUE (student_id);
+
+
+--
+-- TOC entry 3608 (class 2606 OID 92125)
+-- Name: admin_panel_student admin_panel_student_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_student
+    ADD CONSTRAINT admin_panel_student_user_id_key UNIQUE (user_id);
+
+
+--
+-- TOC entry 3619 (class 2606 OID 117285)
+-- Name: admin_panel_subject admin_panel_subject_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subject
+    ADD CONSTRAINT admin_panel_subject_name_key UNIQUE (name);
+
+
+--
+-- TOC entry 3621 (class 2606 OID 117283)
+-- Name: admin_panel_subject admin_panel_subject_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subject
+    ADD CONSTRAINT admin_panel_subject_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3643 (class 2606 OID 117371)
+-- Name: admin_panel_subjectassignment admin_panel_subjectassig_subject_id_faculty_id_pr_f2247f00_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subjectassignment
+    ADD CONSTRAINT admin_panel_subjectassig_subject_id_faculty_id_pr_f2247f00_uniq UNIQUE (subject_id, faculty_id, profession, course);
+
+
+--
+-- TOC entry 3650 (class 2606 OID 117391)
+-- Name: admin_panel_subjectassignment_teachers admin_panel_subjectassig_subjectassignment_id_tea_c3be0138_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subjectassignment_teachers
+    ADD CONSTRAINT admin_panel_subjectassig_subjectassignment_id_tea_c3be0138_uniq UNIQUE (subjectassignment_id, teacher_id);
+
+
+--
+-- TOC entry 3647 (class 2606 OID 117363)
+-- Name: admin_panel_subjectassignment admin_panel_subjectassignment_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subjectassignment
+    ADD CONSTRAINT admin_panel_subjectassignment_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3653 (class 2606 OID 117369)
+-- Name: admin_panel_subjectassignment_teachers admin_panel_subjectassignment_teachers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subjectassignment_teachers
+    ADD CONSTRAINT admin_panel_subjectassignment_teachers_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3625 (class 2606 OID 117295)
+-- Name: admin_panel_teacher admin_panel_teacher_email_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher
+    ADD CONSTRAINT admin_panel_teacher_email_key UNIQUE (email);
+
+
+--
+-- TOC entry 3632 (class 2606 OID 117303)
+-- Name: admin_panel_teacher_groups admin_panel_teacher_groups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher_groups
+    ADD CONSTRAINT admin_panel_teacher_groups_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3635 (class 2606 OID 117330)
+-- Name: admin_panel_teacher_groups admin_panel_teacher_groups_teacher_id_group_id_44ffec76_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher_groups
+    ADD CONSTRAINT admin_panel_teacher_groups_teacher_id_group_id_44ffec76_uniq UNIQUE (teacher_id, group_id);
+
+
+--
+-- TOC entry 3627 (class 2606 OID 117293)
+-- Name: admin_panel_teacher admin_panel_teacher_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher
+    ADD CONSTRAINT admin_panel_teacher_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3637 (class 2606 OID 117344)
+-- Name: admin_panel_teacher_subjects admin_panel_teacher_subj_teacher_id_subject_id_d737543c_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher_subjects
+    ADD CONSTRAINT admin_panel_teacher_subj_teacher_id_subject_id_d737543c_uniq UNIQUE (teacher_id, subject_id);
+
+
+--
+-- TOC entry 3639 (class 2606 OID 117309)
+-- Name: admin_panel_teacher_subjects admin_panel_teacher_subjects_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher_subjects
+    ADD CONSTRAINT admin_panel_teacher_subjects_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3629 (class 2606 OID 117297)
+-- Name: admin_panel_teacher admin_panel_teacher_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher
+    ADD CONSTRAINT admin_panel_teacher_user_id_key UNIQUE (user_id);
+
+
+--
+-- TOC entry 3557 (class 2606 OID 92158)
+-- Name: auth_group auth_group_name_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_group
+    ADD CONSTRAINT auth_group_name_key UNIQUE (name);
+
+
+--
+-- TOC entry 3562 (class 2606 OID 92035)
+-- Name: auth_group_permissions auth_group_permissions_group_id_permission_id_0cd325b0_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_group_permissions
+    ADD CONSTRAINT auth_group_permissions_group_id_permission_id_0cd325b0_uniq UNIQUE (group_id, permission_id);
+
+
+--
+-- TOC entry 3565 (class 2606 OID 92004)
+-- Name: auth_group_permissions auth_group_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_group_permissions
+    ADD CONSTRAINT auth_group_permissions_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3559 (class 2606 OID 91996)
+-- Name: auth_group auth_group_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_group
+    ADD CONSTRAINT auth_group_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3552 (class 2606 OID 92026)
+-- Name: auth_permission auth_permission_content_type_id_codename_01ab375a_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_permission
+    ADD CONSTRAINT auth_permission_content_type_id_codename_01ab375a_uniq UNIQUE (content_type_id, codename);
+
+
+--
+-- TOC entry 3554 (class 2606 OID 91990)
+-- Name: auth_permission auth_permission_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_permission
+    ADD CONSTRAINT auth_permission_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3573 (class 2606 OID 92018)
+-- Name: auth_user_groups auth_user_groups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_user_groups
+    ADD CONSTRAINT auth_user_groups_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3576 (class 2606 OID 92050)
+-- Name: auth_user_groups auth_user_groups_user_id_group_id_94350c0c_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_user_groups
+    ADD CONSTRAINT auth_user_groups_user_id_group_id_94350c0c_uniq UNIQUE (user_id, group_id);
+
+
+--
+-- TOC entry 3567 (class 2606 OID 92010)
+-- Name: auth_user auth_user_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_user
+    ADD CONSTRAINT auth_user_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3579 (class 2606 OID 92024)
+-- Name: auth_user_user_permissions auth_user_user_permissions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_user_user_permissions
+    ADD CONSTRAINT auth_user_user_permissions_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3582 (class 2606 OID 92064)
+-- Name: auth_user_user_permissions auth_user_user_permissions_user_id_permission_id_14a6b632_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_user_user_permissions
+    ADD CONSTRAINT auth_user_user_permissions_user_id_permission_id_14a6b632_uniq UNIQUE (user_id, permission_id);
+
+
+--
+-- TOC entry 3570 (class 2606 OID 92153)
+-- Name: auth_user auth_user_username_key; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_user
+    ADD CONSTRAINT auth_user_username_key UNIQUE (username);
+
+
+--
+-- TOC entry 3585 (class 2606 OID 92085)
+-- Name: django_admin_log django_admin_log_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.django_admin_log
+    ADD CONSTRAINT django_admin_log_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3547 (class 2606 OID 91984)
+-- Name: django_content_type django_content_type_app_label_model_76bd3d3b_uniq; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.django_content_type
+    ADD CONSTRAINT django_content_type_app_label_model_76bd3d3b_uniq UNIQUE (app_label, model);
+
+
+--
+-- TOC entry 3549 (class 2606 OID 91982)
+-- Name: django_content_type django_content_type_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.django_content_type
+    ADD CONSTRAINT django_content_type_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3545 (class 2606 OID 91976)
+-- Name: django_migrations django_migrations_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.django_migrations
+    ADD CONSTRAINT django_migrations_pkey PRIMARY KEY (id);
+
+
+--
+-- TOC entry 3611 (class 2606 OID 92166)
+-- Name: django_session django_session_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.django_session
+    ADD CONSTRAINT django_session_pkey PRIMARY KEY (session_key);
+
+
+--
+-- TOC entry 3657 (class 1259 OID 117417)
+-- Name: admin_panel_activitylog_user_id_a78e0080; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_activitylog_user_id_a78e0080 ON public.admin_panel_activitylog USING btree (user_id);
+
+
+--
+-- TOC entry 3613 (class 1259 OID 117265)
+-- Name: admin_panel_backup_created_by_id_f9e87668; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_backup_created_by_id_f9e87668 ON public.admin_panel_backup USING btree (created_by_id);
+
+
+--
+-- TOC entry 3587 (class 1259 OID 117241)
+-- Name: admin_panel_faculty_code_24d3185a_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_faculty_code_24d3185a_like ON public.admin_panel_faculty USING btree (code varchar_pattern_ops);
+
+
+--
+-- TOC entry 3590 (class 1259 OID 109055)
+-- Name: admin_panel_faculty_created_by_id_53d7d262; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_faculty_created_by_id_53d7d262 ON public.admin_panel_faculty USING btree (created_by_id);
+
+
+--
+-- TOC entry 3593 (class 1259 OID 92132)
+-- Name: admin_panel_group_code_de068c45_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_group_code_de068c45_like ON public.admin_panel_group USING btree (code varchar_pattern_ops);
+
+
+--
+-- TOC entry 3596 (class 1259 OID 117273)
+-- Name: admin_panel_group_created_by_id_0f7c8d44; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_group_created_by_id_0f7c8d44 ON public.admin_panel_group USING btree (created_by_id);
+
+
+--
+-- TOC entry 3597 (class 1259 OID 92133)
+-- Name: admin_panel_group_faculty_id_9d2c5031; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_group_faculty_id_9d2c5031 ON public.admin_panel_group USING btree (faculty_id);
+
+
+--
+-- TOC entry 3600 (class 1259 OID 92150)
+-- Name: admin_panel_student_created_by_id_657011be; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_student_created_by_id_657011be ON public.admin_panel_student USING btree (created_by_id);
+
+
+--
+-- TOC entry 3601 (class 1259 OID 92151)
+-- Name: admin_panel_student_group_id_93bdc3f7; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_student_group_id_93bdc3f7 ON public.admin_panel_student USING btree (group_id);
+
+
+--
+-- TOC entry 3604 (class 1259 OID 92149)
+-- Name: admin_panel_student_student_id_ef3b54ca_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_student_student_id_ef3b54ca_like ON public.admin_panel_student USING btree (student_id varchar_pattern_ops);
+
+
+--
+-- TOC entry 3616 (class 1259 OID 117316)
+-- Name: admin_panel_subject_created_by_id_bfeddc0b; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_subject_created_by_id_bfeddc0b ON public.admin_panel_subject USING btree (created_by_id);
+
+
+--
+-- TOC entry 3617 (class 1259 OID 117315)
+-- Name: admin_panel_subject_name_4e352e96_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_subject_name_4e352e96_like ON public.admin_panel_subject USING btree (name varchar_pattern_ops);
+
+
+--
+-- TOC entry 3651 (class 1259 OID 117402)
+-- Name: admin_panel_subjectassignm_subjectassignment_id_5ef9935b; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_subjectassignm_subjectassignment_id_5ef9935b ON public.admin_panel_subjectassignment_teachers USING btree (subjectassignment_id);
+
+
+--
+-- TOC entry 3644 (class 1259 OID 117387)
+-- Name: admin_panel_subjectassignment_created_by_id_3a4cb50f; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_subjectassignment_created_by_id_3a4cb50f ON public.admin_panel_subjectassignment USING btree (created_by_id);
+
+
+--
+-- TOC entry 3645 (class 1259 OID 117388)
+-- Name: admin_panel_subjectassignment_faculty_id_2e6b21b4; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_subjectassignment_faculty_id_2e6b21b4 ON public.admin_panel_subjectassignment USING btree (faculty_id);
+
+
+--
+-- TOC entry 3648 (class 1259 OID 117389)
+-- Name: admin_panel_subjectassignment_subject_id_d0cb68d5; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_subjectassignment_subject_id_d0cb68d5 ON public.admin_panel_subjectassignment USING btree (subject_id);
+
+
+--
+-- TOC entry 3654 (class 1259 OID 117403)
+-- Name: admin_panel_subjectassignment_teachers_teacher_id_bb532427; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_subjectassignment_teachers_teacher_id_bb532427 ON public.admin_panel_subjectassignment_teachers USING btree (teacher_id);
+
+
+--
+-- TOC entry 3622 (class 1259 OID 117328)
+-- Name: admin_panel_teacher_created_by_id_9e5b2ac5; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_teacher_created_by_id_9e5b2ac5 ON public.admin_panel_teacher USING btree (created_by_id);
+
+
+--
+-- TOC entry 3623 (class 1259 OID 117327)
+-- Name: admin_panel_teacher_email_04a89df6_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_teacher_email_04a89df6_like ON public.admin_panel_teacher USING btree (email varchar_pattern_ops);
+
+
+--
+-- TOC entry 3630 (class 1259 OID 117342)
+-- Name: admin_panel_teacher_groups_group_id_d70819d9; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_teacher_groups_group_id_d70819d9 ON public.admin_panel_teacher_groups USING btree (group_id);
+
+
+--
+-- TOC entry 3633 (class 1259 OID 117341)
+-- Name: admin_panel_teacher_groups_teacher_id_e1022445; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_teacher_groups_teacher_id_e1022445 ON public.admin_panel_teacher_groups USING btree (teacher_id);
+
+
+--
+-- TOC entry 3640 (class 1259 OID 117356)
+-- Name: admin_panel_teacher_subjects_subject_id_3975d159; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_teacher_subjects_subject_id_3975d159 ON public.admin_panel_teacher_subjects USING btree (subject_id);
+
+
+--
+-- TOC entry 3641 (class 1259 OID 117355)
+-- Name: admin_panel_teacher_subjects_teacher_id_ed3bea26; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX admin_panel_teacher_subjects_teacher_id_ed3bea26 ON public.admin_panel_teacher_subjects USING btree (teacher_id);
+
+
+--
+-- TOC entry 3555 (class 1259 OID 92159)
+-- Name: auth_group_name_a6ea08ec_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX auth_group_name_a6ea08ec_like ON public.auth_group USING btree (name varchar_pattern_ops);
+
+
+--
+-- TOC entry 3560 (class 1259 OID 92046)
+-- Name: auth_group_permissions_group_id_b120cbf9; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX auth_group_permissions_group_id_b120cbf9 ON public.auth_group_permissions USING btree (group_id);
+
+
+--
+-- TOC entry 3563 (class 1259 OID 92047)
+-- Name: auth_group_permissions_permission_id_84c5c92e; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX auth_group_permissions_permission_id_84c5c92e ON public.auth_group_permissions USING btree (permission_id);
+
+
+--
+-- TOC entry 3550 (class 1259 OID 92032)
+-- Name: auth_permission_content_type_id_2f476e4b; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX auth_permission_content_type_id_2f476e4b ON public.auth_permission USING btree (content_type_id);
+
+
+--
+-- TOC entry 3571 (class 1259 OID 92062)
+-- Name: auth_user_groups_group_id_97559544; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX auth_user_groups_group_id_97559544 ON public.auth_user_groups USING btree (group_id);
+
+
+--
+-- TOC entry 3574 (class 1259 OID 92061)
+-- Name: auth_user_groups_user_id_6a12ed8b; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX auth_user_groups_user_id_6a12ed8b ON public.auth_user_groups USING btree (user_id);
+
+
+--
+-- TOC entry 3577 (class 1259 OID 92076)
+-- Name: auth_user_user_permissions_permission_id_1fbb5f2c; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX auth_user_user_permissions_permission_id_1fbb5f2c ON public.auth_user_user_permissions USING btree (permission_id);
+
+
+--
+-- TOC entry 3580 (class 1259 OID 92075)
+-- Name: auth_user_user_permissions_user_id_a95ead1b; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX auth_user_user_permissions_user_id_a95ead1b ON public.auth_user_user_permissions USING btree (user_id);
+
+
+--
+-- TOC entry 3568 (class 1259 OID 92154)
+-- Name: auth_user_username_6821ab7c_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX auth_user_username_6821ab7c_like ON public.auth_user USING btree (username varchar_pattern_ops);
+
+
+--
+-- TOC entry 3583 (class 1259 OID 92096)
+-- Name: django_admin_log_content_type_id_c4bce8eb; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX django_admin_log_content_type_id_c4bce8eb ON public.django_admin_log USING btree (content_type_id);
+
+
+--
+-- TOC entry 3586 (class 1259 OID 92097)
+-- Name: django_admin_log_user_id_c564eba6; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX django_admin_log_user_id_c564eba6 ON public.django_admin_log USING btree (user_id);
+
+
+--
+-- TOC entry 3609 (class 1259 OID 92168)
+-- Name: django_session_expire_date_a5c62663; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX django_session_expire_date_a5c62663 ON public.django_session USING btree (expire_date);
+
+
+--
+-- TOC entry 3612 (class 1259 OID 92167)
+-- Name: django_session_session_key_c0390e0f_like; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX django_session_session_key_c0390e0f_like ON public.django_session USING btree (session_key varchar_pattern_ops);
+
+
+--
+-- TOC entry 3686 (class 2606 OID 117412)
+-- Name: admin_panel_activitylog admin_panel_activitylog_user_id_a78e0080_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_activitylog
+    ADD CONSTRAINT admin_panel_activitylog_user_id_a78e0080_fk_auth_user_id FOREIGN KEY (user_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3673 (class 2606 OID 117260)
+-- Name: admin_panel_backup admin_panel_backup_created_by_id_f9e87668_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_backup
+    ADD CONSTRAINT admin_panel_backup_created_by_id_f9e87668_fk_auth_user_id FOREIGN KEY (created_by_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3667 (class 2606 OID 109045)
+-- Name: admin_panel_faculty admin_panel_faculty_created_by_id_53d7d262_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_faculty
+    ADD CONSTRAINT admin_panel_faculty_created_by_id_53d7d262_fk_auth_user_id FOREIGN KEY (created_by_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3668 (class 2606 OID 117266)
+-- Name: admin_panel_group admin_panel_group_created_by_id_0f7c8d44_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_group
+    ADD CONSTRAINT admin_panel_group_created_by_id_0f7c8d44_fk_auth_user_id FOREIGN KEY (created_by_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3669 (class 2606 OID 92127)
+-- Name: admin_panel_group admin_panel_group_faculty_id_9d2c5031_fk_admin_panel_faculty_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_group
+    ADD CONSTRAINT admin_panel_group_faculty_id_9d2c5031_fk_admin_panel_faculty_id FOREIGN KEY (faculty_id) REFERENCES public.admin_panel_faculty(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3670 (class 2606 OID 92134)
+-- Name: admin_panel_student admin_panel_student_created_by_id_657011be_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_student
+    ADD CONSTRAINT admin_panel_student_created_by_id_657011be_fk_auth_user_id FOREIGN KEY (created_by_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3671 (class 2606 OID 92139)
+-- Name: admin_panel_student admin_panel_student_group_id_93bdc3f7_fk_admin_panel_group_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_student
+    ADD CONSTRAINT admin_panel_student_group_id_93bdc3f7_fk_admin_panel_group_id FOREIGN KEY (group_id) REFERENCES public.admin_panel_group(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3672 (class 2606 OID 92171)
+-- Name: admin_panel_student admin_panel_student_user_id_4a5a47c1_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_student
+    ADD CONSTRAINT admin_panel_student_user_id_4a5a47c1_fk_auth_user_id FOREIGN KEY (user_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3674 (class 2606 OID 117310)
+-- Name: admin_panel_subject admin_panel_subject_created_by_id_bfeddc0b_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subject
+    ADD CONSTRAINT admin_panel_subject_created_by_id_bfeddc0b_fk_auth_user_id FOREIGN KEY (created_by_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3681 (class 2606 OID 117372)
+-- Name: admin_panel_subjectassignment admin_panel_subjecta_created_by_id_3a4cb50f_fk_auth_user; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subjectassignment
+    ADD CONSTRAINT admin_panel_subjecta_created_by_id_3a4cb50f_fk_auth_user FOREIGN KEY (created_by_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3682 (class 2606 OID 117377)
+-- Name: admin_panel_subjectassignment admin_panel_subjecta_faculty_id_2e6b21b4_fk_admin_pan; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subjectassignment
+    ADD CONSTRAINT admin_panel_subjecta_faculty_id_2e6b21b4_fk_admin_pan FOREIGN KEY (faculty_id) REFERENCES public.admin_panel_faculty(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3683 (class 2606 OID 117382)
+-- Name: admin_panel_subjectassignment admin_panel_subjecta_subject_id_d0cb68d5_fk_admin_pan; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subjectassignment
+    ADD CONSTRAINT admin_panel_subjecta_subject_id_d0cb68d5_fk_admin_pan FOREIGN KEY (subject_id) REFERENCES public.admin_panel_subject(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3684 (class 2606 OID 117392)
+-- Name: admin_panel_subjectassignment_teachers admin_panel_subjecta_subjectassignment_id_5ef9935b_fk_admin_pan; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subjectassignment_teachers
+    ADD CONSTRAINT admin_panel_subjecta_subjectassignment_id_5ef9935b_fk_admin_pan FOREIGN KEY (subjectassignment_id) REFERENCES public.admin_panel_subjectassignment(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3685 (class 2606 OID 117397)
+-- Name: admin_panel_subjectassignment_teachers admin_panel_subjecta_teacher_id_bb532427_fk_admin_pan; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_subjectassignment_teachers
+    ADD CONSTRAINT admin_panel_subjecta_teacher_id_bb532427_fk_admin_pan FOREIGN KEY (teacher_id) REFERENCES public.admin_panel_teacher(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3677 (class 2606 OID 117336)
+-- Name: admin_panel_teacher_groups admin_panel_teacher__group_id_d70819d9_fk_admin_pan; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher_groups
+    ADD CONSTRAINT admin_panel_teacher__group_id_d70819d9_fk_admin_pan FOREIGN KEY (group_id) REFERENCES public.admin_panel_group(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3679 (class 2606 OID 117350)
+-- Name: admin_panel_teacher_subjects admin_panel_teacher__subject_id_3975d159_fk_admin_pan; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher_subjects
+    ADD CONSTRAINT admin_panel_teacher__subject_id_3975d159_fk_admin_pan FOREIGN KEY (subject_id) REFERENCES public.admin_panel_subject(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3678 (class 2606 OID 117331)
+-- Name: admin_panel_teacher_groups admin_panel_teacher__teacher_id_e1022445_fk_admin_pan; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher_groups
+    ADD CONSTRAINT admin_panel_teacher__teacher_id_e1022445_fk_admin_pan FOREIGN KEY (teacher_id) REFERENCES public.admin_panel_teacher(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3680 (class 2606 OID 117345)
+-- Name: admin_panel_teacher_subjects admin_panel_teacher__teacher_id_ed3bea26_fk_admin_pan; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher_subjects
+    ADD CONSTRAINT admin_panel_teacher__teacher_id_ed3bea26_fk_admin_pan FOREIGN KEY (teacher_id) REFERENCES public.admin_panel_teacher(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3675 (class 2606 OID 117317)
+-- Name: admin_panel_teacher admin_panel_teacher_created_by_id_9e5b2ac5_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher
+    ADD CONSTRAINT admin_panel_teacher_created_by_id_9e5b2ac5_fk_auth_user_id FOREIGN KEY (created_by_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3676 (class 2606 OID 117322)
+-- Name: admin_panel_teacher admin_panel_teacher_user_id_1ceb8714_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.admin_panel_teacher
+    ADD CONSTRAINT admin_panel_teacher_user_id_1ceb8714_fk_auth_user_id FOREIGN KEY (user_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3659 (class 2606 OID 92041)
+-- Name: auth_group_permissions auth_group_permissio_permission_id_84c5c92e_fk_auth_perm; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_group_permissions
+    ADD CONSTRAINT auth_group_permissio_permission_id_84c5c92e_fk_auth_perm FOREIGN KEY (permission_id) REFERENCES public.auth_permission(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3660 (class 2606 OID 92036)
+-- Name: auth_group_permissions auth_group_permissions_group_id_b120cbf9_fk_auth_group_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_group_permissions
+    ADD CONSTRAINT auth_group_permissions_group_id_b120cbf9_fk_auth_group_id FOREIGN KEY (group_id) REFERENCES public.auth_group(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3658 (class 2606 OID 92027)
+-- Name: auth_permission auth_permission_content_type_id_2f476e4b_fk_django_co; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_permission
+    ADD CONSTRAINT auth_permission_content_type_id_2f476e4b_fk_django_co FOREIGN KEY (content_type_id) REFERENCES public.django_content_type(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3661 (class 2606 OID 92056)
+-- Name: auth_user_groups auth_user_groups_group_id_97559544_fk_auth_group_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_user_groups
+    ADD CONSTRAINT auth_user_groups_group_id_97559544_fk_auth_group_id FOREIGN KEY (group_id) REFERENCES public.auth_group(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3662 (class 2606 OID 92051)
+-- Name: auth_user_groups auth_user_groups_user_id_6a12ed8b_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_user_groups
+    ADD CONSTRAINT auth_user_groups_user_id_6a12ed8b_fk_auth_user_id FOREIGN KEY (user_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3663 (class 2606 OID 92070)
+-- Name: auth_user_user_permissions auth_user_user_permi_permission_id_1fbb5f2c_fk_auth_perm; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_user_user_permissions
+    ADD CONSTRAINT auth_user_user_permi_permission_id_1fbb5f2c_fk_auth_perm FOREIGN KEY (permission_id) REFERENCES public.auth_permission(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3664 (class 2606 OID 92065)
+-- Name: auth_user_user_permissions auth_user_user_permissions_user_id_a95ead1b_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.auth_user_user_permissions
+    ADD CONSTRAINT auth_user_user_permissions_user_id_a95ead1b_fk_auth_user_id FOREIGN KEY (user_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3665 (class 2606 OID 92086)
+-- Name: django_admin_log django_admin_log_content_type_id_c4bce8eb_fk_django_co; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.django_admin_log
+    ADD CONSTRAINT django_admin_log_content_type_id_c4bce8eb_fk_django_co FOREIGN KEY (content_type_id) REFERENCES public.django_content_type(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+--
+-- TOC entry 3666 (class 2606 OID 92091)
+-- Name: django_admin_log django_admin_log_user_id_c564eba6_fk_auth_user_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.django_admin_log
+    ADD CONSTRAINT django_admin_log_user_id_c564eba6_fk_auth_user_id FOREIGN KEY (user_id) REFERENCES public.auth_user(id) DEFERRABLE INITIALLY DEFERRED;
+
+
+-- Completed on 2025-10-30 11:26:20 UTC
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict nkMC6HyydkPBgTcco6dXX77A7Z5lyGddLRR4Mm4WGrjt5F4D3cmJMvxyGucHBt3
+
+�\Ki�backup_20251030_112620.sql    ��         

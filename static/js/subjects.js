@@ -205,7 +205,7 @@ function applySubjectFilters(options = {}) {
             const rowFaculty = row.dataset.facultyId || '';
             const rowText = (row.dataset.search || '').toLowerCase();
 
-            const matchesCourse = !course || rowCourse === course;
+            const matchesCourse = !course || rowCourse === course || Boolean(searchTerm);
             const matchesSpecialty = !specialty || rowFaculty === specialty;
             const matchesSearch = !searchTerm || rowText.includes(searchTerm);
 
@@ -237,15 +237,19 @@ function applySubjectFilters(options = {}) {
                 setExpanded(list, toggle, list.classList.contains('show'));
             }
         } else {
-            section.style.display = '';
+            if (searchTerm) {
+                section.style.display = 'none';
+            } else {
+                section.style.display = '';
+                if (emptyState) {
+                    emptyState.style.display = '';
+                }
+            }
             if (list) {
                 if (list.dataset.manualExpanded !== 'true') {
-                    setExpanded(list, toggle, true);
+                    setExpanded(list, toggle, false);
                 }
                 list.dataset.openedByFilter = 'false';
-            }
-            if (emptyState) {
-                emptyState.style.display = '';
             }
         }
     });
@@ -262,9 +266,11 @@ function applySubjectFilters(options = {}) {
         );
 
         if (!hasVisibleProfessions) {
-            if (content) {
+            if (searchTerm) {
+                section.style.display = 'none';
+            } else if (content) {
                 if (content.dataset.manualExpanded !== 'true') {
-                    setExpanded(content, toggle, true);
+                    setExpanded(content, toggle, false);
                 }
                 content.dataset.openedByFilter = 'false';
             }
@@ -352,6 +358,7 @@ function resetSubjectFilters() {
         professionDataList.innerHTML = '';
     }
 
+    updateSearchClearButton('');
     closeSubjectFilterMenu();
     updateSubjectUrl();
     applySubjectFilters();
@@ -367,6 +374,7 @@ function clearSubjectSearch() {
         input.value = '';
         input.focus();
     }
+    updateSearchClearButton('');
     updateSubjectUrl();
     applySubjectFilters();
 }
@@ -461,6 +469,7 @@ function toggleAllSubjectSpecialties(ev) {
 function bindSearchHandlers() {
     const searchForm = document.getElementById('subjectSearchForm');
     const searchInput = searchForm ? searchForm.querySelector('input[name="search"]') : null;
+    const clearButton = document.getElementById('subjectClearSearch');
 
     if (searchForm) {
         searchForm.addEventListener('submit', event => {
@@ -474,6 +483,7 @@ function bindSearchHandlers() {
         let debounceTimer = null;
         searchInput.addEventListener('input', () => {
             clearTimeout(debounceTimer);
+            updateSearchClearButton(searchInput.value);
             debounceTimer = setTimeout(() => {
                 if (!window.currentFilters) {
                     window.currentFilters = {};
@@ -495,6 +505,29 @@ function bindSearchHandlers() {
                 applySubjectFilters({ forceAutoExpand: Boolean(searchInput.value.trim()) });
             }
         });
+
+        updateSearchClearButton(searchInput.value);
+    } else {
+        updateSearchClearButton('');
+    }
+
+    if (clearButton) {
+        clearButton.addEventListener('click', event => {
+            event.preventDefault();
+            clearSubjectSearch();
+        });
+    }
+}
+
+function updateSearchClearButton(value) {
+    const clearButton = document.getElementById('subjectClearSearch');
+    if (!clearButton) {
+        return;
+    }
+    if (value && value.trim().length) {
+        clearButton.style.display = 'inline-flex';
+    } else {
+        clearButton.style.display = 'none';
     }
 }
 

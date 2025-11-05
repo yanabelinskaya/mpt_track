@@ -175,6 +175,11 @@ REST_FRAMEWORK = {
     ],
 }
 
+# Настройки автоматических резервных копий
+ENABLE_AUTO_DAILY_BACKUP = True
+AUTO_BACKUP_TIME = '02:00'
+AUTO_BACKUP_CHECK_INTERVAL = 1800  # каждые 30 минут проверка расписания
+AUTO_BACKUP_TIMEZONE = 'Europe/Moscow'
 # Настройки Swagger
 SWAGGER_SETTINGS = {
     'SECURITY_DEFINITIONS': {
@@ -197,7 +202,6 @@ SWAGGER_SETTINGS = {
         'patch'
     ],
 }
-
 
 
 

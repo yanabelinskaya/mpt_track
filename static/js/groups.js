@@ -14,6 +14,111 @@ function initializeExpansionState() {
     });
 }
 
+function getCurrentCourseValue() {
+    if (window.currentFilters?.course) {
+        return String(window.currentFilters.course);
+    }
+    const hiddenInput = document.getElementById('courseFilterInput');
+    if (hiddenInput?.value) {
+        return String(hiddenInput.value);
+    }
+    const activeTab = document.querySelector('.course-tab.active');
+    return activeTab?.dataset.course || '1';
+}
+
+function findMatchingCoursesForQuery(searchValue) {
+    const query = (searchValue || '').trim().toLowerCase();
+    if (!query || !Array.isArray(window.groupsIndex)) {
+        return [];
+    }
+
+    const specialtyFilter = window.currentFilters?.specialty
+        ? String(window.currentFilters.specialty)
+        : '';
+    const professionFilter = (window.currentFilters?.profession || '').trim().toLowerCase();
+    const statusFilter = (window.currentFilters?.status || '').trim().toLowerCase();
+
+    const matchedCourses = new Set();
+
+    window.groupsIndex.forEach(item => {
+        if (!item) {
+            return;
+        }
+
+        const itemCourse = item.course != null ? String(item.course) : '';
+        if (!itemCourse) {
+            return;
+        }
+
+        if (specialtyFilter && String(item.faculty_id) !== specialtyFilter) {
+            return;
+        }
+
+        if (professionFilter && (item.profession || '').toLowerCase() !== professionFilter) {
+            return;
+        }
+
+        if (statusFilter && statusFilter !== 'all' && (item.status || '').toLowerCase() !== statusFilter) {
+            return;
+        }
+
+        const haystack = [
+            item.code,
+            item.name,
+            item.profession,
+            item.faculty_name,
+            itemCourse
+        ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+
+        if (haystack.includes(query)) {
+            matchedCourses.add(itemCourse);
+        }
+    });
+
+    return Array.from(matchedCourses);
+}
+
+function autoSwitchCourseForSearch(searchValue) {
+    const matchingCourses = findMatchingCoursesForQuery(searchValue);
+    if (!matchingCourses.length) {
+        return false;
+    }
+
+    const currentCourse = getCurrentCourseValue();
+    if (matchingCourses.some(course => course === currentCourse)) {
+        return false;
+    }
+
+    matchingCourses.sort((a, b) => Number(a) - Number(b));
+    const targetCourse = matchingCourses[0];
+    if (!targetCourse) {
+        return false;
+    }
+
+    if (window.currentFilters) {
+        window.currentFilters.course = targetCourse;
+    }
+    const hiddenCourse = document.getElementById('courseFilterInput');
+    if (hiddenCourse) {
+        hiddenCourse.value = targetCourse;
+    }
+
+    const url = new URL(window.location.href);
+    url.searchParams.set('course', targetCourse);
+    const trimmedSearch = (searchValue || '').trim();
+    if (trimmedSearch) {
+        url.searchParams.set('search', trimmedSearch);
+    } else {
+        url.searchParams.delete('search');
+    }
+
+    window.location.href = url.toString();
+    return true;
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📋 DOM загружен, инициализация...');
     
@@ -24,7 +129,8 @@ document.addEventListener('DOMContentLoaded', function() {
     updateCourseCounters();
     
     const searchInput = document.querySelector('input[name="search"]');
-    applySearchFilter(searchInput ? searchInput.value : '');
+    const initialSearch = searchInput ? searchInput.value : '';
+    applySearchFilter(initialSearch, { autoDetectCourse: Boolean(initialSearch) });
     
     console.log('✅ Инициализация завершена');
 });
@@ -168,7 +274,7 @@ function clearSearch() {
     if (searchInput) {
         searchInput.value = '';
         updateSearchParam('');
-        applySearchFilter('');
+        applySearchFilter('', { autoDetectCourse: false });
         searchInput.focus();
     }
 }
@@ -186,7 +292,7 @@ function initializeSearchField() {
         debounceTimer = setTimeout(() => {
             const value = searchInput.value;
             updateSearchParam(value);
-            applySearchFilter(value);
+            applySearchFilter(value, { autoDetectCourse: Boolean(value.trim()) });
         }, 400);
     });
 
@@ -195,7 +301,7 @@ function initializeSearchField() {
             event.preventDefault();
             const value = searchInput.value;
             updateSearchParam(value);
-            applySearchFilter(value);
+            applySearchFilter(value, { autoDetectCourse: true });
         }
     });
 
@@ -205,7 +311,7 @@ function initializeSearchField() {
             event.preventDefault();
             const value = searchInput.value;
             updateSearchParam(value);
-            applySearchFilter(value);
+            applySearchFilter(value, { autoDetectCourse: true });
         });
     }
 }
@@ -300,12 +406,20 @@ function resetSearchState() {
     updateCourseCounters();
 }
 
-function applySearchFilter(value) {
+function applySearchFilter(value, options = {}) {
     const searchValue = (value || '').trim().toLowerCase();
+    const autoDetectCourse = Boolean(options.autoDetectCourse);
     
     if (!searchValue) {
         resetSearchState();
         return;
+    }
+
+    if (autoDetectCourse) {
+        const switched = autoSwitchCourseForSearch(value);
+        if (switched) {
+            return;
+        }
     }
     
     let totalVisibleGroups = 0;

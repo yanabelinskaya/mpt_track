@@ -1,0 +1,328 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Расписание — Админ{% endblock %}
+
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'css/custom_select.css' %}">
+    <link rel="stylesheet" href="{% static 'css/schedule.css' %}">
+{% endblock %}
+
+{% block page_title %}Расписание{% endblock %}
+
+{% block content %}
+<div class="schedule-page">
+    <div class="schedule-page__header">
+        <div>
+            <h2 class="schedule-page__title">Конструктор расписания</h2>
+            <p class="schedule-page__subtitle">
+                Сформируйте учебную неделю: перетаскивайте предметы в сетку, выбирайте преподавателя и аудиторию.
+            </p>
+        </div>
+        <div class="schedule-week-switcher" data-current-date="{{ current_date|date:'Y-m-d' }}">
+            <button class="week-switcher__btn" data-action="prev-week" type="button" title="Предыдущая неделя">
+                <i class="bi bi-arrow-left"></i>
+            </button>
+            <div class="week-switcher__range" id="scheduleWeekRange"
+                 data-week-start="{{ week_start|date:'Y-m-d' }}"
+                 data-week-end="{{ week_end|date:'Y-m-d' }}">
+                {{ week_range_label }}
+            </div>
+            <button class="week-switcher__btn" data-action="next-week" type="button" title="Следующая неделя">
+                <i class="bi bi-arrow-right"></i>
+            </button>
+        </div>
+    </div>
+
+    <div class="schedule-message" id="scheduleMessage" hidden></div>
+
+    <div class="schedule-toolbar">
+        <div class="schedule-toolbar__filters">
+            <div class="schedule-filter">
+                <label class="schedule-filter__label" for="scheduleFacultySelect">Специальность</label>
+                <div class="schedule-filter__control custom-select filter-custom-select" data-placeholder="Все специальности">
+                    <div class="select-trigger placeholder" data-placeholder="Все специальности">
+                        <span class="select-text">Все специальности</span>
+                        <i class="select-arrow bi bi-chevron-down"></i>
+                    </div>
+                    <div class="select-dropdown">
+                        <div class="select-option" data-value="">
+                            <span class="select-option-text">Все специальности</span>
+                        </div>
+                        {% for faculty in faculties %}
+                        <div class="select-option" data-value="{{ faculty.id }}">
+                            <span class="select-option-text">{{ faculty.name }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <select id="scheduleFacultySelect" class="schedule-select">
+                        <option value="">Все специальности</option>
+                        {% for faculty in faculties %}
+                            <option value="{{ faculty.id }}">{{ faculty.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="schedule-filter">
+                <label class="schedule-filter__label" for="scheduleGroupSelect">Группа</label>
+                <div class="schedule-filter__control custom-select filter-custom-select" data-placeholder="Выберите группу">
+                    <div class="select-trigger placeholder" data-placeholder="Выберите группу">
+                        <span class="select-text">Выберите группу</span>
+                        <i class="select-arrow bi bi-chevron-down"></i>
+                    </div>
+                    <div class="select-dropdown">
+                        <div class="select-option" data-value="">
+                            <span class="select-option-text">Выберите группу</span>
+                        </div>
+                        {% for group in groups %}
+                        <div class="select-option" data-value="{{ group.id }}">
+                            <span class="select-option-text">{{ group.code }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <select id="scheduleGroupSelect" class="schedule-select">
+                        <option value="">Выберите группу</option>
+                        {% for group in groups %}
+                            <option value="{{ group.id }}" data-faculty="{{ group.faculty_id }}">{{ group.code }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="schedule-filter">
+                <label class="schedule-filter__label" for="scheduleTeacherSelect">Преподаватель</label>
+                <div class="schedule-filter__control custom-select filter-custom-select" data-placeholder="Не выбран">
+                    <div class="select-trigger placeholder" data-placeholder="Не выбран">
+                        <span class="select-text">Не выбран</span>
+                        <i class="select-arrow bi bi-chevron-down"></i>
+                    </div>
+                    <div class="select-dropdown">
+                        <div class="select-option" data-value="">
+                            <span class="select-option-text">Не выбран</span>
+                        </div>
+                        {% for teacher in teachers %}
+                        <div class="select-option" data-value="{{ teacher.id }}">
+                            <span class="select-option-text">{{ teacher.get_full_name }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <select id="scheduleTeacherSelect" class="schedule-select">
+                        <option value="">Не выбран</option>
+                        {% for teacher in teachers %}
+                            <option value="{{ teacher.id }}">{{ teacher.get_full_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="schedule-filter schedule-filter--view">
+                <label class="schedule-filter__label" for="scheduleViewToggle">Режим</label>
+                <div class="schedule-filter__segmented" id="scheduleViewToggle" role="tablist" aria-label="Режим отображения расписания">
+                    <button class="segmented-btn active" type="button" data-view-tab="week">Неделя</button>
+                    <button class="segmented-btn" type="button" data-view-tab="day">День</button>
+                    <button class="segmented-btn" type="button" data-view-tab="semester">Полугодие</button>
+                </div>
+            </div>
+        </div>
+        <div class="schedule-toolbar__search">
+            <label class="schedule-filter__label" for="scheduleSearchInput">Быстрый поиск</label>
+            <div class="schedule-filter__search">
+                <i class="bi bi-search"></i>
+                <input id="scheduleSearchInput" type="text" class="schedule-search" placeholder="Поиск по предметам, преподавателям, аудиториям">
+            </div>
+        </div>
+    </div>
+
+    <div class="schedule-layout">
+        <aside class="schedule-panel schedule-panel--library">
+            <div class="panel-header">
+                <div>
+                    <h3>Доступные предметы</h3>
+                    <span class="panel-subtitle">Перетащите предмет в нужный слот</span>
+                </div>
+                <button type="button" class="panel-refresh" data-action="refresh-pool" title="Обновить список">
+                    <i class="bi bi-arrow-repeat"></i>
+                </button>
+            </div>
+            <div class="panel-body">
+                <div class="library-group" id="scheduleSubjectPool">
+                    {% if subjects %}
+                        {% for subject in subjects %}
+                        <article class="library-item" data-subject-id="{{ subject.id }}" draggable="true">
+                            <div class="library-item__title">
+                                {{ subject.short_name|default:subject.name }}
+                            </div>
+                            <div class="library-item__meta">
+                                <span class="library-item__subject">{{ subject.name }}</span>
+                                <span class="library-item__teachers">
+                                    Преподавателей: {{ subject.teachers.all|length }}
+                                </span>
+                            </div>
+                            <div class="library-item__actions">
+                                <button type="button" class="btn btn-link btn-sm" data-action="assign-teacher">
+                                    Назначить
+                                </button>
+                                <button type="button" class="btn btn-link btn-sm" data-action="pin">
+                                    Закрепить
+                                </button>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    {% else %}
+                        <div class="panel-empty">
+                            <i class="bi bi-inboxes"></i>
+                            <p>Активные предметы не найдены. Добавьте их в разделе «Предметы».</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </aside>
+
+        <section class="schedule-panel schedule-panel--grid">
+            <div class="panel-header">
+                <div>
+                    <h3>Учебная неделя</h3>
+                    <span class="panel-subtitle">Переключайте режимы выше, чтобы управлять неделей, днём или планом на полгода</span>
+                </div>
+                <div class="panel-actions">
+                    <button class="schedule-action-btn" type="button" data-action="clear-day">
+                        <i class="bi bi-calendar-x"></i>
+                        <span>Очистить день</span>
+                    </button>
+                    <button class="schedule-action-btn" type="button" data-action="auto-fill">
+                        <i class="bi bi-magic"></i>
+                        <span>Автонаполнение</span>
+                    </button>
+                    <button class="schedule-action-btn schedule-action-btn--primary" type="button" data-action="save-week">
+                        <i class="bi bi-save"></i>
+                        <span>Сохранить неделю</span>
+                    </button>
+                </div>
+            </div>
+            <div class="panel-body panel-body--grid">
+                <div class="schedule-workspace">
+                    <div class="schedule-view" data-view-panel="week" id="scheduleWeekView">
+                        <div class="schedule-grid">
+                            <div class="schedule-grid__head">
+                                <div class="grid-cell grid-cell--time">Время</div>
+                                {% for day in weekday_order %}
+                                <div class="grid-cell grid-cell--day" data-day="{{ day.key }}">
+                                    <span class="day-name">{{ day.short }}</span>
+                                    <span class="day-full">{{ day.label }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="schedule-grid__body" id="scheduleGrid">
+                                {% for slot in time_slots %}
+                                <div class="grid-row" data-slot="{{ slot.id }}" data-order="{{ slot.order }}">
+                                    <div class="grid-cell grid-cell--time">
+                                        <span class="slot-order">{{ slot.order }} пара</span>
+                                        <span class="slot-range">{{ slot.start }} – {{ slot.end }}</span>
+                                    </div>
+                                    {% for day in weekday_order %}
+                                    <div class="grid-cell grid-cell--droppable"
+                                         data-day="{{ day.key }}"
+                                         data-slot="{{ slot.id }}">
+                                        <div class="grid-cell__placeholder">
+                                            <i class="bi bi-plus-lg"></i>
+                                            <span>Добавить пару</span>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="schedule-view" data-view-panel="day" id="scheduleDayView" hidden>
+                        <div class="schedule-day-board" id="scheduleDayBoard">
+                            {% for day in weekday_order %}
+                            <section class="day-board" data-day="{{ day.key }}">
+                                <header class="day-board__header">
+                                    <span class="day-board__name">{{ day.label }}</span>
+                                    <span class="day-board__short">{{ day.short }}</span>
+                                </header>
+                                <div class="day-board__body">
+                                    {% for slot in time_slots %}
+                                    <article class="day-slot" data-day="{{ day.key }}" data-slot="{{ slot.id }}">
+                                        <div class="day-slot__time">
+                                            <span class="day-slot__order">{{ slot.order }} пара</span>
+                                            <span class="day-slot__range">{{ slot.start }} – {{ slot.end }}</span>
+                                        </div>
+                                        <div class="day-slot__content" data-day-slot="{{ day.key }}__{{ slot.id }}">
+                                            <div class="day-slot__empty">
+                                                <i class="bi bi-calendar2-plus"></i>
+                                                <span>Свободно</span>
+                                            </div>
+                                        </div>
+                                    </article>
+                                    {% endfor %}
+                                </div>
+                            </section>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="schedule-view schedule-view--semester" data-view-panel="semester" id="scheduleSemesterView" hidden>
+                        <div class="semester-board" id="scheduleSemesterBoard">
+                            <div class="semester-board__intro">
+                                <h4>План на полгода</h4>
+                                <p>Выберите неделю, чтобы перейти к редактированию. Детальное редактирование выполняйте в режиме «Неделя».</p>
+                            </div>
+                            <div class="semester-board__timeline" id="scheduleSemesterTimeline"></div>
+                            <div class="semester-board__note">
+                                <i class="bi bi-info-circle"></i>
+                                <span>Полугодовой план помогает удерживать структуру на 24 недели вперёд. Активная неделя подсвечена.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <aside class="schedule-panel schedule-panel--details">
+            <div class="panel-header">
+                <div>
+                    <h3>Детали пары</h3>
+                    <span class="panel-subtitle">Уточните аудиторию и формат занятия</span>
+                </div>
+            </div>
+            <div class="panel-body panel-body--details" id="scheduleSlotDetails">
+                <div class="details-placeholder">
+                    <i class="bi bi-info-circle"></i>
+                    <p>Выберите ячейку в сетке, чтобы настроить занятие</p>
+                </div>
+            </div>
+            <div class="panel-footer">
+                <button class="btn btn-outline-danger w-100" type="button" data-action="delete-lesson" disabled>
+                    Удалить занятие
+                </button>
+            </div>
+            <div class="panel-note">
+                <h4>Подсказки</h4>
+                <ul>
+                    <li>Для быстрого заполнения перетащите предмет из левой панели в нужный слот.</li>
+                    <li>Щёлкните по ячейке, чтобы добавить аудиторию, преподавателя и тип занятия.</li>
+                    <li>Используйте фильтры сверху, чтобы сузить список предметов и групп.</li>
+                    <li>Кнопка «Автонаполнение» подберёт пары на основе закреплённых предметов.</li>
+                </ul>
+            </div>
+        </aside>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        window.scheduleInitialData = {
+            weekStart: '{{ week_start|date:"Y-m-d" }}',
+            weekEnd: '{{ week_end|date:"Y-m-d" }}',
+            groups: {{ groups_json|safe }},
+            teachers: {{ teachers_json|safe }},
+            subjects: {{ subjects_json|safe }},
+            weekdayOrder: {{ weekday_order_json|safe }},
+            timeSlots: {{ time_slots_json|safe }},
+        };
+    </script>
+    <script src="{% static 'js/custom_select.js' %}"></script>
+    <script src="{% static 'js/schedule.js' %}"></script>
+{% endblock %}

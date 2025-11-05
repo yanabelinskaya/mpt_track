@@ -26,11 +26,14 @@
                     <button type="submit" class="search-submit" id="subjectSearchSubmit" title="Найти">
                         <i class="bi bi-arrow-return-right"></i>
                     </button>
-                    {% if search_query %}
-                        <button type="button" class="clear-search" onclick="clearSubjectSearch()">
-                            <i class="bi bi-x"></i>
-                        </button>
-                    {% endif %}
+                    <button type="button"
+                            class="clear-search"
+                            id="subjectClearSearch"
+                            style="display: none;"
+                            onclick="clearSubjectSearch()"
+                            aria-label="Очистить поиск">
+                        <i class="bi bi-x"></i>
+                    </button>
                 </div>
 
                 <input type="hidden" name="course" value="{{ course_filter }}" id="courseFilterInput">
@@ -263,13 +266,18 @@
                                                                     </span>
                                                                 </div>
                                                             </div>
-                                                            <div class="group-cell actions-cell">
-                                                                <div class="actions-menu">
-                                                                    <a class="action-item"
-                                                                       href="{% url 'admin_subject_detail' assignment.subject.id %}"
-                                                                       title="Детали предмета">
-                                                                        <i class="bi bi-eye"></i>
-                                                                    </a>
+                                                        <div class="group-cell actions-cell">
+                                                            <div class="actions-menu">
+                                                                <a class="action-item"
+                                                                   href="{% url 'admin_subject_edit' assignment.subject.id %}"
+                                                                   title="Редактировать предмет">
+                                                                    <i class="bi bi-pencil"></i>
+                                                                </a>
+                                                                <a class="action-item"
+                                                                   href="{% url 'admin_subject_detail' assignment.subject.id %}"
+                                                                   title="Детали предмета">
+                                                                    <i class="bi bi-eye"></i>
+                                                                </a>
                                                                 </div>
                                                             </div>
                                                         </div>

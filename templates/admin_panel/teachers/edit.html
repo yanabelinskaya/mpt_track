@@ -7,6 +7,359 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<style>
+.form-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 2rem;
+}
+
+.form-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 2rem;
+    box-shadow: var(--card-shadow);
+}
+
+.section-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--bs-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 15px;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.form-row.single {
+    grid-template-columns: 1fr;
+}
+
+.form-group {
+    margin-bottom: 1rem;
+}
+
+.form-label {
+    display: block;
+    font-weight: 500;
+    color: var(--bs-body-color);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+}
+
+.form-label.required::after {
+    content: '*';
+    color: var(--bs-danger);
+    margin-left: 4px;
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 8px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.form-text {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+    margin-top: 0.25rem;
+}
+
+.inline-note {
+    background: var(--nav-link-hover);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+}
+
+.inline-note i {
+    color: var(--bs-primary);
+    font-size: 1.1rem;
+}
+
+.subject-selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.subject-card {
+    position: relative;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    background: var(--sidebar-bg);
+    padding: 1rem 1.1rem;
+    min-width: 220px;
+    flex: 1 1 220px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.subject-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 28px rgba(15, 23, 42, 0.12);
+}
+
+.subject-card.is-active {
+    border-color: rgba(var(--bs-primary-rgb), 0.85);
+    background: linear-gradient(160deg, rgba(var(--bs-primary-rgb), 0.14) 0%, var(--sidebar-bg) 55%);
+    box-shadow: 0 20px 38px rgba(var(--bs-primary-rgb), 0.18);
+}
+
+.subject-card .subject-checkbox {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+.subject-card .subject-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.subject-card .subject-subtitle {
+    font-size: 0.85rem;
+    color: var(--bs-secondary);
+}
+
+.subject-card .subject-meta {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--bs-secondary);
+    opacity: 0.85;
+}
+
+.group-selector {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.group-placeholder {
+    text-align: center;
+    padding: 1.75rem 1rem;
+    border: 1px dashed var(--sidebar-border);
+    border-radius: 12px;
+    color: var(--bs-secondary);
+    background: var(--nav-link-hover);
+}
+
+.group-placeholder i {
+    display: block;
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+    color: var(--bs-primary);
+}
+
+.group-subject-block {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+}
+
+.group-subject-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.assignment-card {
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    background: var(--sidebar-bg);
+    padding: 1.1rem 1.25rem;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.assignment-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    color: var(--bs-secondary);
+    font-size: 0.85rem;
+}
+
+.assignment-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.assignment-groups {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.group-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    position: relative;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 999px;
+    padding: 0.45rem 0.9rem;
+    font-size: 0.85rem;
+    background: var(--sidebar-bg);
+    color: var(--bs-secondary);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.group-chip:hover {
+    border-color: rgba(var(--bs-primary-rgb), 0.65);
+}
+
+.group-chip.is-active {
+    border-color: rgba(var(--bs-primary-rgb), 0.9);
+    background: rgba(var(--bs-primary-rgb), 0.15);
+    color: rgba(var(--bs-primary-rgb), 0.95);
+    box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb), 0.18);
+}
+
+.group-chip .group-code {
+    font-weight: 600;
+}
+
+.group-chip .group-prof {
+    font-size: 0.78rem;
+    opacity: 0.85;
+}
+
+.group-chip .group-checkbox {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    margin: 0;
+}
+
+.group-empty {
+    color: var(--bs-secondary);
+    font-size: 0.85rem;
+    font-style: italic;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary {
+    background: var(--bs-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-color);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--sidebar-bg);
+    color: var(--nav-link-color);
+    border: 1px solid var(--sidebar-border);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--sidebar-border);
+}
+
+.secondary-actions,
+.primary-actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.error-message {
+    color: var(--bs-danger);
+    font-size: 0.8rem;
+    margin-top: 0.25rem;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    .form-card {
+        padding: 1.5rem;
+    }
+
+    .form-actions {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .secondary-actions,
+    .primary-actions {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .btn {
+        flex: 1;
+        justify-content: center;
+    }
+}
+</style>
 {% endblock %}
 
 {% block content %}
@@ -57,33 +410,94 @@
                 Профессиональные данные
             </div>
 
-            <div class="form-row single">
-                <div class="form-group">
-                    <label class="form-label">Должность</label>
-                    <input type="text" name="position" class="form-control" value="{{ form_data.position|default:teacher.position }}">
-                </div>
+            <div class="inline-note">
+                <i class="bi bi-mortarboard"></i>
+                Должность преподавателя фиксирована как «Преподаватель». При необходимости ее можно обновить позднее в профиле.
             </div>
+            <input type="hidden" name="position" value="{{ form_data.position|default:teacher.position|default:'Преподаватель' }}">
 
-            <div class="form-row">
-                <div class="form-group">
-                    <label class="form-label">Предметы</label>
-                    <select name="subjects" class="form-select" multiple size="6">
-                        {% for subject in subjects %}
-                            <option value="{{ subject.id }}" {% if subject.id|stringformat:"s" in selected_subjects %}selected{% endif %}>{{ subject.short_name|default:subject.name }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="form-text">Удерживайте Ctrl/Cmd для выбора нескольких предметов</div>
-                </div>
-                <div class="form-group">
-                    <label class="form-label">Группы</label>
-                    <select name="groups" class="form-select" multiple size="6">
-                        {% for group in groups %}
-                            <option value="{{ group.id }}" {% if group.id|stringformat:"s" in selected_groups %}selected{% endif %}>{{ group.code }} — {{ group.profession }}</option>
-                        {% endfor %}
-                    </select>
-                    <div class="form-text">Группы, за которые отвечает преподаватель</div>
-                </div>
+            <div class="section-title">
+                <i class="bi bi-journal-bookmark"></i>
+                Предметы и группы
             </div>
+            <p class="form-text">
+                Выберите предметы, которые ведёт преподаватель. После выбора предметов станут доступны соответствующие группы.
+            </p>
+
+            {% if subjects_data %}
+                <div class="subject-selector" id="subjectSelector">
+                    {% for subject in subjects_data %}
+                        <div class="subject-card{% if subject.id|stringformat:'s' in selected_subjects %} is-active{% endif %}" data-subject-id="{{ subject.id }}">
+                            <input type="checkbox"
+                                   class="subject-checkbox"
+                                   name="subjects"
+                                   value="{{ subject.id }}"
+                                   {% if subject.id|stringformat:'s' in selected_subjects %}checked{% endif %}>
+                            <div class="subject-title">{{ subject.short_name|default:subject.name }}</div>
+                            {% if subject.short_name and subject.short_name != subject.name %}
+                                <div class="subject-subtitle">{{ subject.name }}</div>
+                            {% endif %}
+                            <div class="subject-meta">
+                                <span><i class="bi bi-collection"></i> {{ subject.assignments|length }} назначений</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+
+                <div class="group-selector" id="groupSelector">
+                    <div class="group-placeholder{% if selected_subjects %} d-none{% endif %}" id="groupPlaceholder">
+                        <i class="bi bi-info-circle"></i>
+                        Сначала выберите, какие предметы ведёт преподаватель.
+                    </div>
+
+                    {% for subject in subjects_data %}
+                        <div class="group-subject-block{% if subject.id|stringformat:'s' not in selected_subjects %} d-none{% endif %}"
+                             data-subject-id="{{ subject.id }}">
+                            <div class="group-subject-title">
+                                <i class="bi bi-journal-text"></i>
+                                {{ subject.short_name|default:subject.name }}
+                            </div>
+
+                            {% if subject.assignments %}
+                                {% for assignment in subject.assignments %}
+                                    <div class="assignment-card">
+                                        <div class="assignment-meta">
+                                            <span><i class="bi bi-mortarboard"></i> {{ assignment.course }}</span>
+                                            <span><i class="bi bi-building"></i> {{ assignment.faculty }} ({{ assignment.faculty_code }})</span>
+                                            <span><i class="bi bi-person-badge"></i> {{ assignment.profession }}</span>
+                                        </div>
+
+                                        {% if assignment.groups %}
+                                            <div class="assignment-groups">
+                                                {% for group in assignment.groups %}
+                                                    <label class="group-chip{% if group.id|stringformat:'s' in selected_groups %} is-active{% endif %}">
+                                                        <input type="checkbox"
+                                                               class="group-checkbox"
+                                                               name="groups"
+                                                               value="{{ group.id }}"
+                                                               {% if group.id|stringformat:'s' in selected_groups %}checked{% endif %}>
+                                                        <span class="group-code">{{ group.code }}</span>
+                                                        <span class="group-prof">{{ group.profession }}</span>
+                                                    </label>
+                                                {% endfor %}
+                                            </div>
+                                        {% else %}
+                                            <div class="group-empty">Нет активных групп для данной профессии.</div>
+                                        {% endif %}
+                                    </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="group-empty">Для предмета пока не настроены назначения.</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="group-placeholder">
+                    <i class="bi bi-exclamation-circle"></i>
+                    Нет активных предметов для назначения. Добавьте предметы в системе, чтобы привязать их к преподавателю.
+                </div>
+            {% endif %}
 
             <div class="section-title">
                 <i class="bi bi-card-checklist"></i>
@@ -156,4 +570,78 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const subjectCards = Array.from(document.querySelectorAll('.subject-card'));
+    const groupBlocks = Array.from(document.querySelectorAll('.group-subject-block'));
+    const groupPlaceholder = document.getElementById('groupPlaceholder');
+    const groupChips = Array.from(document.querySelectorAll('.group-chip'));
+
+    function syncGroupChip(chip) {
+        const checkbox = chip.querySelector('.group-checkbox');
+        chip.classList.toggle('is-active', checkbox.checked);
+    }
+
+    groupChips.forEach(chip => {
+        const checkbox = chip.querySelector('.group-checkbox');
+        syncGroupChip(chip);
+        checkbox.addEventListener('change', () => syncGroupChip(chip));
+    });
+
+    function updateGroupVisibility() {
+        const activeSubjects = subjectCards
+            .filter(card => card.classList.contains('is-active'))
+            .map(card => card.dataset.subjectId);
+
+        let hasVisible = false;
+
+        groupBlocks.forEach(block => {
+            const subjectId = block.dataset.subjectId;
+            const isActive = activeSubjects.includes(subjectId);
+            block.classList.toggle('d-none', !isActive);
+
+            if (isActive) {
+                hasVisible = true;
+            } else {
+                block.querySelectorAll('.group-checkbox').forEach(checkbox => {
+                    if (checkbox.checked) {
+                        checkbox.checked = false;
+                        const chip = checkbox.closest('.group-chip');
+                        chip?.classList.remove('is-active');
+                    }
+                });
+            }
+        });
+
+        if (groupPlaceholder) {
+            groupPlaceholder.classList.toggle('d-none', hasVisible);
+        }
+    }
+
+    subjectCards.forEach(card => {
+        const checkbox = card.querySelector('.subject-checkbox');
+        const syncCard = () => card.classList.toggle('is-active', checkbox.checked);
+
+        syncCard();
+
+        card.addEventListener('click', event => {
+            if (event.target === checkbox) return;
+            checkbox.checked = !checkbox.checked;
+            checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        checkbox.addEventListener('change', () => {
+            syncCard();
+            updateGroupVisibility();
+        });
+    });
+
+    if (subjectCards.length) {
+        updateGroupVisibility();
+    }
+});
+</script>
 {% endblock %}

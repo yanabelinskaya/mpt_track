@@ -7,152 +7,629 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/forms.css' %}">
-<link rel="stylesheet" href="{% static 'css/group_edit.css' %}">
+<link rel="stylesheet" href="{% static 'css/custom_select.css' %}">
+<link rel="stylesheet" href="{% static 'css/subject_create.css' %}">
+<style>
+.subject-create-page {
+    max-width: 1180px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.page-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.page-actions .action-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.ghost-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 10px;
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+    color: var(--bs-secondary);
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.ghost-button:hover {
+    color: var(--bs-primary);
+    border-color: var(--bs-primary);
+    transform: translateY(-1px);
+}
+
+.subject-create-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 16px;
+    padding: 28px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+}
+
+.section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.section-header .section-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.section-header .section-title i {
+    color: var(--bs-primary);
+    font-size: 1.3rem;
+}
+
+.section-header .section-subtitle {
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+}
+
+.form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-field label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-field label span.required {
+    color: var(--bs-danger);
+}
+
+.form-field .field-hint {
+    font-size: 0.78rem;
+    color: var(--bs-secondary);
+}
+
+.subject-inputs {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+.subject-inputs .wide {
+    grid-column: 1 / -1;
+}
+
+.subject-inputs .form-control,
+.subject-inputs textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+    color: var(--bs-body-color);
+    transition: all 0.2s ease;
+}
+
+.subject-inputs textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.teachers-selection {
+    background: var(--surface-hover, rgba(99, 102, 241, 0.05));
+    border: 1px dashed var(--sidebar-border);
+    border-radius: 14px;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.students-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.students-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    font-size: 1rem;
+}
+
+.students-controls {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.control-btn {
+    border: none;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--bs-primary);
+    border-radius: 999px;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.control-btn:hover {
+    background: rgba(99, 102, 241, 0.18);
+}
+
+.selected-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 999px;
+    background: var(--bs-primary);
+    color: white;
+    font-weight: 600;
+    font-size: 0.85rem;
+}
+
+.teachers-selection .search-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+    color: var(--bs-body-color);
+}
+
+.students-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.teacher-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+    cursor: pointer;
+    transition: all 0.18s ease;
+}
+
+.teacher-item:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 6px 18px rgba(99, 102, 241, 0.12);
+}
+
+.teacher-item.selected {
+    border-color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.12);
+}
+
+.teacher-checkbox {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--bs-primary);
+}
+
+.student-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    min-width: 0;
+}
+
+.student-name {
+    font-weight: 600;
+    color: var(--bs-body-color);
+    font-size: 0.95rem;
+}
+
+.student-details {
+    color: var(--bs-secondary);
+    font-size: 0.82rem;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.form-actions .primary-actions,
+.form-actions .secondary-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.outline-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 20px;
+    border-radius: 999px;
+    border: 1px solid var(--sidebar-border);
+    background: transparent;
+    color: var(--bs-secondary);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+}
+
+.outline-button:hover {
+    color: var(--bs-primary);
+    border-color: var(--bs-primary);
+}
+
+.primary-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    border: none;
+    border-radius: 999px;
+    padding: 12px 22px;
+    font-weight: 600;
+    color: white;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    box-shadow: 0 10px 20px rgba(99, 102, 241, 0.25);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.primary-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 26px rgba(99, 102, 241, 0.3);
+}
+
+@media (max-width: 768px) {
+    .subject-create-card {
+        padding: 22px;
+    }
+}
+</style>
 {% endblock %}
 
 {% block content %}
-<a href="{% url 'admin_subjects' %}" class="btn btn-secondary mb-3">
-    <i class="bi bi-arrow-left"></i>
-    Назад к предметам
-</a>
-
-<div class="edit-container">
-    <form method="post" class="edit-card">
-        {% csrf_token %}
-        <div class="section-title">
-            <i class="bi bi-journals"></i>
-            Основная информация
-        </div>
-
-        <div class="info-grid">
-            <div class="info-item">
-                <label class="form-label">Специальность <span class="text-danger">*</span></label>
-                <select name="faculty" id="facultySelect" class="form-select" required>
-                    <option value="" selected disabled>Выберите специальность</option>
-                    {% for faculty in faculties %}
-                        <option value="{{ faculty.id }}">{{ faculty.name }} ({{ faculty.code }})</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="info-item">
-                <label class="form-label">Профессия <span class="text-danger">*</span></label>
-                <input type="text" name="profession" id="professionInput" class="form-control" placeholder="Выберите или введите профессию" list="professionOptions" required disabled>
-                <datalist id="professionOptions"></datalist>
-                <div class="form-text">Доступные профессии подгрузятся после выбора специальности. Можно ввести новую.</div>
-            </div>
-
-            <div class="info-item">
-                <label class="form-label">Курс <span class="text-danger">*</span></label>
-                <select name="course" class="form-select" required>
-                    <option value="" selected disabled>Выберите курс</option>
-                    {% for value, label in course_choices %}
-                        <option value="{{ value }}">{{ label }}</option>
-                    {% endfor %}
-                </select>
-            </div>
-
-            <div class="info-item">
-                <label class="form-label">Преподаватели</label>
-                <select name="teachers" class="form-select" multiple size="6">
-                    {% for teacher in teachers %}
-                        <option value="{{ teacher.id }}">{{ teacher.get_full_name }}</option>
-                    {% endfor %}
-                </select>
-                <div class="form-text">Можно выбрать несколько преподавателей.</div>
-            </div>
-        </div>
-
-        <hr class="my-4">
-
-        <div class="section-title">
-            <i class="bi bi-pencil-square"></i>
-            Предмет
-        </div>
-
-        <div class="info-grid">
-            <div class="info-item">
-                <label class="form-label">Существующий предмет</label>
-                <select name="subject" id="subjectSelect" class="form-select">
-                    <option value="">— выберите предмет —</option>
-                    {% for subject in subjects %}
-                        <option value="{{ subject.id }}">{{ subject.name }}</option>
-                    {% endfor %}
-                </select>
-                <div class="form-text">Можно выбрать уже созданный предмет.</div>
-            </div>
-
-            <div class="info-item">
-                <label class="form-label">Название нового предмета</label>
-                <input type="text" name="subject_name" class="form-control" placeholder="Например, Математика">
-                <div class="form-text">Если заполнить это поле, будет создан новый предмет.</div>
-            </div>
-
-            <div class="info-item">
-                <label class="form-label">Короткое название</label>
-                <input type="text" name="subject_short_name" class="form-control" placeholder="Например, Мат.">
-            </div>
-
-            <div class="info-item">
-                <label class="form-label">Описание</label>
-                <textarea name="subject_description" class="form-control" rows="3" placeholder="Краткое описание предмета"></textarea>
-            </div>
-        </div>
-
-        <div class="d-flex justify-content-end gap-3 mt-4">
-            <a href="{% url 'admin_subjects' %}" class="btn btn-outline-secondary">
-                <i class="bi bi-x"></i>
-                Отмена
+<div class="subject-create-page">
+    <div class="page-actions">
+        <div class="action-group">
+            <a href="{% url 'admin_subjects' %}" class="ghost-button">
+                <i class="bi bi-arrow-left"></i>
+                Назад к предметам
             </a>
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-check2-circle"></i>
-                Сохранить
+        </div>
+        <div class="action-group">
+            <button type="button" class="ghost-button" onclick="resetSubjectForm()">
+                <i class="bi bi-arrow-clockwise"></i>
+                Сбросить форму
             </button>
+        </div>
+    </div>
+
+    <form id="subjectCreateForm" method="post" class="subject-create-card">
+        {% csrf_token %}
+
+        <section class="section-header">
+            <h2 class="section-title">
+                <i class="bi bi-collection"></i>
+                Назначение предмета
+            </h2>
+            <p class="section-subtitle">
+                Выберите специальность, профессию и курс. Можно привязать уже созданный предмет или создать новый.
+            </p>
+        </section>
+
+        <div class="form-grid">
+            <div class="form-field">
+                <label for="facultySelect">
+                    Специальность
+                    <span class="required">*</span>
+                </label>
+                <div class="custom-select" id="facultySelect">
+                    <select name="faculty" required>
+                        <option value="">Выберите специальность</option>
+                        {% for faculty in faculties %}
+                            <option value="{{ faculty.id }}">{{ faculty.name }} ({{ faculty.code }})</option>
+                        {% endfor %}
+                    </select>
+                    <div class="select-trigger placeholder">
+                        <span class="select-text">Выберите специальность</span>
+                        <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                    </div>
+                    <div class="select-dropdown">
+                        <div class="select-option selected" data-value="">
+                            <div class="select-option-text">Выберите специальность</div>
+                        </div>
+                        {% for faculty in faculties %}
+                            <div class="select-option"
+                                 data-value="{{ faculty.id }}"
+                                 data-label="{{ faculty.name }} ({{ faculty.code }})"
+                                 data-professions="{{ faculty.get_professions_list|join:', ' }}">
+                                <div class="select-option-content">
+                                    <div class="select-option-text">{{ faculty.name }}</div>
+                                    <div class="select-option-meta">
+                                        <span><i class="bi bi-bookmark"></i> {{ faculty.code }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        {% empty %}
+                            <div class="select-option disabled">
+                                <div class="select-option-text">Активные специальности не найдены</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                <span class="field-hint">После выбора специальности появится список её профессий.</span>
+            </div>
+
+            <div class="form-field">
+                <label for="professionSelect">
+                    Профессия
+                    <span class="required">*</span>
+                </label>
+                <div class="custom-select is-disabled" id="professionSelect">
+                    <select name="profession" required disabled>
+                        <option value="">Сначала выберите специальность</option>
+                    </select>
+                    <div class="select-trigger placeholder">
+                        <span class="select-text">Сначала выберите специальность</span>
+                        <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                    </div>
+                    <div class="select-dropdown">
+                        <div class="select-option disabled">
+                            <div class="select-option-text">Сначала выберите специальность</div>
+                        </div>
+                    </div>
+                </div>
+                <span class="field-hint">Можно выбрать существующую профессию или добавить новую.</span>
+            </div>
+
+            <div class="form-field">
+                <label for="courseSelect">
+                    Курс
+                    <span class="required">*</span>
+                </label>
+                <div class="custom-select" id="courseSelect">
+                    <select name="course" required>
+                        <option value="">Выберите курс</option>
+                        {% for value, label in course_choices %}
+                            <option value="{{ value }}">{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="select-trigger placeholder">
+                        <span class="select-text">Выберите курс</span>
+                        <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                    </div>
+                    <div class="select-dropdown">
+                        <div class="select-option selected" data-value="">
+                            <div class="select-option-text">Выберите курс</div>
+                        </div>
+                        {% for value, label in course_choices %}
+                            <div class="select-option" data-value="{{ value }}" data-label="{{ label }}">
+                                <div class="select-option-text">{{ label }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-field">
+                <label for="subjectSelect">
+                    Существующий предмет
+                </label>
+                <div class="custom-select" id="subjectSelect">
+                    <select name="subject">
+                        <option value="">Создать новый предмет</option>
+                        {% for subject in subjects %}
+                            <option value="{{ subject.id }}">{{ subject.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="select-trigger placeholder">
+                        <span class="select-text">Создать новый предмет</span>
+                        <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                    </div>
+                    <div class="select-dropdown">
+                        <div class="select-search">
+                            <input type="text" placeholder="Поиск предметов...">
+                        </div>
+                        <div class="select-options-list">
+                            <div class="select-option selected" data-value="" data-label="Создать новый предмет">
+                                <div class="select-option-text">Создать новый предмет</div>
+                                <div class="select-option-meta">Ввести данные вручную ниже</div>
+                            </div>
+                            {% for subject in subjects %}
+                                <div class="select-option"
+                                     data-value="{{ subject.id }}"
+                                     data-label="{{ subject.name }}">
+                                    <div class="select-option-content">
+                                        <div class="select-option-text">{{ subject.name }}</div>
+                                        {% if subject.short_name %}
+                                            <div class="select-option-meta">
+                                                <span><i class="bi bi-tag"></i> {{ subject.short_name }}</span>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="select-option disabled subject-search-message" style="display: none;">
+                            <div class="select-option-text">Ничего не найдено</div>
+                        </div>
+                    </div>
+                </div>
+                <span class="field-hint">Выберите существующий предмет или создайте новый, заполнив поля ниже.</span>
+            </div>
+        </div>
+
+        <section class="section-header">
+            <h2 class="section-title">
+                <i class="bi bi-pencil"></i>
+                Данные нового предмета
+            </h2>
+            <p class="section-subtitle">
+                Заполняйте, если создаёте новый предмет. При выборе существующего данные заблокируются.
+            </p>
+        </section>
+
+        <div class="subject-inputs">
+            <div class="form-field">
+                <label for="id_subject_name">
+                    Название предмета
+                    <span class="required">*</span>
+                </label>
+                <input type="text"
+                       id="id_subject_name"
+                       name="subject_name"
+                       class="form-control"
+                       placeholder="Например, Инженерная графика">
+            </div>
+
+            <div class="form-field">
+                <label for="id_subject_short_name">Короткое название</label>
+                <input type="text"
+                       id="id_subject_short_name"
+                       name="subject_short_name"
+                       class="form-control"
+                       placeholder="Например, Инж. графика">
+            </div>
+
+            <div class="form-field wide">
+                <label for="id_subject_description">Описание</label>
+                <textarea id="id_subject_description"
+                          name="subject_description"
+                          class="form-control"
+                          placeholder="Кратко опишите содержание предмета."></textarea>
+            </div>
+        </div>
+
+        <section class="section-header">
+            <h2 class="section-title">
+                <i class="bi bi-person-workspace"></i>
+                Преподаватели предмета
+            </h2>
+            <p class="section-subtitle">
+                Отметьте преподавателей, которые будут вести предмет. Можно выбрать несколько человек.
+            </p>
+        </section>
+
+        <div class="teachers-selection">
+            <div class="students-header">
+                <span class="students-title">
+                    <i class="bi bi-people"></i>
+                    Доступные преподаватели
+                </span>
+                <div class="students-controls">
+                    <button type="button" class="control-btn" onclick="selectAllTeachers()">Выбрать всех</button>
+                    <button type="button" class="control-btn" onclick="unselectAllTeachers()">Снять выбор</button>
+                    <span class="selected-count" id="teachersSelectedCount">0</span>
+                </div>
+            </div>
+
+            <input type="text"
+                   class="search-input"
+                   placeholder="Поиск по ФИО или email">
+
+            <div class="students-list">
+                {% for teacher in teachers %}
+                    <label class="teacher-item"
+                           data-teacher-name="{{ teacher.get_full_name|lower }}"
+                           data-teacher-email="{{ teacher.email|default:''|lower }}">
+                        <input type="checkbox"
+                               class="teacher-checkbox"
+                               name="teachers"
+                               value="{{ teacher.id }}">
+                        <div class="student-info">
+                            <div class="student-name">{{ teacher.get_full_name }}</div>
+                            <div class="student-details">
+                                {% if teacher.email %}{{ teacher.email }}{% endif %}
+                                {% if teacher.phone %}
+                                    {% if teacher.email %} • {% endif %}
+                                    {{ teacher.phone }}
+                                {% endif %}
+                            </div>
+                        </div>
+                    </label>
+                {% empty %}
+                    <div class="teacher-item">
+                        <div class="student-info">
+                            <div class="student-name">Преподаватели не найдены</div>
+                            <div class="student-details">Добавьте преподавателей в разделе «Преподаватели».</div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="form-actions">
+            <div class="secondary-actions">
+                <a href="{% url 'admin_subjects' %}" class="outline-button">
+                    <i class="bi bi-x-circle"></i>
+                    Отмена
+                </a>
+            </div>
+            <div class="primary-actions">
+                <button type="submit" class="primary-button">
+                    <i class="bi bi-check2-circle"></i>
+                    Сохранить предмет
+                </button>
+            </div>
         </div>
     </form>
 </div>
-
 {% endblock %}
 
 {% block extra_js %}
 <script>
-    (function() {
-        const professionsMap = JSON.parse('{{ professions_json|escapejs }}');
-        const facultySelect = document.getElementById('facultySelect');
-        const professionInput = document.getElementById('professionInput');
-        const professionDataList = document.getElementById('professionOptions');
-
-        function populateProfessions() {
-            if (!professionInput || !professionDataList) {
-                return;
-            }
-
-            const facultyId = facultySelect ? facultySelect.value : '';
-            const professions = professionsMap[facultyId] || [];
-
-            professionInput.value = '';
-            professionDataList.innerHTML = '';
-
-            if (!facultyId) {
-                professionInput.disabled = true;
-                professionInput.placeholder = 'Сначала выберите специальность';
-                return;
-            }
-
-            professionInput.disabled = false;
-            professions.sort((a, b) => a.localeCompare(b, 'ru')).forEach(name => {
-                const option = document.createElement('option');
-                option.value = name;
-                professionDataList.appendChild(option);
-            });
-
-            professionInput.placeholder = professions.length ? 'Выберите или введите профессию' : 'Введите профессию';
-        }
-
-        if (facultySelect) {
-            facultySelect.addEventListener('change', populateProfessions);
-            populateProfessions();
-        }
-    })();
+    window.facultiesData = JSON.parse('{{ professions_json|escapejs }}');
+    window.subjectsData = JSON.parse('{{ subjects_data_json|escapejs }}');
 </script>
+<script src="{% static 'js/subject_create.js' %}"></script>
 {% endblock %}

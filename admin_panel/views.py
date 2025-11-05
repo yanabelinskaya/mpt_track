@@ -20,22 +20,26 @@ import pandas as pd
 import io
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
+from importlib import import_module
 from urllib.parse import urlencode
+from collections import defaultdict
 import tempfile
 import os
 from django.contrib.auth.decorators import login_required, user_passes_test
-from admin_panel.services.backup_service import BackupService
-from admin_panel.models import Backup
+from django.utils import timezone
 from django.views.decorators.http import require_POST
+from django.contrib.sessions.models import Session
 
 
 # Безопасная проверка импорта моделей
 try:
-    from .models import Student, Group, Faculty, Teacher, Subject, SubjectAssignment
+    from .models import Student, Group, Faculty, Teacher, Subject, SubjectAssignment, ActivityLog
     MODELS_AVAILABLE = True
 except:
     MODELS_AVAILABLE = False
+
+from .activity import log_activity, serialize_activity_log
 
 def is_admin_user(user):
     """Проверка, является ли пользователь администратором"""
@@ -68,32 +72,101 @@ def dashboard_view(request):
 @user_passes_test(is_admin_user, login_url='/accounts/login/')
 def admin_dashboard_view(request):
     """Админ-панель - только для администраторов"""
-    print(f"=== admin_dashboard_view вызван ===")
-    print(f"Пользователь: {request.user.username}")
-    print(f"MODELS_AVAILABLE: {MODELS_AVAILABLE}")
-    
     students_count = 0
     groups_count = 0
     faculties_count = 0
-    
+    recent_logs = []
+
     if MODELS_AVAILABLE:
         try:
             students_count = Student.objects.count()
             groups_count = Group.objects.filter(is_active=True).count()
             faculties_count = Faculty.objects.filter(is_active=True).count()
-        except Exception as e:
-            print(f"Ошибка получения статистики: {str(e)}")
-            students_count = 0
-            groups_count = 0
-            faculties_count = 0
-    
+        except Exception as exc:
+            print(f"Ошибка получения статистики: {str(exc)}")
+
+        try:
+            now = timezone.now()
+            recent_logs_queryset = ActivityLog.objects.select_related('user').order_by('-created_at')[:10]
+            recent_logs = [serialize_activity_log(log, now) for log in recent_logs_queryset]
+        except Exception as exc:
+            print(f"Ошибка получения логов: {str(exc)}")
+            recent_logs = []
+
     context = {
         'students_count': students_count,
         'groups_count': groups_count,
         'faculties_count': faculties_count,
+        'recent_logs': recent_logs,
+        'activity_log_add_url': reverse('activity_log_add'),
+        'activity_log_remove_url': reverse('activity_log_remove'),
+        'activity_log_clear_url': reverse('activity_log_clear'),
     }
-    
+
     return render(request, 'admin_panel/dashboard.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+@require_POST
+def activity_log_add_view(request):
+    if not MODELS_AVAILABLE:
+        return JsonResponse({'success': False, 'error': 'Журнал недоступен'}, status=400)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Неверный формат данных'}, status=400)
+
+    description = (payload.get('description') or '').strip()
+    if not description:
+        return JsonResponse({'success': False, 'error': 'Описание обязательно'}, status=400)
+
+    action_type = (payload.get('action_type') or ActivityLog.ACTION_OTHER).strip()
+    valid_types = {choice[0] for choice in ActivityLog.ACTION_CHOICES}
+    if action_type not in valid_types:
+        action_type = ActivityLog.ACTION_OTHER
+
+    icon = (payload.get('icon') or '').strip()
+    metadata = payload.get('metadata') if isinstance(payload.get('metadata'), dict) else None
+
+    log = ActivityLog.objects.create(
+        user=request.user,
+        action_type=action_type,
+        description=description,
+        icon=icon,
+        metadata=metadata,
+    )
+
+    return JsonResponse({'success': True, 'log': serialize_activity_log(log)})
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+@require_POST
+def activity_log_remove_view(request):
+    if not MODELS_AVAILABLE:
+        return JsonResponse({'success': False, 'error': 'Журнал недоступен'}, status=400)
+
+    try:
+        payload = json.loads(request.body.decode('utf-8') or '{}')
+        log_id = int(payload.get('log_id'))
+    except (json.JSONDecodeError, TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Некорректный идентификатор'}, status=400)
+
+    deleted, _ = ActivityLog.objects.filter(id=log_id).delete()
+    return JsonResponse({'success': True, 'deleted': deleted})
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+@require_POST
+def activity_log_clear_view(request):
+    if not MODELS_AVAILABLE:
+        return JsonResponse({'success': False, 'error': 'Журнал недоступен'}, status=400)
+
+    ActivityLog.objects.all().delete()
+    return JsonResponse({'success': True})
 
 @login_required
 def students_list_view(request):
@@ -122,15 +195,17 @@ def students_list_view(request):
         
         # Поиск по имени, фамилии, email, студенческому билету
         if search:
-            search_lower = search.lower()
-            students = students.filter(
-                Q(first_name__icontains=search) |
-                Q(last_name__icontains=search) |
-                Q(middle_name__icontains=search) |
-                Q(email__icontains=search) |
-                Q(student_id__icontains=search) |
-                Q(user__username__icontains=search)
-            )
+            tokens = [token for token in re.split(r'[\s,;]+', search) if token]
+            for token in tokens:
+                students = students.filter(
+                    Q(first_name__icontains=token) |
+                    Q(last_name__icontains=token) |
+                    Q(middle_name__icontains=token) |
+                    Q(email__icontains=token) |
+                    Q(student_id__icontains=token) |
+                    Q(user__username__icontains=token) |
+                    Q(group__code__icontains=token)
+                )
         
         # Фильтр по группе
         if group_filter:
@@ -218,13 +293,17 @@ def teachers_list_view(request):
         ).all()
 
         if search:
-            teachers = teachers.filter(
-                Q(first_name__icontains=search) |
-                Q(last_name__icontains=search) |
-                Q(middle_name__icontains=search) |
-                Q(email__icontains=search) |
-                Q(phone__icontains=search)
-            )
+            tokens = [token for token in re.split(r'[\s,;]+', search) if token]
+            for token in tokens:
+                teachers = teachers.filter(
+                    Q(first_name__icontains=token) |
+                    Q(last_name__icontains=token) |
+                    Q(middle_name__icontains=token) |
+                    Q(email__icontains=token) |
+                    Q(phone__icontains=token) |
+                    Q(subjects__name__icontains=token) |
+                    Q(subjects__short_name__icontains=token)
+                )
 
         if subject_filter:
             teachers = teachers.filter(subjects__id=subject_filter)
@@ -244,6 +323,12 @@ def teachers_list_view(request):
         page_number = request.GET.get('page')
         page_obj = paginator.get_page(page_number)
 
+        active_filters = 0
+        if subject_filter:
+            active_filters += 1
+        if status_filter:
+            active_filters += 1
+
         context = {
             'page_obj': page_obj,
             'subjects': subjects,
@@ -251,6 +336,12 @@ def teachers_list_view(request):
             'subject_filter': subject_filter,
             'status_filter': status_filter,
             'total_teachers': total_teachers,
+            'active_filters': active_filters,
+            'current_filters': {
+                'search': search,
+                'subject': subject_filter,
+                'status': status_filter,
+            },
         }
 
         return render(request, 'admin_panel/teachers/list.html', context)
@@ -279,8 +370,64 @@ def teacher_create_view(request):
         messages.error(request, 'Модели не загружены. Выполните миграции.')
         return redirect('admin_dashboard')
 
-    subjects = Subject.objects.filter(is_active=True).order_by('name')
-    groups = Group.objects.filter(is_active=True).order_by('code')
+    subjects_qs = Subject.objects.filter(is_active=True).order_by('name')
+    assignments_qs = SubjectAssignment.objects.select_related('subject', 'faculty').filter(
+        subject__in=subjects_qs,
+        is_active=True
+    )
+
+    group_cache = {}
+    subject_assignments_map = defaultdict(list)
+
+    for assignment in assignments_qs:
+        group_key = (assignment.faculty_id, assignment.profession)
+        if group_key not in group_cache:
+            related_groups = Group.objects.filter(
+                faculty_id=assignment.faculty_id,
+                profession=assignment.profession,
+                is_active=True
+            ).order_by('code')
+            group_cache[group_key] = [
+                {
+                    'id': group.id,
+                    'code': group.code,
+                    'profession': group.profession,
+                    'course': group.current_course,
+                }
+                for group in related_groups
+            ]
+
+        groups_for_assignment = [
+            {
+                'id': group['id'],
+                'code': group['code'],
+                'profession': group['profession'],
+            }
+            for group in group_cache[group_key]
+            if group['course'] == assignment.course
+        ]
+
+        subject_assignments_map[assignment.subject_id].append({
+            'id': assignment.id,
+            'course': assignment.get_course_display(),
+            'profession': assignment.profession,
+            'faculty': assignment.faculty.name,
+            'faculty_code': assignment.faculty.code,
+            'groups': groups_for_assignment,
+        })
+
+    subjects_data = [
+        {
+            'id': subject.id,
+            'name': subject.name,
+            'short_name': subject.short_name or '',
+            'assignments': subject_assignments_map.get(subject.id, []),
+        }
+        for subject in subjects_qs
+    ]
+
+    selected_subject_ids = []
+    selected_group_ids = []
 
     if request.method == 'POST':
         first_name = request.POST.get('first_name', '').strip()
@@ -288,13 +435,11 @@ def teacher_create_view(request):
         middle_name = request.POST.get('middle_name', '').strip()
         email = request.POST.get('email', '').strip()
         phone = request.POST.get('phone', '').strip()
-        position = request.POST.get('position', '').strip()
+        position = request.POST.get('position', '').strip() or 'Преподаватель'
         hire_date = request.POST.get('hire_date')
         notes = request.POST.get('notes', '').strip()
         subject_ids = [int(pk) for pk in request.POST.getlist('subjects') if pk.isdigit()]
         group_ids = [int(pk) for pk in request.POST.getlist('groups') if pk.isdigit()]
-        selected_subject_ids = [str(pk) for pk in subject_ids]
-        selected_group_ids = [str(pk) for pk in group_ids]
         selected_subject_ids = [str(pk) for pk in subject_ids]
         selected_group_ids = [str(pk) for pk in group_ids]
         is_curator = request.POST.get('is_curator') == 'on'
@@ -323,8 +468,7 @@ def teacher_create_view(request):
             for msg in errors.values():
                 messages.error(request, msg)
             context = {
-                'subjects': subjects,
-                'groups': groups,
+                'subjects_data': subjects_data,
                 'form_data': request.POST,
                 'errors': errors,
                 'selected_subjects': selected_subject_ids,
@@ -372,21 +516,28 @@ def teacher_create_view(request):
                         send_teacher_credentials_email(teacher, username, password)
 
             messages.success(request, f'Преподаватель "{teacher.get_full_name()}" успешно создан')
+            log_activity(
+                request.user,
+                ActivityLog.ACTION_CREATE,
+                f'Добавлен преподаватель "{teacher.get_full_name()}"',
+                'bi-person-workspace',
+                {'teacher_id': teacher.id}
+            )
             return redirect('admin_teachers')
 
         except Exception as exc:
             messages.error(request, f'Ошибка при создании преподавателя: {str(exc)}')
             context = {
-                'subjects': subjects,
-                'groups': groups,
+                'subjects_data': subjects_data,
                 'form_data': request.POST,
                 'errors': {'common': str(exc)},
+                'selected_subjects': selected_subject_ids,
+                'selected_groups': selected_group_ids,
             }
             return render(request, 'admin_panel/teachers/create.html', context)
 
     context = {
-        'subjects': subjects,
-        'groups': groups,
+        'subjects_data': subjects_data,
         'selected_subjects': [],
         'selected_groups': [],
         'form_data': {},
@@ -402,8 +553,65 @@ def teacher_edit_view(request, teacher_id):
         return redirect('admin_dashboard')
 
     teacher = get_object_or_404(Teacher, id=teacher_id)
-    subjects = Subject.objects.filter(is_active=True).order_by('name')
-    groups = Group.objects.filter(is_active=True).order_by('code')
+
+    subjects_qs = Subject.objects.filter(is_active=True).order_by('name')
+    assignments_qs = SubjectAssignment.objects.select_related('subject', 'faculty').filter(
+        subject__in=subjects_qs,
+        is_active=True
+    )
+
+    group_cache = {}
+    subject_assignments_map = defaultdict(list)
+
+    for assignment in assignments_qs:
+        group_key = (assignment.faculty_id, assignment.profession)
+        if group_key not in group_cache:
+            related_groups = Group.objects.filter(
+                faculty_id=assignment.faculty_id,
+                profession=assignment.profession,
+                is_active=True
+            ).order_by('code')
+            group_cache[group_key] = [
+                {
+                    'id': group.id,
+                    'code': group.code,
+                    'profession': group.profession,
+                    'course': group.current_course,
+                }
+                for group in related_groups
+            ]
+
+        groups_for_assignment = [
+            {
+                'id': group['id'],
+                'code': group['code'],
+                'profession': group['profession'],
+            }
+            for group in group_cache[group_key]
+            if group['course'] == assignment.course
+        ]
+
+        subject_assignments_map[assignment.subject_id].append({
+            'id': assignment.id,
+            'course': assignment.get_course_display(),
+            'profession': assignment.profession,
+            'faculty': assignment.faculty.name,
+            'faculty_code': assignment.faculty.code,
+            'groups': groups_for_assignment,
+        })
+
+    subjects_data = [
+        {
+            'id': subject.id,
+            'name': subject.name,
+            'short_name': subject.short_name or '',
+            'assignments': subject_assignments_map.get(subject.id, []),
+        }
+        for subject in subjects_qs
+    ]
+
+    selected_subject_ids = [str(pk) for pk in teacher.subjects.values_list('id', flat=True)]
+    selected_group_ids = [str(pk) for pk in teacher.groups.values_list('id', flat=True)]
 
     if request.method == 'POST':
         first_name = request.POST.get('first_name', '').strip()
@@ -411,11 +619,13 @@ def teacher_edit_view(request, teacher_id):
         middle_name = request.POST.get('middle_name', '').strip()
         email = request.POST.get('email', '').strip()
         phone = request.POST.get('phone', '').strip()
-        position = request.POST.get('position', '').strip()
+        position = request.POST.get('position', '').strip() or teacher.position or 'Преподаватель'
         hire_date = request.POST.get('hire_date')
         notes = request.POST.get('notes', '').strip()
         subject_ids = [int(pk) for pk in request.POST.getlist('subjects') if pk.isdigit()]
         group_ids = [int(pk) for pk in request.POST.getlist('groups') if pk.isdigit()]
+        selected_subject_ids = [str(pk) for pk in subject_ids]
+        selected_group_ids = [str(pk) for pk in group_ids]
         is_curator = request.POST.get('is_curator') == 'on'
         is_active = request.POST.get('is_active') != 'off'
         create_account = request.POST.get('create_account') == 'on'
@@ -443,12 +653,11 @@ def teacher_edit_view(request, teacher_id):
                 messages.error(request, msg)
             context = {
                 'teacher': teacher,
-                'subjects': subjects,
-                'groups': groups,
+                'subjects_data': subjects_data,
                 'form_data': request.POST,
                 'errors': errors,
-                'selected_subjects': subject_ids,
-                'selected_groups': group_ids,
+                'selected_subjects': selected_subject_ids,
+                'selected_groups': selected_group_ids,
             }
             return render(request, 'admin_panel/teachers/edit.html', context)
 
@@ -459,8 +668,8 @@ def teacher_edit_view(request, teacher_id):
                 teacher.middle_name = middle_name
                 teacher.email = email
                 teacher.phone = phone
-                teacher.position = position
                 teacher.hire_date = hire_date_value
+                teacher.position = position
                 teacher.notes = notes
                 teacher.is_curator = is_curator
                 teacher.is_active = is_active
@@ -494,14 +703,20 @@ def teacher_edit_view(request, teacher_id):
                     teacher.user.save()
 
             messages.success(request, f'Преподаватель "{teacher.get_full_name()}" успешно обновлен')
+            log_activity(
+                request.user,
+                ActivityLog.ACTION_UPDATE,
+                f'Обновлен преподаватель "{teacher.get_full_name()}"',
+                'bi-person-workspace',
+                {'teacher_id': teacher.id}
+            )
             return redirect('admin_teacher_detail', teacher_id=teacher.id)
 
         except Exception as exc:
             messages.error(request, f'Ошибка при сохранении преподавателя: {str(exc)}')
             context = {
                 'teacher': teacher,
-                'subjects': subjects,
-                'groups': groups,
+                'subjects_data': subjects_data,
                 'form_data': request.POST,
                 'errors': {'common': str(exc)},
                 'selected_subjects': selected_subject_ids,
@@ -511,10 +726,9 @@ def teacher_edit_view(request, teacher_id):
 
     context = {
         'teacher': teacher,
-        'subjects': subjects,
-        'groups': groups,
-        'selected_subjects': [str(pk) for pk in teacher.subjects.values_list('id', flat=True)],
-        'selected_groups': [str(pk) for pk in teacher.groups.values_list('id', flat=True)],
+        'subjects_data': subjects_data,
+        'selected_subjects': selected_subject_ids,
+        'selected_groups': selected_group_ids,
         'form_data': {},
     }
     return render(request, 'admin_panel/teachers/edit.html', context)
@@ -546,18 +760,24 @@ def teacher_import_view(request):
         messages.error(request, 'Модели не загружены. Выполните миграции.')
         return redirect('admin_dashboard')
 
+    context = {
+        'subjects': Subject.objects.filter(is_active=True).order_by('name'),
+        'groups': Group.objects.filter(is_active=True).order_by('code'),
+    }
+
     if request.method == 'POST':
         file = request.FILES.get('file')
         if not file:
             messages.error(request, 'Выберите файл для импорта')
-            return redirect('admin_teacher_import')
+            return render(request, 'admin_panel/teachers/import.html', context, status=400)
 
         try:
             df = pd.read_excel(file)
         except Exception as exc:
             messages.error(request, f'Не удалось прочитать файл: {str(exc)}')
-            return redirect('admin_teacher_import')
+            return render(request, 'admin_panel/teachers/import.html', context, status=400)
 
+        original_columns = list(df.columns)
         df.columns = [str(col).strip().lower() for col in df.columns]
 
         def resolve_column(possible_names):
@@ -567,23 +787,48 @@ def teacher_import_view(request):
             return None
 
         full_name_column = resolve_column(['full_name', 'fio', 'фио'])
+        last_name_column = resolve_column(['last_name', 'фамилия', 'surname', 'last'])
+        first_name_column = resolve_column(['first_name', 'имя', 'name', 'first'])
+        middle_name_column = resolve_column(['middle_name', 'middlename', 'отчество', 'middle', 'second_name'])
         email_column = resolve_column(['email', 'e-mail', 'почта', 'электронная почта'])
         phone_column = resolve_column(['phone', 'телефон', 'tel', 'telephone'])
 
         missing_columns = []
-        if not full_name_column:
-            missing_columns.append('ФИО')
+        if not full_name_column and not (last_name_column and first_name_column):
+            missing_columns.append('ФИО или (Фамилия и Имя)')
         if not email_column:
             missing_columns.append('Email')
+        import_result = {
+            'file_name': file.name,
+            'columns': original_columns,
+            'rows_total': len(df.index),
+            'created_count': 0,
+            'updated_count': 0,
+            'unchanged_count': 0,
+            'errors_count': 0,
+            'created': [],
+            'updated': [],
+            'unchanged': [],
+            'errors': [],
+            'processed_count': 0,
+            'status': 'pending',
+            'summary': '',
+        }
 
         if missing_columns:
             messages.error(
                 request,
                 f"Отсутствуют обязательные столбцы: {', '.join(missing_columns)}"
             )
-            return redirect('admin_teacher_import')
-
-        created, updated, errors = 0, 0, []
+            import_result['errors'].append({
+                'row': 0,
+                'message': f"Нет обязательных столбцов: {', '.join(missing_columns)}"
+            })
+            import_result['errors_count'] = len(import_result['errors'])
+            import_result['status'] = 'error'
+            import_result['summary'] = 'Импорт не выполнен из-за отсутствия обязательных столбцов'
+            context['import_result'] = import_result
+            return render(request, 'admin_panel/teachers/import.html', context, status=400)
 
         def clean_value(value):
             if pd.isna(value):
@@ -603,61 +848,158 @@ def teacher_import_view(request):
 
         for index, row in df.iterrows():
             try:
-                full_name = clean_value(row.get(full_name_column, ''))
+                if full_name_column:
+                    full_name = clean_value(row.get(full_name_column, ''))
+                    last_name, first_name, middle_name = split_full_name(full_name)
+                else:
+                    last_name = clean_value(row.get(last_name_column, '') if last_name_column else '')
+                    first_name = clean_value(row.get(first_name_column, '') if first_name_column else '')
+                    middle_name = clean_value(row.get(middle_name_column, '') if middle_name_column else '')
+                    full_name = ' '.join(filter(None, [last_name, first_name, middle_name]))
+
                 email = clean_value(row.get(email_column, ''))
+                email = email.lower()
                 phone = clean_value(row.get(phone_column, '')) if phone_column else ''
 
-                if not full_name:
-                    errors.append(f'Строка {index + 2}: ФИО обязательно')
-                    continue
+                row_number = index + 2  # Excel header row offset
+                if full_name_column:
+                    if not full_name:
+                        import_result['errors'].append({
+                            'row': row_number,
+                            'message': 'ФИО обязательно для заполнения'
+                        })
+                        continue
+                else:
+                    if not last_name or not first_name:
+                        import_result['errors'].append({
+                            'row': row_number,
+                            'message': 'Необходимо указать фамилию и имя в отдельных столбцах'
+                        })
+                        continue
 
                 if not email:
-                    errors.append(f'Строка {index + 2}: Email обязателен')
+                    import_result['errors'].append({
+                        'row': row_number,
+                        'message': 'Email обязателен для заполнения'
+                    })
                     continue
 
-                last_name, first_name, middle_name = split_full_name(full_name)
-                if not last_name or not first_name:
-                    errors.append(f'Строка {index + 2}: невозможно распознать фамилию и имя в значении "{full_name}"')
+                if full_name_column and (not last_name or not first_name):
+                    import_result['errors'].append({
+                        'row': row_number,
+                        'message': f'Не удалось распознать фамилию и имя в значении "{full_name}"'
+                    })
                     continue
 
-                teacher, created_flag = Teacher.objects.get_or_create(
-                    email=email,
-                    defaults={
-                        'first_name': first_name or 'Имя',
-                        'last_name': last_name or 'Фамилия',
-                        'middle_name': middle_name,
-                        'phone': phone,
-                        'is_active': True,
-                        'created_by': request.user,
-                    }
-                )
+                teacher = Teacher.objects.filter(email__iexact=email).first()
+                created_flag = False
 
-                if not created_flag:
-                    teacher.first_name = first_name or teacher.first_name
-                    teacher.last_name = last_name or teacher.last_name
-                    teacher.middle_name = middle_name
-                    teacher.phone = phone
+                if not teacher:
+                    teacher = Teacher(
+                        email=email,
+                        first_name=first_name or 'Имя',
+                        last_name=last_name or 'Фамилия',
+                        middle_name=middle_name,
+                        phone=phone,
+                        is_active=True,
+                        created_by=request.user,
+                    )
                     teacher.save()
-                    updated += 1
+                    created_flag = True
                 else:
-                    created += 1
+                    fields_changed = []
+                    if teacher.email != email:
+                        teacher.email = email
+                        fields_changed.append('Email')
+                    if first_name and teacher.first_name != first_name:
+                        teacher.first_name = first_name
+                        fields_changed.append('Имя')
+                    if last_name and teacher.last_name != last_name:
+                        teacher.last_name = last_name
+                        fields_changed.append('Фамилия')
+                    if middle_name != teacher.middle_name:
+                        teacher.middle_name = middle_name
+                        if middle_name:
+                            fields_changed.append('Отчество')
+                    if phone != teacher.phone:
+                        teacher.phone = phone
+                        if phone:
+                            fields_changed.append('Телефон')
+
+                    if fields_changed:
+                        teacher.save()
+                        import_result['updated_count'] += 1
+                        import_result['updated'].append({
+                            'row': row_number,
+                            'name': teacher.get_full_name(),
+                            'email': teacher.email,
+                            'fields': fields_changed,
+                        })
+                    else:
+                        import_result['unchanged_count'] += 1
+                        import_result['unchanged'].append({
+                            'row': row_number,
+                            'name': teacher.get_full_name(),
+                            'email': teacher.email,
+                        })
+                if created_flag:
+                    import_result['created_count'] += 1
+                    import_result['created'].append({
+                        'row': row_number,
+                        'name': teacher.get_full_name(),
+                        'email': teacher.email,
+                    })
 
             except Exception as row_exc:
-                errors.append(f'Строка {index + 2}: {row_exc}')
+                import_result['errors'].append({
+                    'row': index + 2,
+                    'message': str(row_exc)
+                })
 
-        if created:
-            messages.success(request, f'Создано преподавателей: {created}')
-        if updated:
-            messages.info(request, f'Обновлено преподавателей: {updated}')
-        if errors:
-            messages.warning(request, f'Ошибки импорта: {"; ".join(errors[:10])}')
+        import_result['errors_count'] = len(import_result['errors'])
+        processed_count = import_result['created_count'] + import_result['updated_count'] + import_result['unchanged_count']
+        import_result['processed_count'] = processed_count
+        if import_result['rows_total'] == 0:
+            import_result['status'] = 'warning'
+            import_result['summary'] = 'Файл не содержит данных для импорта.'
+        elif import_result['errors_count'] and processed_count == 0:
+            import_result['status'] = 'error'
+            import_result['summary'] = 'Импорт не удалось выполнить. Проверьте ошибки и попробуйте снова.'
+        elif import_result['errors_count']:
+            import_result['status'] = 'warning'
+            import_result['summary'] = 'Импорт выполнен, но часть записей содержит ошибки.'
+        else:
+            import_result['status'] = 'success'
+            import_result['summary'] = 'Импорт успешно выполнен.'
 
-        return redirect('admin_teachers')
+        if import_result['created_count']:
+            messages.success(request, f'Создано преподавателей: {import_result["created_count"]}')
+        if import_result['updated_count']:
+            messages.info(request, f'Обновлено преподавателей: {import_result["updated_count"]}')
+        if import_result['errors_count']:
+            error_message = f'Ошибок при импорте: {import_result["errors_count"]}'
+            if processed_count == 0:
+                messages.error(request, error_message)
+            else:
+                messages.warning(request, error_message)
 
-    context = {
-        'subjects': Subject.objects.filter(is_active=True).order_by('name'),
-        'groups': Group.objects.filter(is_active=True).order_by('code'),
-    }
+        if import_result['created_count'] or import_result['updated_count']:
+            log_activity(
+                request.user,
+                ActivityLog.ACTION_CREATE if import_result['created_count'] else ActivityLog.ACTION_UPDATE,
+                f'Импорт преподавателей: создано {import_result["created_count"]}, обновлено {import_result["updated_count"]}, ошибок {import_result["errors_count"]}',
+                'bi-cloud-upload',
+                {
+                    'created': import_result['created_count'],
+                    'updated': import_result['updated_count'],
+                    'errors': import_result['errors_count'],
+                    'file_name': import_result['file_name'],
+                }
+            )
+
+        context['import_result'] = import_result
+        return render(request, 'admin_panel/teachers/import.html', context)
+
     return render(request, 'admin_panel/teachers/import.html', context)
 
 
@@ -665,9 +1007,11 @@ def teacher_import_view(request):
 def download_teacher_sample(request):
     """Скачать образец Excel-файла для импорта преподавателей"""
     data = {
-        'ФИО': ['Иванов Иван Петрович', 'Петрова Мария Ивановна'],
-        'Email': ['ivanov@example.com', 'petrova@example.com'],
-        'Телефон': ['+7 (900) 123-45-67', '+7 (900) 234-56-78'],
+        'last_name': ['Иванов', 'Петрова'],
+        'first_name': ['Иван', 'Мария'],
+        'middle_name': ['Петрович', 'Ивановна'],
+        'email': ['ivanov@example.com', 'petrova@example.com'],
+        'phone': ['+7 (900) 123-45-67', '+7 (900) 234-56-78'],
     }
 
     df = pd.DataFrame(data)
@@ -878,7 +1222,7 @@ def student_edit_view(request, student_id):
                 print("Сохраняем студента в базу данных...")
                 student.save()
                 print("Студент сохранен успешно!")
-                
+
                 # Обновляем связанного пользователя если есть
                 if hasattr(student, 'user') and student.user:
                     print("Обновляем связанного пользователя...")
@@ -889,6 +1233,14 @@ def student_edit_view(request, student_id):
                     print("Пользователь обновлен успешно!")
                 else:
                     print("Связанный пользователь отсутствует")
+
+                log_activity(
+                    request.user,
+                    ActivityLog.ACTION_UPDATE,
+                    f'Обновлены данные студента "{student.get_full_name()}"',
+                    'bi-person-check',
+                    {'student_id': student.id}
+                )
                 
                 # Возвращаем ответ в зависимости от типа запроса
                 if is_ajax:
@@ -1142,6 +1494,13 @@ def student_create_view(request):
                 print("Группа не назначена")
             
             print("Студент создан и сохранен успешно!")
+            log_activity(
+                request.user,
+                ActivityLog.ACTION_CREATE,
+                f'Добавлен студент \"{student.get_full_name()}\"',
+                'bi-person-plus',
+                {'student_id': student.id}
+            )
             
             if is_ajax:
                 print("Возвращаем JSON ответ...")
@@ -2736,8 +3095,15 @@ def faculty_create_view(request):
             # Создаем объект
             faculty = Faculty.objects.create(**faculty_data)
             print(f"Создан факультет с {len(professions_list)} профессиями! ID: {faculty.id}")
-            
+
             messages.success(request, f'Специальность "{faculty.name}" создана с {len(professions_list)} профессиями')
+            log_activity(
+                request.user,
+                ActivityLog.ACTION_CREATE,
+                f'Создана специальность "{faculty.name}"',
+                'bi-building-add',
+                {'faculty_id': faculty.id, 'professions_count': len(professions_list)}
+            )
             return redirect('admin_faculties')
                 
         except Exception as e:
@@ -2913,6 +3279,13 @@ def faculty_edit_view(request, faculty_id):
                     print(f"Факультет обновлен: {faculty.name}, профессий: {len(professions_list)}")
                     
                     messages.success(request, f'Специальность "{faculty.name}" успешно обновлена')
+                    log_activity(
+                        request.user,
+                        ActivityLog.ACTION_UPDATE,
+                        f'Обновлена специальность "{faculty.name}"',
+                        'bi-building',
+                        {'faculty_id': faculty.id, 'professions_count': len(professions_list)}
+                    )
                     return redirect('admin_faculty_detail', faculty_id=faculty.id)
                         
             except Exception as e:
@@ -2982,6 +3355,13 @@ def faculty_delete_view(request, faculty_id):
             # Удаляем факультет
             faculty.delete()
             print(f"Специальность удалена: {faculty_name}")
+            log_activity(
+                request.user,
+                ActivityLog.ACTION_DELETE,
+                f'Удалена специальность "{faculty_name}"',
+                'bi-trash',
+                {'faculty_id': faculty_id}
+            )
             
             return JsonResponse({
                 'success': True,
@@ -3015,6 +3395,20 @@ def backups_list_view(request):
     print("=== backups_list_view вызван ===")
     
     try:
+        backup_service = BackupService()
+        stale_result = backup_service.expire_stale_backups()
+        restored_count = stale_result.get('completed', 0)
+        failed_count = stale_result.get('failed', 0)
+        if restored_count or failed_count:
+            notice_parts = []
+            if restored_count:
+                notice_parts.append(f'исправлено {restored_count} зависших копий')
+            if failed_count:
+                notice_parts.append(f'{failed_count} помечены с ошибкой')
+            messages.warning(
+                request,
+                'Обновлена история бэкапов: ' + ', '.join(notice_parts) + '.'
+            )
         # Получаем все бэкапы
         backups = Backup.objects.all().order_by('-created_at')
         
@@ -3024,7 +3418,6 @@ def backups_list_view(request):
         page_obj = paginator.get_page(page_number)
         
         # Статистика
-        backup_service = BackupService()
         stats = backup_service.get_backup_statistics()
         
         context = {
@@ -3058,6 +3451,13 @@ def backup_create_view(request):
             
             if backup:
                 messages.success(request, f'Резервная копия "{backup.name}" создана успешно')
+                log_activity(
+                    request.user,
+                    ActivityLog.ACTION_CREATE,
+                    f'Создана резервная копия "{backup.name}"',
+                    'bi-hdd-stack',
+                    {'backup_id': backup.id}
+                )
             else:
                 messages.error(request, 'Ошибка при создании резервной копии')
                 
@@ -3078,6 +3478,12 @@ def backup_delete_view(request, backup_id):
             backup_service = BackupService()
             
             if backup_service.delete_backup(backup_id):
+                log_activity(
+                    request.user,
+                    ActivityLog.ACTION_DELETE,
+                    f'Удалена резервная копия #{backup_id}',
+                    'bi-trash'
+                )
                 return JsonResponse({
                     'success': True,
                     'message': 'Резервная копия удалена'
@@ -3117,9 +3523,75 @@ def backup_download_view(request, backup_id):
     except Exception as e:
         messages.error(request, f'Ошибка при скачивании: {str(e)}')
         return redirect('admin_backups')
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+@require_POST
+def backup_restore_view(request, backup_id):
+    """Восстановление базы данных из резервной копии"""
+    try:
+        session_engine = import_module(settings.SESSION_ENGINE)
+        session_key = request.session.session_key
+        if not session_key:
+            request.session.save()
+            session_key = request.session.session_key
+        session_data = dict(request.session.items())
+        expiry_date = request.session.get_expiry_date()
+        
+        backup_service = BackupService()
+        backup = backup_service.restore_backup(backup_id)
+        
+        log_activity(
+            request.user,
+            ActivityLog.ACTION_UPDATE,
+            f'Восстановлена резервная копия "{backup.name}"',
+            'bi-arrow-counterclockwise',
+            {'backup_id': backup.id}
+        )
+        
+        try:
+            session_store = session_engine.SessionStore()
+            encoded_data = session_store.encode(session_data)
+            Session.objects.update_or_create(
+                session_key=session_key,
+                defaults={
+                    'session_data': encoded_data,
+                    'expire_date': expiry_date
+                }
+            )
+            request.session._session_cache = session_data
+            request.session.modified = False
+        except Exception as exc:
+            print(f'[admin_panel] Не удалось восстановить сессию после отката: {exc}')
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Резервная копия "{backup.name}" успешно восстановлена'
+        })
+    except Backup.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'message': 'Резервная копия не найдена'
+        }, status=404)
+    except FileNotFoundError as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=404)
+    except BackupRestoreError as e:
+        return JsonResponse({
+            'success': False,
+            'message': str(e)
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'message': f'Ошибка при восстановлении: {str(e)}'
+        }, status=500)
 # admin_panel/views.py - добавьте в конец файла
 
-from admin_panel.services.backup_service import BackupService
+from admin_panel.services.backup_service import BackupService, BackupRestoreError
 from admin_panel.models import Backup
 
 @login_required
@@ -3129,6 +3601,13 @@ def backups_list_view(request):
     print("=== backups_list_view вызван ===")
     
     try:
+        backup_service = BackupService()
+        stale_count = backup_service.expire_stale_backups()
+        if stale_count:
+            messages.warning(
+                request,
+                f'Обновлено зависших резервных копий: {stale_count}. Проверьте сообщения об ошибках.'
+            )
         # Получаем все бэкапы
         backups = Backup.objects.all().order_by('-created_at')
         
@@ -3138,7 +3617,6 @@ def backups_list_view(request):
         page_obj = paginator.get_page(page_number)
         
         # Статистика
-        backup_service = BackupService()
         stats = backup_service.get_backup_statistics()
         
         context = {
@@ -3280,6 +3758,8 @@ def subjects_main_view(request):
         assignments_qs.order_by('faculty__name', 'profession', 'subject__name', 'subject__short_name')
     )
 
+    courses = sorted({assignment.course for assignment in assignments_list if assignment.course})
+
     assignments_by_faculty = {}
     for assignment in assignments_list:
         faculty_bucket = assignments_by_faculty.setdefault(assignment.faculty_id, {})
@@ -3330,6 +3810,7 @@ def subjects_main_view(request):
         'total_assignments': total_assignments,
         'total_subjects': total_unique_subjects,
         'total_teachers': total_teachers,
+        'courses': courses,
         'subjects_map_json': json.dumps(specialties_meta, ensure_ascii=False),
         'current_filters_json': json.dumps(current_filters, ensure_ascii=False),
     }
@@ -3346,6 +3827,15 @@ def subject_create_view(request):
     faculties = Faculty.objects.filter(is_active=True).order_by('name')
     subjects = Subject.objects.filter(is_active=True).order_by('name')
     teachers = Teacher.objects.filter(is_active=True).order_by('last_name', 'first_name')
+    subjects_data = [
+        {
+            'id': subject.id,
+            'name': subject.name,
+            'short_name': subject.short_name or '',
+            'description': subject.description or '',
+        }
+        for subject in subjects
+    ]
 
     faculty_professions = {
         faculty.id: sorted(filter(None, faculty.get_professions_list() or []))
@@ -3423,14 +3913,37 @@ def subject_create_view(request):
                     request,
                     f'Предмет "{subject}" добавлен для {faculty.name} — {profession} ({assignment.get_course_display()}).'
                 )
+                log_activity(
+                    request.user,
+                    ActivityLog.ACTION_CREATE,
+                    f'Назначен предмет "{subject}" для {faculty.name} — {profession} ({assignment.get_course_display()})',
+                    'bi-journal-plus',
+                    {
+                        'assignment_id': assignment.id,
+                        'subject_id': subject.id,
+                        'faculty_id': faculty.id,
+                        'course': course_value,
+                    }
+                )
             else:
                 messages.warning(
                     request,
                     'Такой предмет уже был назначен этой специальности и курсу. Преподаватели обновлены.'
                 )
+                log_activity(
+                    request.user,
+                    ActivityLog.ACTION_UPDATE,
+                    f'Обновлены преподаватели предмета "{subject}" для {faculty.name} — {profession} ({assignment.get_course_display()})',
+                    'bi-journal-check',
+                    {
+                        'assignment_id': assignment.id,
+                        'subject_id': subject.id,
+                        'faculty_id': faculty.id,
+                        'course': course_value,
+                    }
+                )
 
-            params = {'course': course_value, 'specialty': faculty.id}
-            return redirect(f"{reverse('admin_subjects')}?{urlencode(params)}")
+            return redirect('admin_subjects')
 
         except ValidationError as exc:
             messages.error(request, '; '.join(exc.messages))
@@ -3443,6 +3956,7 @@ def subject_create_view(request):
         'teachers': teachers,
         'course_choices': SubjectAssignment.COURSE_CHOICES,
         'professions_json': json.dumps(faculty_professions, ensure_ascii=False),
+        'subjects_data_json': json.dumps(subjects_data, ensure_ascii=False),
     }
     return render(request, 'admin_panel/subjects/subject_create.html', context)
 
@@ -3462,31 +3976,40 @@ def subject_detail_view(request, subject_id):
         subject.assignments.select_related('faculty').prefetch_related('teachers').order_by('faculty__name', 'profession', 'course')
     )
 
-    all_teachers = Teacher.objects.filter(is_active=True).order_by('last_name', 'first_name')
     return_course = str(assignments[0].course) if assignments else ''
 
-    if request.method == 'POST':
-        assignment_id = request.POST.get('assignment_id')
-        teacher_ids = [pk for pk in request.POST.getlist('teachers') if pk.isdigit()]
+    teacher_assignments_map = defaultdict(list)
+    for assignment in assignments:
+        for teacher in assignment.teachers.all():
+            teacher_assignments_map[teacher.id].append(assignment)
 
-        assignment = get_object_or_404(SubjectAssignment, id=assignment_id, subject=subject)
+    teacher_map = {teacher.id: teacher for teacher in subject.teachers.all()}
+    for assignment in assignments:
+        for teacher in assignment.teachers.all():
+            teacher_map.setdefault(teacher.id, teacher)
 
-        teachers = Teacher.objects.filter(id__in=teacher_ids)
-        assignment.teachers.set(teachers)
+    sorted_teachers = sorted(
+        teacher_map.values(),
+        key=lambda t: (
+            t.last_name.lower(),
+            t.first_name.lower(),
+            t.middle_name.lower() if t.middle_name else ''
+        )
+    )
 
-        # Обновляем глобальную связь предмета с преподавателями
-        teacher_union = Teacher.objects.filter(
-            subject_assignments__subject=subject
-        ).distinct()
-        subject.teachers.set(teacher_union)
-
-        messages.success(request, 'Список преподавателей обновлен.')
-        return redirect('admin_subject_detail', subject_id=subject.id)
+    teacher_cards = []
+    for teacher in sorted_teachers:
+        assigned = teacher_assignments_map.get(teacher.id, [])
+        teacher_cards.append({
+            'teacher': teacher,
+            'assignments': assigned,
+            'assignment_count': len(assigned),
+        })
 
     context = {
         'subject': subject,
         'assignments': assignments,
-        'teachers': all_teachers,
+        'teacher_cards': teacher_cards,
         'return_course': return_course,
     }
     return render(request, 'admin_panel/subjects/subject_detail.html', context)
@@ -3498,15 +4021,39 @@ def subject_edit_view(request, subject_id):
         messages.error(request, 'Модели не загружены. Выполните миграции.')
         return redirect('admin_dashboard')
 
-    subject = get_object_or_404(Subject, id=subject_id)
-    teachers = Teacher.objects.filter(is_active=True).order_by('last_name', 'first_name')
+    subject = get_object_or_404(
+        Subject.objects.prefetch_related('teachers', 'assignments__faculty', 'assignments__teachers'),
+        id=subject_id
+    )
+    assignments = list(
+        subject.assignments.select_related('faculty').prefetch_related('teachers').order_by('faculty__name', 'profession', 'course')
+    )
+    teachers = list(Teacher.objects.filter(is_active=True).order_by('last_name', 'first_name', 'middle_name'))
+
+    assignment_lookup = {assignment.id: assignment for assignment in assignments}
+    teacher_lookup = {teacher.id: teacher for teacher in teachers}
+    selected_teacher_ids_context = set(subject.teachers.values_list('id', flat=True))
+    override_teacher_assignments = None
 
     if request.method == 'POST':
         name = request.POST.get('name', '').strip()
         short_name = request.POST.get('short_name', '').strip()
         description = request.POST.get('description', '').strip()
         is_active = request.POST.get('is_active') == 'on'
-        teacher_ids = [pk for pk in request.POST.getlist('teachers') if pk.isdigit()]
+        teacher_ids = [int(pk) for pk in request.POST.getlist('selected_teachers') if pk.isdigit()]
+
+        teacher_selected_assignments = {}
+        for teacher_id in teacher_ids:
+            field_name = f'teacher_assignments_{teacher_id}'
+            assignment_ids = [
+                int(pk)
+                for pk in request.POST.getlist(field_name)
+                if pk.isdigit() and int(pk) in assignment_lookup
+            ]
+            teacher_selected_assignments[teacher_id] = assignment_ids
+
+        selected_teacher_ids_context = set(teacher_ids)
+        override_teacher_assignments = teacher_selected_assignments
 
         if not name:
             messages.error(request, 'Название предмета обязательно.')
@@ -3519,18 +4066,71 @@ def subject_edit_view(request, subject_id):
                     subject.is_active = is_active
                     subject.save()
 
-                    selected_teachers = Teacher.objects.filter(id__in=teacher_ids)
-                    subject.teachers.set(selected_teachers)
+                    subject.teachers.set(Teacher.objects.filter(id__in=teacher_ids))
+
+                    assignment_teacher_map = {assignment_id: set() for assignment_id in assignment_lookup}
+                    for teacher_id, assignment_ids in teacher_selected_assignments.items():
+                        teacher_obj = teacher_lookup.get(teacher_id)
+                        if not teacher_obj:
+                            continue
+                        for assignment_id in assignment_ids:
+                            assignment_teacher_map.setdefault(assignment_id, set()).add(teacher_obj)
+
+                    for assignment_id, teachers_set in assignment_teacher_map.items():
+                        assignment_lookup[assignment_id].teachers.set(teachers_set)
 
                 messages.success(request, 'Предмет обновлён.')
                 return redirect('admin_subject_detail', subject_id=subject.id)
             except Exception as exc:
                 messages.error(request, f'Ошибка при сохранении предмета: {exc}')
 
+    if override_teacher_assignments is None:
+        teacher_assignments_map = defaultdict(list)
+        for assignment in assignments:
+            for teacher in assignment.teachers.all():
+                teacher_assignments_map[teacher.id].append(assignment)
+    else:
+        teacher_assignments_map = {
+            teacher_id: [assignment_lookup[assignment_id] for assignment_id in assignment_ids]
+            for teacher_id, assignment_ids in override_teacher_assignments.items()
+        }
+
+    teacher_cards = []
+    for teacher in teachers:
+        assigned = teacher_assignments_map.get(teacher.id, [])
+        teacher_cards.append({
+            'teacher': teacher,
+            'assignments': assigned,
+            'assignment_ids': [assignment.id for assignment in assigned],
+            'assignment_count': len(assigned),
+            'is_selected': teacher.id in selected_teacher_ids_context or bool(assigned),
+        })
+
+    selected_count = sum(1 for card in teacher_cards if card['is_selected'])
+    active_teacher_id = next((card['teacher'].id for card in teacher_cards if card['is_selected']), None)
+    if active_teacher_id is None and teacher_cards:
+        active_teacher_id = teacher_cards[0]['teacher'].id
+
+    assignment_options = [
+        {
+            'id': assignment.id,
+            'label': f"{assignment.get_course_display()} / {assignment.profession} / {assignment.faculty.name} ({assignment.faculty.code})",
+            'course': assignment.get_course_display(),
+            'profession': assignment.profession,
+            'faculty': assignment.faculty.name,
+            'faculty_code': assignment.faculty.code,
+        }
+        for assignment in assignments
+    ]
+
     context = {
         'subject': subject,
-        'teachers': teachers,
-        'selected_teachers': set(subject.teachers.values_list('id', flat=True)),
+        'assignments': assignments,
+        'teacher_cards': teacher_cards,
+        'assignment_options': assignment_options,
+        'selected_count': selected_count,
+        'has_assignments': bool(assignments),
+        'active_teacher_id': active_teacher_id,
     }
     return render(request, 'admin_panel/subjects/subject_edit.html', context)
 
@@ -3571,6 +4171,20 @@ def groups_main_view(request):
     groups_data = []
     total_groups = 0
     total_students = 0
+
+    all_groups_index = []
+    all_groups_queryset = Group.objects.filter(is_active=True).select_related('faculty').order_by('code')
+    for group in all_groups_queryset:
+        all_groups_index.append({
+            'id': group.id,
+            'code': group.code,
+            'name': group.name,
+            'profession': group.profession or '',
+            'course': group.current_course,
+            'faculty_id': group.faculty_id,
+            'faculty_name': group.faculty.name if group.faculty else '',
+            'status': group.status,
+        })
 
     for faculty in faculties:
         if specialty_filter and str(faculty.id) != specialty_filter:
@@ -3647,6 +4261,7 @@ def groups_main_view(request):
         'profession_filter': profession_filter,
         'course_filter': course_filter,
         'specialties_data_json': json.dumps(specialties_data, ensure_ascii=False),
+        'groups_index_json': json.dumps(all_groups_index, ensure_ascii=False),
     }
     return render(request, 'admin_panel/groups/groups_main.html', context)
 
@@ -3683,6 +4298,13 @@ def group_create_view(request):
                         student.save()
 
             messages.success(request, 'Группа успешно создана')
+            log_activity(
+                request.user,
+                ActivityLog.ACTION_CREATE,
+                f'Создана группа "{group.code}"',
+                'bi-people',
+                {'group_id': group.id}
+            )
             
             query = urlencode({
                 'search': group.code,
@@ -3724,6 +4346,13 @@ def group_edit_view(request, group_id):
                 group.graduation_date = datetime.strptime(graduation_date, '%Y-%m-%d').date()
             group.save()
             messages.success(request, 'Группа успешно обновлена')
+            log_activity(
+                request.user,
+                ActivityLog.ACTION_UPDATE,
+                f'Обновлена группа "{group.code}"',
+                'bi-people',
+                {'group_id': group.id}
+            )
             return redirect('group_detail', group_id=group.id)
         except Exception as e:
             messages.error(request, f'Ошибка при сохранении: {str(e)}')
@@ -3750,6 +4379,126 @@ def group_detail_view(request, group_id):
         'students': students,
     }
     return render(request, 'admin_panel/groups/group_detail.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def schedule_main_view(request):
+    """Основная страница расписания с конструктором занятий"""
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели не загружены. Выполните миграции перед работой с расписанием.')
+        return redirect('admin_dashboard')
+
+    try:
+        faculties = list(Faculty.objects.filter(is_active=True).order_by('name'))
+        groups = list(
+            Group.objects.filter(is_active=True)
+            .select_related('faculty')
+            .order_by('code')
+        )
+        teachers = list(
+            Teacher.objects.filter(is_active=True)
+            .prefetch_related('subjects', 'groups')
+            .order_by('last_name', 'first_name')
+        )
+        subjects = list(
+            Subject.objects.filter(is_active=True)
+            .prefetch_related('teachers')
+            .order_by('name')
+        )
+    except Exception as exc:
+        messages.error(request, f'Не удалось загрузить данные для расписания: {exc}')
+        faculties = []
+        groups = []
+        teachers = []
+        subjects = []
+
+    now = timezone.localdate()
+    week_start = now - timedelta(days=now.weekday())
+    week_end = week_start + timedelta(days=5)
+
+    weekday_order = [
+        {'key': 'monday', 'label': 'Понедельник', 'short': 'Пн'},
+        {'key': 'tuesday', 'label': 'Вторник', 'short': 'Вт'},
+        {'key': 'wednesday', 'label': 'Среда', 'short': 'Ср'},
+        {'key': 'thursday', 'label': 'Четверг', 'short': 'Чт'},
+        {'key': 'friday', 'label': 'Пятница', 'short': 'Пт'},
+        {'key': 'saturday', 'label': 'Суббота', 'short': 'Сб'},
+    ]
+
+    time_slots = [
+        {'id': 'slot1', 'order': 1, 'start': '08:30', 'end': '10:00'},
+        {'id': 'slot2', 'order': 2, 'start': '10:10', 'end': '11:40'},
+        {'id': 'slot3', 'order': 3, 'start': '11:50', 'end': '13:20'},
+        {'id': 'slot4', 'order': 4, 'start': '13:40', 'end': '15:10'},
+        {'id': 'slot5', 'order': 5, 'start': '15:20', 'end': '16:50'},
+        {'id': 'slot6', 'order': 6, 'start': '17:00', 'end': '18:30'},
+    ]
+
+    groups_payload = [
+        {
+            'id': group.id,
+            'code': group.code,
+            'name': group.name,
+            'display': f"{group.code} — {group.profession or ''}".strip(' —'),
+            'faculty_id': group.faculty_id,
+            'faculty': group.faculty.name if group.faculty else '',
+            'profession': group.profession or '',
+            'course': group.current_course,
+        }
+        for group in groups
+    ]
+
+    teachers_payload = []
+    for teacher in teachers:
+        teachers_payload.append({
+            'id': teacher.id,
+            'name': teacher.get_full_name(),
+            'short_name': teacher.get_short_name(),
+            'subjects': [subject.id for subject in teacher.subjects.all()],
+            'groups': list(teacher.groups.values_list('id', flat=True)),
+        })
+
+    subjects_payload = [
+        {
+            'id': subject.id,
+            'name': subject.name,
+            'short_name': subject.short_name or '',
+            'is_active': subject.is_active,
+        }
+        for subject in subjects
+    ]
+
+    context = {
+        'faculties': faculties,
+        'groups': groups,
+        'teachers': teachers,
+        'subjects': subjects,
+        'weekday_order': weekday_order,
+        'time_slots': time_slots,
+        'week_start': week_start,
+        'week_end': week_end,
+        'current_date': now,
+        'week_range_label': f"{week_start.strftime('%d.%m')} – {week_end.strftime('%d.%m')}",
+        'groups_json': json.dumps(groups_payload, ensure_ascii=False),
+        'teachers_json': json.dumps(teachers_payload, ensure_ascii=False),
+        'subjects_json': json.dumps(subjects_payload, ensure_ascii=False),
+        'weekday_order_json': json.dumps(weekday_order, ensure_ascii=False),
+        'time_slots_json': json.dumps(time_slots, ensure_ascii=False),
+    }
+
+    try:
+        log_activity(
+            request.user,
+            ActivityLog.ACTION_VIEW,
+            'Просмотр раздела «Расписание»',
+            'bi-calendar-week'
+        )
+    except Exception:
+        pass
+
+    return render(request, 'admin_panel/schedule/schedule_main.html', context)
+
 
 # API-операции для управления студентами в группе
 @login_required

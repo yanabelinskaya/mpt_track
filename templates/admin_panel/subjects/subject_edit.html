@@ -7,77 +7,882 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/forms.css' %}">
-<link rel="stylesheet" href="{% static 'css/group_edit.css' %}">
+<link rel="stylesheet" href="{% static 'css/groups.css' %}">
+<style>
+.subject-edit-page {
+    max-width: 1140px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.page-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.page-actions .action-group {
+    display: inline-flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.info-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+    color: var(--bs-secondary);
+    font-weight: 500;
+}
+
+.subject-edit-card {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 18px;
+    padding: 28px;
+    box-shadow: var(--card-shadow);
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+}
+
+.section-header {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.section-header .section-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.section-header .section-title i {
+    color: var(--bs-primary);
+    font-size: 1.3rem;
+}
+
+.section-header .section-subtitle {
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+}
+
+.subject-fields {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+}
+
+.form-field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.form-field label {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.form-field .form-control,
+.form-field textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 10px;
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+    color: var(--bs-body-color);
+    transition: all 0.2s ease;
+}
+
+.form-field textarea {
+    min-height: 120px;
+    resize: vertical;
+}
+
+.form-field .form-control:focus,
+.form-field textarea:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.18);
+    outline: none;
+}
+
+.status-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid var(--sidebar-border);
+    background: var(--surface-hover, rgba(99, 102, 241, 0.06));
+}
+
+.status-toggle input[type="checkbox"] {
+    width: 48px;
+    height: 24px;
+    appearance: none;
+    background: var(--sidebar-border);
+    border-radius: 999px;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.status-toggle input[type="checkbox"]::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s ease;
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
+}
+
+.status-toggle input[type="checkbox"]:checked {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+}
+
+.status-toggle input[type="checkbox"]:checked::after {
+    transform: translateX(24px);
+}
+
+.assignments-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 16px;
+}
+
+.assignment-card {
+    border: 1px solid var(--sidebar-border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    background: var(--surface-hover, rgba(99, 102, 241, 0.05));
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.assignment-card .assignment-title {
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.assignment-card .assignment-meta {
+    color: var(--bs-secondary);
+    font-size: 0.82rem;
+}
+
+.teachers-section {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.teachers-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.teachers-toolbar .toolbar-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.toolbar-button {
+    border: none;
+    background: rgba(99, 102, 241, 0.12);
+    color: var(--bs-primary);
+    border-radius: 999px;
+    padding: 9px 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.toolbar-button:hover {
+    background: rgba(99, 102, 241, 0.18);
+}
+
+.teachers-toolbar .selected-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 42px;
+    height: 42px;
+    padding: 0 14px;
+    border-radius: 999px;
+    background: var(--bs-primary);
+    color: #fff;
+    font-weight: 600;
+}
+
+.teacher-search {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    border: 1px solid var(--sidebar-border);
+    background: var(--sidebar-bg);
+    color: var(--bs-body-color);
+}
+
+.teachers-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 360px) 1fr;
+    gap: 22px;
+}
+
+.teacher-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 520px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.teacher-tile {
+    border: 1px solid var(--sidebar-border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    background: var(--sidebar-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.teacher-tile:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 12px 24px rgba(99, 102, 241, 0.16);
+}
+
+.teacher-tile.is-active {
+    border-color: var(--bs-primary);
+    box-shadow: 0 14px 28px rgba(99, 102, 241, 0.2);
+}
+
+.teacher-tile.is-selected {
+    background: rgba(99, 102, 241, 0.12);
+}
+
+.teacher-tile-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.teacher-name {
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.teacher-meta {
+    color: var(--bs-secondary);
+    font-size: 0.82rem;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.teacher-count-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.16);
+    color: var(--bs-primary);
+    font-weight: 600;
+    font-size: 0.78rem;
+}
+
+.teacher-detail-panel {
+    border: 1px solid var(--sidebar-border);
+    border-radius: 16px;
+    padding: 24px;
+    background: var(--sidebar-bg);
+    box-shadow: var(--card-shadow);
+    min-height: 320px;
+}
+
+.teacher-detail {
+    display: none;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.teacher-detail.is-active {
+    display: flex;
+}
+
+.detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.detail-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.detail-name {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.detail-meta {
+    color: var(--bs-secondary);
+    font-size: 0.85rem;
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.detail-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--sidebar-border);
+    background: var(--surface-hover, rgba(99, 102, 241, 0.06));
+}
+
+.detail-toggle input {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--bs-primary);
+}
+
+.assignment-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.assignment-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 12px 16px;
+    background: var(--sidebar-bg);
+    transition: all 0.2s ease;
+}
+
+.assignment-option.active {
+    border-color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.12);
+    box-shadow: 0 10px 24px rgba(99, 102, 241, 0.18);
+}
+
+.assignment-option.disabled {
+    opacity: 0.55;
+}
+
+.assignment-option input {
+    margin-top: 4px;
+    accent-color: var(--bs-primary);
+}
+
+.assignment-option-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.assignment-option-title {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--bs-body-color);
+}
+
+.assignment-option-meta {
+    font-size: 0.8rem;
+    color: var(--bs-secondary);
+}
+
+.detail-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.detail-summary .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 999px;
+    background: rgba(59, 130, 246, 0.16);
+    color: #1d4ed8;
+    font-weight: 600;
+    font-size: 0.78rem;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.form-actions .primary-actions,
+.form-actions .secondary-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.empty-note {
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 1px dashed var(--sidebar-border);
+    background: rgba(148, 163, 184, 0.1);
+    color: var(--bs-secondary);
+    font-size: 0.9rem;
+}
+
+@media (max-width: 992px) {
+    .teachers-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .teacher-list {
+        order: 2;
+    }
+
+    .teacher-detail-panel {
+        order: 1;
+    }
+}
+</style>
 {% endblock %}
 
 {% block content %}
-<a href="{% url 'admin_subject_detail' subject.id %}" class="btn btn-secondary mb-3">
-    <i class="bi bi-arrow-left"></i>
-    Назад к предмету
-</a>
+<div class="subject-edit-page">
+    <div class="page-actions">
+        <div class="action-group">
+            <a href="{% url 'admin_subject_detail' subject.id %}" class="action-btn">
+                <i class="bi bi-arrow-left"></i>
+                Назад к предмету
+            </a>
+        </div>
+        <div class="action-group">
+            <span class="info-pill">
+                <i class="bi bi-clock-history"></i>
+                Последнее обновление: {{ subject.updated_at|date:"d.m.Y H:i" }}
+            </span>
+        </div>
+    </div>
 
-<div class="edit-container">
-    <form method="post" class="edit-card">
+    <form method="post" class="subject-edit-card" id="subjectEditForm">
         {% csrf_token %}
-        <div class="section-title">
-            <i class="bi bi-journal-text"></i>
-            Основные сведения
-        </div>
 
-        <div class="info-grid">
-            <div class="info-item">
-                <label class="form-label">Название <span class="text-danger">*</span></label>
-                <input type="text" name="name" value="{{ subject.name }}" class="form-control" required>
+        <section class="section-header">
+            <h2 class="section-title">
+                <i class="bi bi-journal-text"></i>
+                Основные сведения
+            </h2>
+            <p class="section-subtitle">Обновите название, краткое обозначение и статус предмета.</p>
+        </section>
+
+        <div class="subject-fields">
+            <div class="form-field">
+                <label for="id_name">
+                    Название предмета
+                    <span style="color: var(--bs-danger);">*</span>
+                </label>
+                <input type="text"
+                       id="id_name"
+                       name="name"
+                       class="form-control"
+                       value="{{ subject.name }}"
+                       required>
             </div>
 
-            <div class="info-item">
-                <label class="form-label">Короткое название</label>
-                <input type="text" name="short_name" value="{{ subject.short_name }}" class="form-control">
+            <div class="form-field">
+                <label for="id_short_name">Короткое название</label>
+                <input type="text"
+                       id="id_short_name"
+                       name="short_name"
+                       class="form-control"
+                       value="{{ subject.short_name }}">
             </div>
 
-            <div class="info-item">
-                <label class="form-label">Статус</label>
-                <div class="form-check form-switch mt-2">
-                    <input class="form-check-input" type="checkbox" name="is_active" id="subjectActive" {% if subject.is_active %}checked{% endif %}>
-                    <label class="form-check-label" for="subjectActive">Активный предмет</label>
-                </div>
+            <div class="form-field">
+                <label>Статус</label>
+                <label class="status-toggle">
+                    <input type="checkbox" id="subjectActive" name="is_active" {% if subject.is_active %}checked{% endif %}>
+                    <span>{% if subject.is_active %}Активный предмет{% else %}Скрыт из активных{% endif %}</span>
+                </label>
+            </div>
+
+            <div class="form-field" style="grid-column: 1 / -1;">
+                <label for="id_description">Описание</label>
+                <textarea id="id_description"
+                          name="description"
+                          placeholder="Кратко опишите особенности предмета." class="form-control">{{ subject.description }}</textarea>
             </div>
         </div>
 
-        <div class="mt-3">
-            <label class="form-label">Описание</label>
-            <textarea name="description" class="form-control" rows="4" placeholder="Краткое описание">{{ subject.description }}</textarea>
-        </div>
+        {% if assignments %}
+            <section class="section-header">
+                <h2 class="section-title">
+                    <i class="bi bi-diagram-3"></i>
+                    Назначения предмета
+                </h2>
+                <p class="section-subtitle">Предмет ведётся по следующим курсам и специальностям.</p>
+            </section>
 
-        <hr class="my-4">
-
-        <div class="section-title">
-            <i class="bi bi-person-workspace"></i>
-            Преподаватели предмета
-        </div>
-
-        <div class="info-item">
-            <label class="form-label">Преподаватели</label>
-            <select name="teachers" class="form-select" multiple size="8">
-                {% for teacher in teachers %}
-                    <option value="{{ teacher.id }}" {% if teacher.id in selected_teachers %}selected{% endif %}>
-                        {{ teacher.get_full_name }}
-                    </option>
+            <div class="assignments-grid">
+                {% for assignment in assignments %}
+                    <div class="assignment-card">
+                        <div class="assignment-title">{{ assignment.get_course_display }} • {{ assignment.profession }}</div>
+                        <div class="assignment-meta">
+                            <i class="bi bi-building"></i>
+                            {{ assignment.faculty.name }} ({{ assignment.faculty.code }})
+                        </div>
+                        <div class="assignment-meta">
+                            <i class="bi bi-person-workspace"></i>
+                            {{ assignment.teachers.count }} преподавател{{ assignment.teachers.count|pluralize:"ь,я,ей" }}
+                        </div>
+                    </div>
                 {% endfor %}
-            </select>
-            <div class="form-text">Выберите преподавателей, которые ведут этот предмет в целом.</div>
-        </div>
+            </div>
+        {% endif %}
 
-        <div class="d-flex justify-content-end gap-3 mt-4">
-            <a href="{% url 'admin_subject_detail' subject.id %}" class="btn btn-outline-secondary">
-                <i class="bi bi-x"></i>
+        <section class="teachers-section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="bi bi-people"></i>
+                    Преподаватели предмета
+                </h2>
+                <p class="section-subtitle">Отметьте преподавателей и укажите, на каких назначениях они работают.</p>
+            </div>
+
+            <div class="teachers-toolbar">
+                <div class="toolbar-actions">
+                    <button type="button" class="toolbar-button" onclick="selectAllTeacherCards()">Выбрать всех</button>
+                    <button type="button" class="toolbar-button" onclick="unselectAllTeacherCards()">Снять выбор</button>
+                </div>
+                <span class="selected-count" id="selectedTeachersCount">{{ selected_count }}</span>
+            </div>
+
+            <input type="text"
+                   id="teacherSearchInput"
+                   class="teacher-search"
+                   placeholder="Поиск по ФИО преподавателя">
+
+            {% if teacher_cards %}
+                <div class="teachers-layout">
+                    <div class="teacher-list" id="teacherList">
+                        {% for card in teacher_cards %}
+                            {% with teacher=card.teacher %}
+                            <div class="teacher-tile{% if teacher.id == active_teacher_id %} is-active{% endif %}{% if card.is_selected %} is-selected{% endif %}"
+                                 data-teacher-id="{{ teacher.id }}"
+                                 data-search="{{ teacher.get_full_name|lower }}">
+                                <div class="teacher-tile-top">
+                                    <div>
+                                        <div class="teacher-name">{{ teacher.get_full_name }}</div>
+                                        <div class="teacher-meta">
+                                            {% if teacher.email %}<i class="bi bi-envelope"></i> {{ teacher.email }}{% endif %}
+                                            {% if teacher.phone %}
+                                                {% if teacher.email %} • {% endif %}
+                                                <i class="bi bi-telephone"></i> {{ teacher.phone }}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <span class="teacher-count-chip">
+                                        <i class="bi bi-diagram-3"></i>
+                                        <span class="teacher-count" data-teacher-id="{{ teacher.id }}">{{ card.assignment_count }}</span>
+                                    </span>
+                                </div>
+                                {% if card.assignments %}
+                                    <div class="teacher-meta">
+                                        {% for assignment in card.assignments %}
+                                            {{ assignment.get_course_display }} • {{ assignment.profession }}{% if not forloop.last %}; {% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+
+                    <div class="teacher-detail-panel">
+                        {% for card in teacher_cards %}
+                            {% with teacher=card.teacher %}
+                            <div class="teacher-detail{% if teacher.id == active_teacher_id %} is-active{% endif %}"
+                                 data-teacher-id="{{ teacher.id }}">
+                                <div class="detail-header">
+                                    <div class="detail-info">
+                                        <div class="detail-name">{{ teacher.get_full_name }}</div>
+                                        <div class="detail-meta">
+                                            {% if teacher.email %}<i class="bi bi-envelope"></i> {{ teacher.email }}{% endif %}
+                                            {% if teacher.phone %}
+                                                {% if teacher.email %} • {% endif %}
+                                                <i class="bi bi-telephone"></i> {{ teacher.phone }}
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <label class="detail-toggle">
+                                        <input type="checkbox"
+                                               class="teacher-select-input"
+                                               name="selected_teachers"
+                                               value="{{ teacher.id }}"
+                                               data-teacher-id="{{ teacher.id }}"
+                                               {% if card.is_selected %}checked{% endif %}>
+                                        <span>В команде предмета</span>
+                                    </label>
+                                </div>
+
+                                {% if assignment_options %}
+                                    <div class="assignment-options">
+                                        {% for option in assignment_options %}
+                                            <label class="assignment-option{% if option.id in card.assignment_ids %} active{% endif %}{% if not card.is_selected %} disabled{% endif %}">
+                                                <input type="checkbox"
+                                                       class="assignment-checkbox"
+                                                       name="teacher_assignments_{{ teacher.id }}"
+                                                       value="{{ option.id }}"
+                                                       data-teacher-id="{{ teacher.id }}"
+                                                       {% if option.id in card.assignment_ids %}checked{% endif %}
+                                                       {% if not card.is_selected %}disabled{% endif %}>
+                                                <div class="assignment-option-content">
+                                                    <span class="assignment-option-title">{{ option.label }}</span>
+                                                    <span class="assignment-option-meta">
+                                                        {{ option.profession }} • {{ option.faculty }} ({{ option.faculty_code }})
+                                                    </span>
+                                                </div>
+                                            </label>
+                                        {% endfor %}
+                                    </div>
+                                {% else %}
+                                    <div class="empty-note">
+                                        Назначения предмета пока не созданы. Преподаватели будут сохранены без привязки.
+                                    </div>
+                                {% endif %}
+
+                                {% if card.assignments %}
+                                    <div class="detail-summary">
+                                        {% for assignment in card.assignments %}
+                                            <span class="badge bg-primary-subtle text-primary">
+                                                <i class="bi bi-check2-circle"></i>
+                                                {{ assignment.get_course_display }} — {{ assignment.profession }}
+                                            </span>
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% endwith %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="empty-note">
+                    Активных преподавателей пока нет. Добавьте их в разделе «Преподаватели», чтобы закрепить за предметом.
+                </div>
+            {% endif %}
+        </section>
+
+        <div class="form-actions">
+            <div class="secondary-actions">
+            <a href="{% url 'admin_subject_detail' subject.id %}" class="action-btn">
+                <i class="bi bi-x-circle"></i>
                 Отмена
             </a>
-            <button type="submit" class="btn btn-primary">
+        </div>
+        <div class="primary-actions">
+            <button type="submit" class="action-btn add-group-btn">
                 <i class="bi bi-save"></i>
                 Сохранить изменения
             </button>
         </div>
+        </div>
     </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const tiles = Array.from(document.querySelectorAll('.teacher-tile'));
+    const panels = new Map();
+    document.querySelectorAll('.teacher-detail').forEach(panel => {
+        panels.set(panel.dataset.teacherId, panel);
+    });
+    const selectInputs = new Map();
+    document.querySelectorAll('.teacher-select-input').forEach(input => {
+        selectInputs.set(input.dataset.teacherId, input);
+    });
+    const countElement = document.getElementById('selectedTeachersCount');
+    const searchInput = document.getElementById('teacherSearchInput');
+
+    let activeId = document.querySelector('.teacher-tile.is-active')?.dataset.teacherId || (tiles[0] ? tiles[0].dataset.teacherId : null);
+
+    function setActive(id) {
+        if (!id || !panels.has(id)) {
+            return;
+        }
+        tiles.forEach(tile => tile.classList.toggle('is-active', tile.dataset.teacherId === id));
+        panels.forEach((panel, panelId) => {
+            panel.classList.toggle('is-active', panelId === id);
+        });
+        activeId = id;
+    }
+
+    function updateTileState(id) {
+        const tile = document.querySelector(`.teacher-tile[data-teacher-id="${id}"]`);
+        const input = selectInputs.get(id);
+        if (tile && input) {
+            tile.classList.toggle('is-selected', input.checked);
+        }
+    }
+
+    function updateAssignmentState(id) {
+        const input = selectInputs.get(id);
+        const checked = input ? input.checked : false;
+        document.querySelectorAll(`.assignment-checkbox[data-teacher-id="${id}"]`).forEach(box => {
+            box.disabled = !checked;
+            const option = box.closest('.assignment-option');
+            if (!option) {
+                return;
+            }
+            option.classList.toggle('disabled', !checked);
+            option.classList.toggle('active', checked && box.checked);
+        });
+        updateTileAssignmentCount(id);
+    }
+
+    function updateSelectedCount() {
+        const total = Array.from(selectInputs.values()).filter(input => input.checked).length;
+        if (countElement) {
+            countElement.textContent = total;
+        }
+    }
+
+    function updateTileAssignmentCount(id) {
+        const tileCount = document.querySelector(`.teacher-count[data-teacher-id="${id}"]`);
+        if (!tileCount) {
+            return;
+        }
+        const count = document.querySelectorAll(`.assignment-checkbox[data-teacher-id="${id}"]:checked`).length;
+        tileCount.textContent = count;
+    }
+
+    tiles.forEach(tile => {
+        tile.addEventListener('click', () => {
+            setActive(tile.dataset.teacherId);
+        });
+    });
+
+    selectInputs.forEach((input, id) => {
+        input.addEventListener('change', () => {
+            updateTileState(id);
+            updateAssignmentState(id);
+            updateSelectedCount();
+        });
+        updateTileState(id);
+        updateAssignmentState(id);
+    });
+
+    document.querySelectorAll('.assignment-checkbox').forEach(box => {
+        const teacherId = box.dataset.teacherId;
+        box.addEventListener('change', () => {
+            const option = box.closest('.assignment-option');
+            if (option) {
+                option.classList.toggle('active', box.checked);
+            }
+            updateTileAssignmentCount(teacherId);
+        });
+        const option = box.closest('.assignment-option');
+        if (option) {
+            option.classList.toggle('active', box.checked);
+        }
+    });
+
+    if (searchInput) {
+        searchInput.addEventListener('input', () => {
+            const term = searchInput.value.trim().toLowerCase();
+            let firstVisible = null;
+            let activeVisible = false;
+            tiles.forEach(tile => {
+                const haystack = tile.dataset.search || '';
+                const visible = !term || haystack.includes(term);
+                tile.style.display = visible ? '' : 'none';
+                if (visible && !firstVisible) {
+                    firstVisible = tile.dataset.teacherId;
+                }
+                if (visible && tile.dataset.teacherId === activeId) {
+                    activeVisible = true;
+                }
+            });
+            if (!activeVisible && firstVisible) {
+                setActive(firstVisible);
+            }
+        });
+    }
+
+    window.selectAllTeacherCards = function selectAllTeacherCards() {
+        selectInputs.forEach((input, id) => {
+            if (!input.checked) {
+                input.checked = true;
+            }
+            updateTileState(id);
+            updateAssignmentState(id);
+        });
+        updateSelectedCount();
+    };
+
+    window.unselectAllTeacherCards = function unselectAllTeacherCards() {
+        selectInputs.forEach((input, id) => {
+            if (input.checked) {
+                input.checked = false;
+            }
+            updateTileState(id);
+            updateAssignmentState(id);
+        });
+        updateSelectedCount();
+    };
+
+    if (activeId) {
+        setActive(activeId);
+    }
+    updateSelectedCount();
+})();
+</script>
 {% endblock %}

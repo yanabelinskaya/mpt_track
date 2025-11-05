@@ -257,12 +257,15 @@ window.bulkCreateAccessTeachers = async function bulkCreateAccessTeachers() {
 window.exportAllToExcel = function exportAllToExcel() {
     if (!window.TEACHER_EXPORT_URL) return;
     const params = new URLSearchParams(window.location.search);
-    window.location.href = `${window.TEACHER_EXPORT_URL}?${params.toString()}`;
+    params.delete('page');
+    const query = params.toString();
+    window.location.href = query ? `${window.TEACHER_EXPORT_URL}?${query}` : window.TEACHER_EXPORT_URL;
 };
 
 window.exportSelectedToExcel = function exportSelectedToExcel() {
     if (!window.TEACHER_EXPORT_URL || !requireSelection()) return;
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(window.location.search);
+    params.delete('page');
     Array.from(selectedTeacherIds).forEach(id => params.append('ids', id));
     window.location.href = `${window.TEACHER_EXPORT_URL}?${params.toString()}`;
 };
@@ -320,12 +323,44 @@ window.createTeacherAccess = async function createTeacherAccess(id) {
     }
 };
 
+
 window.addEventListener('DOMContentLoaded', () => {
     attachSelectionHandlers();
     updateSelectionState();
     initDropdown('addTeacherTrigger', 'addTeacherMenu');
     initDropdown('exportTrigger', 'exportMenu', updateSelectionState);
+    initDropdown('filterTrigger', 'filterMenu');
     document.addEventListener('click', closeDropdownMenus);
+
+    const searchForm = document.querySelector('.search-form');
+    const searchField = document.querySelector('.search-field');
+    let searchDebounce;
+
+    if (searchField && searchForm) {
+        searchField.addEventListener('input', () => {
+            clearTimeout(searchDebounce);
+            searchDebounce = setTimeout(() => {
+                searchForm.requestSubmit();
+            }, 300);
+        });
+    }
+
+    const subjectSelect = document.querySelector('#teacherSubjectFilter select');
+    if (subjectSelect && searchForm) {
+        subjectSelect.addEventListener('change', () => {
+            closeDropdownMenus();
+            searchForm.requestSubmit();
+        });
+    }
+
+    document.querySelectorAll('.status-option input[type="radio"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            if (searchForm) {
+                closeDropdownMenus();
+                searchForm.requestSubmit();
+            }
+        });
+    });
 });
 
 console.log('✅ teachers.js инициализирован');
