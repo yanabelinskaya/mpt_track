@@ -34,7 +34,17 @@ from django.contrib.sessions.models import Session
 
 # Безопасная проверка импорта моделей
 try:
-    from .models import Student, Group, Faculty, Teacher, Subject, SubjectAssignment, ActivityLog
+    from .models import (
+        Student,
+        Group,
+        Faculty,
+        Teacher,
+        Subject,
+        SubjectAssignment,
+        ActivityLog,
+        ScheduleWeek,
+        ScheduleTeacherSlot,
+    )
     MODELS_AVAILABLE = True
 except:
     MODELS_AVAILABLE = False
@@ -4383,11 +4393,316 @@ def group_detail_view(request, group_id):
 
 @login_required
 @user_passes_test(is_admin_user, login_url='/accounts/login/')
-def schedule_main_view(request):
-    """Основная страница расписания с конструктором занятий"""
+def schedule_overview_view(request):
+    """Каталог расписаний по группам с фильтрами и статусами"""
     if not MODELS_AVAILABLE:
         messages.error(request, 'Модели не загружены. Выполните миграции перед работой с расписанием.')
         return redirect('admin_dashboard')
+
+    search_query = request.GET.get('search', '').strip()
+    faculty_filter = request.GET.get('faculty', '').strip()
+    profession_filter = request.GET.get('profession', '').strip()
+    profession_filter_lower = profession_filter.lower()
+    status_filter = request.GET.get('status', '').strip()
+    if status_filter and status_filter not in {'ready', 'needs_schedule'}:
+        status_filter = ''
+    course_filter = request.GET.get('course', '').strip()
+
+    try:
+        faculties = list(Faculty.objects.filter(is_active=True).order_by('name'))
+        groups_qs = (
+            Group.objects.filter(is_active=True)
+            .select_related('faculty')
+            .annotate(
+            students_total=Count('students', distinct=True)
+        )
+            .order_by('faculty__name', 'profession', 'code')
+        )
+
+        if faculty_filter:
+            groups_qs = groups_qs.filter(faculty_id=faculty_filter)
+
+        groups = list(groups_qs)
+    except Exception as exc:
+        messages.error(request, f'Не удалось загрузить данные: {exc}')
+        faculties = []
+        groups = []
+
+    faculty_ids = {group.faculty_id for group in groups}
+    assignment_map = defaultdict(list)
+    faculty_professions_map = defaultdict(set)
+
+    for group in groups:
+        if group.profession:
+            faculty_professions_map[group.faculty_id].add(group.profession.strip())
+
+    if faculty_ids:
+        assignments_qs = SubjectAssignment.objects.filter(
+            is_active=True,
+            faculty_id__in=faculty_ids
+        ).select_related('subject').prefetch_related('teachers')
+
+        for assignment in assignments_qs:
+            key = (
+                assignment.faculty_id,
+                (assignment.profession or '').strip().lower(),
+                int(assignment.course) if assignment.course else None,
+            )
+            assignment_map[key].append(assignment)
+
+    status_meta = {
+        'ready': {
+            'label': 'Готово',
+            'description': 'Все предметы назначены и закреплены преподаватели',
+            'badge': 'status-chip status-chip--ready',
+        },
+        'needs_schedule': {
+            'label': 'Нет расписания',
+            'description': 'Необходимо заполнить сетку расписания или закрепить преподавателей',
+            'badge': 'status-chip status-chip--warning',
+        },
+    }
+
+    course_set = set()
+    catalog_items = []
+
+    for group in groups:
+        course = group.current_course
+        course_str = str(course) if course is not None else ''
+        if course_str:
+            course_set.add(course_str)
+
+        assignment_key = (
+            group.faculty_id,
+            (group.profession or '').strip().lower(),
+            course,
+        )
+        related_assignments = assignment_map.get(assignment_key, [])
+
+        subjects_total = len(related_assignments)
+        subjects_with_teachers = 0
+        subjects_without_teacher = 0
+        teacher_ids = set()
+        for assignment in related_assignments:
+            assignment_teachers = list(assignment.teachers.all())
+            if assignment_teachers:
+                subjects_with_teachers += 1
+                for teacher in assignment_teachers:
+                    teacher_ids.add(teacher.id)
+            else:
+                subjects_without_teacher += 1
+
+        # TODO: заменить на реальный подсчет занятий, когда сохранение расписания будет подключено
+        lessons_total = 0
+        teachers_total = len(teacher_ids)
+
+        schedule_status = 'needs_schedule'
+        if subjects_total > 0 and subjects_without_teacher == 0 and (subjects_with_teachers > 0 or lessons_total > 0):
+            schedule_status = 'ready'
+
+        catalog_items.append({
+            'group': group,
+            'faculty': group.faculty,
+            'course': course,
+            'students_total': getattr(group, 'students_total', group.students.count()),
+            'subjects_total': subjects_total,
+            'subjects_with_teachers': subjects_with_teachers,
+            'teachers_total': teachers_total,
+            'subjects_without_teacher': subjects_without_teacher,
+            'lessons_total': lessons_total,
+            'status_key': schedule_status,
+            'status_meta': status_meta.get(schedule_status, status_meta['needs_schedule']),
+            'search_blob': ' '.join(filter(None, [
+                group.code,
+                group.name,
+                group.profession,
+                group.faculty.name if group.faculty else '',
+            ])).lower(),
+        })
+
+    available_courses = sorted(course_set, key=int) if course_set else []
+
+    filtered_items = []
+
+    for item in catalog_items:
+        if profession_filter_lower and (item['group'].profession or '').strip().lower() != profession_filter_lower:
+            continue
+        if status_filter and item['status_key'] != status_filter:
+            continue
+        if search_query and lookup_search not in item['search_blob']:
+            continue
+        filtered_items.append(item)
+
+    available_courses = sorted({str(item['course']) for item in filtered_items if item['course']}, key=int)
+
+    if course_filter and course_filter not in course_set:
+        course_filter = ''
+
+    if not course_filter and available_courses:
+        course_filter = available_courses[0]
+
+    totals = {
+        'all': len(catalog_items),
+        'filtered': len(filtered_items),
+        'ready': sum(1 for item in catalog_items if item['status_key'] == 'ready'),
+        'needs_schedule': sum(1 for item in catalog_items if item['status_key'] == 'needs_schedule'),
+    }
+
+    status_keys = list(status_meta.keys())
+
+    def init_status_counter():
+        return {key: 0 for key in status_keys}
+
+    def build_summary(counts):
+        summary = []
+        for key in status_keys:
+            value = counts.get(key, 0)
+            if value:
+                meta = status_meta.get(key, {})
+                summary.append({
+                    'key': key,
+                    'label': meta.get('label', key),
+                    'badge': meta.get('badge', ''),
+                    'count': value,
+                })
+        return summary
+
+    faculty_sections = []
+    for faculty in faculties:
+        faculty_items = [item for item in filtered_items if item['faculty'].id == faculty.id]
+        if not faculty_items:
+            continue
+
+        faculty_counts = init_status_counter()
+        profession_map = {}
+
+        for item in faculty_items:
+            profession_name = item['group'].profession or 'Без профессии'
+            course_number = item['course']
+
+            profession_entry = profession_map.setdefault(profession_name, {
+                'name': profession_name,
+                'courses': defaultdict(lambda: {
+                    'course': None,
+                    'groups': [],
+                    'status_counts': init_status_counter(),
+                }),
+                'status_counts': init_status_counter(),
+            })
+
+            course_entry = profession_entry['courses'][course_number]
+            if course_entry['course'] is None:
+                course_entry['course'] = course_number
+
+            course_entry['groups'].append(item)
+            course_entry['status_counts'][item['status_key']] += 1
+
+            profession_entry['status_counts'][item['status_key']] += 1
+            faculty_counts[item['status_key']] += 1
+
+        professions = []
+        total_groups_in_faculty = 0
+
+        for prof_name, prof_data in sorted(profession_map.items(), key=lambda entry: entry[0].lower()):
+            courses = []
+            groups_in_profession = 0
+
+            for course_number, course_data in sorted(prof_data['courses'].items(), key=lambda entry: entry[0]):
+                course_groups = sorted(course_data['groups'], key=lambda item: item['group'].code)
+                course_stats = {
+                    'course': course_number,
+                    'groups': course_groups,
+                    'status_counts': course_data['status_counts'],
+                    'summary': build_summary(course_data['status_counts']),
+                    'groups_total': len(course_groups),
+                }
+                courses.append(course_stats)
+                groups_in_profession += len(course_groups)
+
+            professions.append({
+                'name': prof_name,
+                'courses': courses,
+                'status_counts': prof_data['status_counts'],
+                'summary': build_summary(prof_data['status_counts']),
+                'groups_total': groups_in_profession,
+            })
+        total_groups_in_faculty += groups_in_profession
+
+        faculty_sections.append({
+            'faculty': faculty,
+            'professions': professions,
+            'status_counts': faculty_counts,
+            'summary': build_summary(faculty_counts),
+            'groups_total': total_groups_in_faculty,
+        })
+
+    faculty_professions = {
+        str(faculty_id): sorted({prof for prof in professions if prof})
+        for faculty_id, professions in faculty_professions_map.items()
+    }
+
+    current_filters = {
+        'search': search_query,
+        'faculty': faculty_filter,
+        'profession': profession_filter,
+        'status': status_filter,
+        'course': course_filter,
+    }
+
+    selected_professions = []
+    if faculty_filter:
+        selected_professions = sorted(faculty_professions.get(str(faculty_filter), []))
+
+    context = {
+        'faculties': faculties,
+        'faculty_sections': faculty_sections,
+        'items': filtered_items,
+        'search_query': search_query,
+        'faculty_filter': faculty_filter,
+        'profession_filter': profession_filter,
+        'status_filter': status_filter,
+        'course_filter': course_filter,
+        'filter_badge_count': sum(1 for value in [faculty_filter, profession_filter, status_filter] if value),
+        'status_meta': status_meta,
+        'selected_status_meta': status_meta.get(status_filter) if status_filter else None,
+        'available_courses': available_courses,
+        'course_tabs': ['1', '2', '3', '4'],
+        'totals': totals,
+        'status_order': status_keys,
+        'faculty_professions_json': json.dumps(faculty_professions, ensure_ascii=False),
+        'current_filters_json': json.dumps(current_filters, ensure_ascii=False),
+        'status_filter_options': [
+            {'key': key, 'label': meta.get('label', key)}
+            for key, meta in status_meta.items()
+        ],
+        'selected_professions': selected_professions,
+    }
+
+    try:
+        log_activity(
+            request.user,
+            ActivityLog.ACTION_VIEW,
+            'Просмотр каталога расписаний',
+            'bi-calendar3'
+        )
+    except Exception:
+        pass
+
+    return render(request, 'admin_panel/schedule/schedule_overview.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def schedule_constructor_view(request, group_id):
+    """Конструктор расписания для конкретной группы"""
+    if not MODELS_AVAILABLE:
+        messages.error(request, 'Модели не загружены. Выполните миграции перед работой с расписанием.')
+        return redirect('admin_dashboard')
+
+    group = get_object_or_404(
+        Group.objects.select_related('faculty'),
+        id=group_id
+    )
 
     try:
         faculties = list(Faculty.objects.filter(is_active=True).order_by('name'))
@@ -4396,22 +4711,68 @@ def schedule_main_view(request):
             .select_related('faculty')
             .order_by('code')
         )
-        teachers = list(
-            Teacher.objects.filter(is_active=True)
-            .prefetch_related('subjects', 'groups')
-            .order_by('last_name', 'first_name')
+        assignments_for_group = list(
+            SubjectAssignment.objects.filter(
+                faculty=group.faculty,
+                profession=group.profession,
+                course=group.current_course,
+                is_active=True
+            ).select_related('subject').prefetch_related('teachers')
         )
-        subjects = list(
-            Subject.objects.filter(is_active=True)
-            .prefetch_related('teachers')
-            .order_by('name')
-        )
+
+        assigned_teachers_map = {}
+        teacher_subjects_map = defaultdict(set)
+        library_items = []
+        seen_subject_ids = set()
+
+        for assignment in assignments_for_group:
+            subject = assignment.subject
+            if not subject:
+                continue
+
+            teacher_objects = list(assignment.teachers.all())
+            teacher_ids = [str(teacher.id) for teacher in teacher_objects]
+            teacher_names = [
+                teacher.get_short_name() or teacher.get_full_name()
+                for teacher in teacher_objects
+            ]
+
+            if subject.id not in seen_subject_ids:
+                seen_subject_ids.add(subject.id)
+                library_items.append({
+                    'id': subject.id,
+                    'name': subject.name,
+                    'short_name': subject.short_name or subject.name,
+                    'teacher_names': teacher_names,
+                    'teacher_ids': teacher_ids,
+                })
+
+            for teacher in teacher_objects:
+                assigned_teachers_map[teacher.id] = teacher
+                teacher_subjects_map[teacher.id].add(subject.id)
+
+        if assigned_teachers_map:
+            teachers = sorted(
+                assigned_teachers_map.values(),
+                key=lambda t: (t.last_name.lower(), t.first_name.lower(), t.middle_name.lower() if t.middle_name else '')
+            )
+        else:
+            teachers = list(
+                Teacher.objects.filter(is_active=True)
+                .prefetch_related('subjects')
+                .order_by('last_name', 'first_name')
+            )
+            for teacher in teachers:
+                for subject_id in teacher.subjects.values_list('id', flat=True):
+                    teacher_subjects_map[teacher.id].add(subject_id)
     except Exception as exc:
         messages.error(request, f'Не удалось загрузить данные для расписания: {exc}')
         faculties = []
         groups = []
         teachers = []
-        subjects = []
+        assignments_for_group = []
+        library_items = []
+        teacher_subjects_map = defaultdict(set)
 
     now = timezone.localdate()
     week_start = now - timedelta(days=now.weekday())
@@ -4429,11 +4790,25 @@ def schedule_main_view(request):
     time_slots = [
         {'id': 'slot1', 'order': 1, 'start': '08:30', 'end': '10:00'},
         {'id': 'slot2', 'order': 2, 'start': '10:10', 'end': '11:40'},
-        {'id': 'slot3', 'order': 3, 'start': '11:50', 'end': '13:20'},
-        {'id': 'slot4', 'order': 4, 'start': '13:40', 'end': '15:10'},
-        {'id': 'slot5', 'order': 5, 'start': '15:20', 'end': '16:50'},
-        {'id': 'slot6', 'order': 6, 'start': '17:00', 'end': '18:30'},
+        {'id': 'slot3', 'order': 3, 'start': '12:00', 'end': '13:30'},
+        {'id': 'slot4', 'order': 4, 'start': '13:50', 'end': '15:20'},
+        {'id': 'slot5', 'order': 5, 'start': '15:30', 'end': '17:00'},
     ]
+    default_day_buildings = {day['key']: 'nakhimovsky' for day in weekday_order}
+    week_buildings_payload = {}
+    week_lessons_payload = {}
+
+    schedule_weeks = ScheduleWeek.objects.filter(group=group).order_by('week_start')
+    for schedule_week in schedule_weeks:
+        week_key = schedule_week.week_start.strftime('%Y-%m-%d')
+        lessons_payload = schedule_week.lessons or {}
+        buildings_payload = schedule_week.day_buildings or {}
+        week_lessons_payload[week_key] = {
+            'lessons': lessons_payload,
+            'dayBuildings': buildings_payload,
+        }
+        if schedule_week.day_buildings:
+            week_buildings_payload[week_key] = schedule_week.day_buildings
 
     groups_payload = [
         {
@@ -4455,49 +4830,535 @@ def schedule_main_view(request):
             'id': teacher.id,
             'name': teacher.get_full_name(),
             'short_name': teacher.get_short_name(),
-            'subjects': [subject.id for subject in teacher.subjects.all()],
-            'groups': list(teacher.groups.values_list('id', flat=True)),
+            'subjects': sorted({int(subject_id) for subject_id in teacher_subjects_map.get(teacher.id, set())}),
         })
 
     subjects_payload = [
         {
-            'id': subject.id,
-            'name': subject.name,
-            'short_name': subject.short_name or '',
-            'is_active': subject.is_active,
+            'id': item['id'],
+            'name': item['name'],
+            'short_name': item['short_name'],
+            'teacherIds': [int(tid) for tid in item['teacher_ids']],
+            'is_active': True,
         }
-        for subject in subjects
+        for item in library_items
     ]
+
+    subjects_total = len(assignments_for_group)
+    subjects_with_teachers = 0
+    subjects_without_teacher = 0
+    teacher_ids = set()
+    for assignment in assignments_for_group:
+        teachers_for_assignment = list(assignment.teachers.all())
+        if teachers_for_assignment:
+            subjects_with_teachers += 1
+            for teacher in teachers_for_assignment:
+                teacher_ids.add(teacher.id)
+        else:
+            subjects_without_teacher += 1
+
+    group_schedule_stats = {
+        'subjects_total': subjects_total,
+        'subjects_with_teachers': subjects_with_teachers,
+        'subjects_without_teacher': subjects_without_teacher,
+        'teachers_total': len(teacher_ids),
+        'students_total': group.students.count(),
+    }
 
     context = {
         'faculties': faculties,
         'groups': groups,
         'teachers': teachers,
-        'subjects': subjects,
         'weekday_order': weekday_order,
         'time_slots': time_slots,
         'week_start': week_start,
         'week_end': week_end,
         'current_date': now,
         'week_range_label': f"{week_start.strftime('%d.%m')} – {week_end.strftime('%d.%m')}",
+        'active_group': group,
+        'group_schedule_stats': group_schedule_stats,
         'groups_json': json.dumps(groups_payload, ensure_ascii=False),
         'teachers_json': json.dumps(teachers_payload, ensure_ascii=False),
         'subjects_json': json.dumps(subjects_payload, ensure_ascii=False),
         'weekday_order_json': json.dumps(weekday_order, ensure_ascii=False),
         'time_slots_json': json.dumps(time_slots, ensure_ascii=False),
+        'week_lessons_json': json.dumps(week_lessons_payload, ensure_ascii=False),
+        'day_buildings_json': json.dumps(default_day_buildings, ensure_ascii=False),
+        'week_buildings_json': json.dumps(week_buildings_payload, ensure_ascii=False),
+        'active_group_json': json.dumps({
+            'id': group.id,
+            'code': group.code,
+            'name': group.name,
+            'course': group.current_course,
+            'faculty': group.faculty.name if group.faculty else '',
+            'profession': group.profession or '',
+        }, ensure_ascii=False),
+        'overview_url': reverse('admin_schedule'),
+        'group_detail_url': reverse('group_detail', args=[group.id]),
+        'library_items': library_items,
+        'schedule_save_url': reverse('schedule_save_api', args=[group.id]),
+        'schedule_conflict_check_url': reverse('schedule_check_conflict_api', args=[group.id]),
     }
 
     try:
         log_activity(
             request.user,
             ActivityLog.ACTION_VIEW,
-            'Просмотр раздела «Расписание»',
-            'bi-calendar-week'
+            f'Конструктор расписания для группы {group.code}',
+            'bi-calendar-week',
+            {
+                'group_id': group.id,
+                'faculty_id': group.faculty_id,
+                'course': group.current_course,
+            }
         )
     except Exception:
         pass
 
     return render(request, 'admin_panel/schedule/schedule_main.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+@require_POST
+def schedule_save_api(request, group_id):
+    if not MODELS_AVAILABLE:
+        return JsonResponse({'success': False, 'error': 'Модели недоступны'}, status=500)
+
+    group = get_object_or_404(Group, id=group_id)
+
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Некорректный формат данных'}, status=400)
+
+    weeks_payload = payload.get('weeks')
+    if not isinstance(weeks_payload, dict) or not weeks_payload:
+        return JsonResponse({'success': False, 'error': 'Нет данных для сохранения'}, status=400)
+
+    def parse_week_start(value):
+        try:
+            parsed = datetime.strptime(value, '%Y-%m-%d').date()
+        except (TypeError, ValueError):
+            return None
+        return parsed - timedelta(days=parsed.weekday())
+
+    def normalize_lesson(raw_lesson):
+        if not isinstance(raw_lesson, dict):
+            return None
+        subject_id = raw_lesson.get('subjectId') or raw_lesson.get('subject_id')
+        if subject_id is None:
+            return None
+        try:
+            subject_id = int(subject_id)
+        except (TypeError, ValueError):
+            return None
+
+        teacher_ids = []
+        for value in raw_lesson.get('teacherIds', []):
+            try:
+                teacher_ids.append(int(value))
+            except (TypeError, ValueError):
+                continue
+        dedup_teacher_ids = []
+        seen_teachers = set()
+        for teacher_id in teacher_ids:
+            if teacher_id not in seen_teachers:
+                dedup_teacher_ids.append(teacher_id)
+                seen_teachers.add(teacher_id)
+
+        teacher_rooms_raw = raw_lesson.get('teacherRooms') or {}
+        teacher_rooms = {}
+        for teacher_id in dedup_teacher_ids:
+            room_value = teacher_rooms_raw.get(str(teacher_id))
+            if room_value is None:
+                room_value = teacher_rooms_raw.get(teacher_id)
+            teacher_rooms[str(teacher_id)] = str(room_value).strip() if room_value is not None else ''
+
+        lesson_type = (raw_lesson.get('type') or 'lesson').strip() or 'lesson'
+
+        return {
+            'subjectId': subject_id,
+            'subjectName': (raw_lesson.get('subjectName') or '').strip(),
+            'subjectShort': (raw_lesson.get('subjectShort') or '').strip(),
+            'teacherIds': dedup_teacher_ids,
+            'teacherRooms': teacher_rooms,
+            'type': lesson_type,
+        }
+
+    def normalize_entry(raw_entry):
+        if not isinstance(raw_entry, dict):
+            return None
+        normalized = {'both': None, 'numerator': None, 'denominator': None}
+        has_data = False
+        for parity_key in normalized.keys():
+            lesson = normalize_lesson(raw_entry.get(parity_key))
+            if lesson:
+                normalized[parity_key] = lesson
+                has_data = True
+        return normalized if has_data else None
+
+    def sanitize_day_buildings(raw):
+        if not isinstance(raw, dict):
+            return {}
+        sanitized = {}
+        for day_key, value in raw.items():
+            if not value:
+                continue
+            sanitized[str(day_key)] = str(value)
+        return sanitized
+
+    parsed_weeks = {}
+    slots_by_week = {}
+    subject_ids = set()
+    teacher_ids = set()
+    conflict_keys = set()
+
+    for week_key, week_value in weeks_payload.items():
+        week_start = parse_week_start(week_key)
+        if not week_start:
+            continue
+
+        lessons_payload = {}
+        day_buildings_raw = {}
+        if isinstance(week_value, dict):
+            lessons_payload = week_value.get('lessons') or {}
+            day_buildings_raw = week_value.get('dayBuildings') or {}
+        if not isinstance(lessons_payload, dict):
+            lessons_payload = {}
+        if not isinstance(day_buildings_raw, dict):
+            day_buildings_raw = {}
+
+        normalized_lessons = {}
+        slot_refs = []
+
+        for cell_key, entry in lessons_payload.items():
+            if not isinstance(cell_key, str) or '__' not in cell_key:
+                continue
+            day_key, slot_id = cell_key.split('__', 1)
+            normalized_entry = normalize_entry(entry)
+            if not normalized_entry:
+                continue
+            normalized_lessons[cell_key] = normalized_entry
+
+            for parity_key in ('both', 'numerator', 'denominator'):
+                lesson = normalized_entry.get(parity_key)
+                if not lesson:
+                    continue
+                subject_ids.add(lesson['subjectId'])
+                if lesson['teacherIds']:
+                    parities = ['numerator', 'denominator'] if parity_key == 'both' else [parity_key]
+                    for teacher_id in lesson['teacherIds']:
+                        teacher_ids.add(teacher_id)
+                        for parity in parities:
+                            conflict_keys.add((teacher_id, week_start, day_key, slot_id, parity))
+                            slot_refs.append({
+                                'lesson': lesson,
+                                'teacher_id': teacher_id,
+                                'parity': parity,
+                                'day_key': day_key,
+                                'slot_id': slot_id,
+                            })
+
+        parsed_weeks[week_start] = {
+            'lessons': normalized_lessons,
+            'day_buildings': sanitize_day_buildings(day_buildings_raw),
+        }
+        slots_by_week[week_start] = slot_refs
+
+    if not parsed_weeks:
+        return JsonResponse({'success': False, 'error': 'Не удалось определить недели для сохранения'}, status=400)
+
+    subjects_map = {}
+    if subject_ids:
+        subjects_map = {subject.id: subject for subject in Subject.objects.filter(id__in=subject_ids)}
+
+    teachers_map = {}
+    if teacher_ids:
+        teachers_map = {teacher.id: teacher for teacher in Teacher.objects.filter(id__in=teacher_ids)}
+
+    for week_data in parsed_weeks.values():
+        for entry in week_data['lessons'].values():
+            for parity_key in ('both', 'numerator', 'denominator'):
+                lesson = entry.get(parity_key)
+                if not lesson:
+                    continue
+                subject = subjects_map.get(lesson['subjectId'])
+                if subject:
+                    if not lesson['subjectName']:
+                        lesson['subjectName'] = subject.name
+                    if not lesson['subjectShort']:
+                        lesson['subjectShort'] = subject.short_name or subject.name
+
+    conflicts_payload = []
+    recorded_conflicts = set()
+    if conflict_keys:
+        teachers_to_check = [teacher_id for teacher_id, _, _, _, _ in conflict_keys]
+        teachers_to_check_set = set(teachers_to_check)
+        weeks_to_check = [week_start for _, week_start, _, _, _ in conflict_keys]
+        days_to_check = [day_key for _, _, day_key, _, _ in conflict_keys]
+        slots_to_check = [slot_id for _, _, _, slot_id, _ in conflict_keys]
+        desired_keys = set(conflict_keys)
+        week_targets = set(weeks_to_check)
+
+        existing_slots = ScheduleTeacherSlot.objects.filter(
+            teacher_id__in=teachers_to_check_set,
+            week__week_start__in=week_targets,
+            day_key__in=set(days_to_check),
+            slot_id__in=set(slots_to_check),
+            parity__in=[
+                ScheduleTeacherSlot.PARITY_NUMERATOR,
+                ScheduleTeacherSlot.PARITY_DENOMINATOR,
+            ],
+        ).exclude(week__group=group).select_related('teacher', 'week__group')
+
+        for slot in existing_slots:
+            conflict_key = (slot.teacher_id, slot.week.week_start, slot.day_key, slot.slot_id, slot.parity)
+            if conflict_key in desired_keys and conflict_key not in recorded_conflicts:
+                conflicts_payload.append({
+                    'teacher': slot.teacher.get_short_name() if slot.teacher else 'Преподаватель',
+                    'group': slot.week.group.code,
+                    'week': slot.week.week_start.strftime('%Y-%m-%d'),
+                    'day': slot.day_key,
+                    'slot': slot.slot_id,
+                    'parity': slot.parity,
+                })
+                recorded_conflicts.add(conflict_key)
+
+        if not conflicts_payload:
+            conflicting_weeks = ScheduleWeek.objects.filter(
+                week_start__in=week_targets
+            ).exclude(group=group).select_related('group')
+            for other_week in conflicting_weeks:
+                lessons_blob = other_week.lessons or {}
+                if not isinstance(lessons_blob, dict):
+                    continue
+                for cell_key, entry in lessons_blob.items():
+                    if not isinstance(entry, dict) or '__' not in cell_key:
+                        continue
+                    day_key, slot_id = cell_key.split('__', 1)
+                    parity_map = {
+                        'both': ['numerator', 'denominator'],
+                        'numerator': ['numerator'],
+                        'denominator': ['denominator'],
+                    }
+                    for parity_key, parities in parity_map.items():
+                        lesson = entry.get(parity_key)
+                        if not lesson:
+                            continue
+                        lesson_teachers = lesson.get('teacherIds') or lesson.get('teacher_ids') or []
+                        for teacher_id in lesson_teachers:
+                            try:
+                                teacher_id_int = int(teacher_id)
+                            except (TypeError, ValueError):
+                                continue
+                            if teacher_id_int not in teachers_to_check_set:
+                                continue
+                            for parity in parities:
+                                conflict_key = (teacher_id_int, other_week.week_start, day_key, slot_id, parity)
+                                if conflict_key in desired_keys and conflict_key not in recorded_conflicts:
+                                    teacher_obj = teachers_map.get(teacher_id_int)
+                                    conflicts_payload.append({
+                                        'teacher': teacher_obj.get_short_name() if teacher_obj else 'Преподаватель',
+                                        'group': other_week.group.code if other_week.group else '',
+                                        'week': other_week.week_start.strftime('%Y-%m-%d'),
+                                        'day': day_key,
+                                        'slot': slot_id,
+                                        'parity': parity,
+                                    })
+                                    recorded_conflicts.add(conflict_key)
+                                    break
+                            if conflicts_payload:
+                                break
+                        if conflicts_payload:
+                            break
+                    if conflicts_payload:
+                        break
+                if conflicts_payload:
+                    break
+
+    if conflicts_payload:
+        return JsonResponse({
+            'success': False,
+            'error': 'Некоторые преподаватели заняты в других группах в выбранное время.',
+            'conflicts': conflicts_payload,
+        }, status=400)
+
+    saved_week_keys = []
+
+    with transaction.atomic():
+        for week_start, data in parsed_weeks.items():
+            week_obj, created = ScheduleWeek.objects.update_or_create(
+                group=group,
+                week_start=week_start,
+                defaults={
+                    'lessons': data['lessons'],
+                    'day_buildings': data['day_buildings'],
+                    'updated_by': request.user,
+                },
+            )
+            if created and not week_obj.created_by_id:
+                week_obj.created_by = request.user
+                week_obj.save(update_fields=['created_by'])
+
+            saved_week_keys.append(week_obj.week_start.strftime('%Y-%m-%d'))
+
+            ScheduleTeacherSlot.objects.filter(week=week_obj).delete()
+
+            slot_entries = []
+            for slot in slots_by_week.get(week_start, []):
+                lesson = slot['lesson']
+                slot_entries.append(ScheduleTeacherSlot(
+                    week=week_obj,
+                    group=group,
+                    teacher_id=slot['teacher_id'],
+                    day_key=slot['day_key'],
+                    slot_id=slot['slot_id'],
+                    parity=slot['parity'],
+                    subject_id=lesson['subjectId'],
+                    subject_name=lesson['subjectName'],
+                    subject_short=lesson['subjectShort'],
+                    lesson_type=lesson['type'],
+                ))
+            if slot_entries:
+                ScheduleTeacherSlot.objects.bulk_create(slot_entries)
+
+    try:
+        log_activity(
+            request.user,
+            ActivityLog.ACTION_UPDATE,
+            f'Сохранение расписания для группы {group.code}',
+            'bi-calendar-week',
+            {'group_id': group.id, 'weeks': saved_week_keys}
+        )
+    except Exception:
+        pass
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Расписание сохранено.',
+        'savedWeeks': saved_week_keys,
+    })
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+@require_POST
+def schedule_check_conflict_api(request, group_id):
+    if not MODELS_AVAILABLE:
+        return JsonResponse({'success': False, 'error': 'Модели недоступны'}, status=500)
+
+    group = get_object_or_404(Group, id=group_id)
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Некорректный формат данных'}, status=400)
+
+    week_start_raw = payload.get('weekStart')
+    day_key = payload.get('dayKey')
+    slot_key = payload.get('slotKey')
+    parity_key = payload.get('parity') or 'both'
+    teacher_ids_raw = payload.get('teacherIds') or []
+
+    if not week_start_raw or not day_key or not slot_key:
+        return JsonResponse({'success': False, 'error': 'Недостаточно данных для проверки'}, status=400)
+
+    try:
+        week_start = datetime.strptime(week_start_raw, '%Y-%m-%d').date()
+    except (TypeError, ValueError):
+        return JsonResponse({'success': False, 'error': 'Некорректная дата недели'}, status=400)
+
+    week_start -= timedelta(days=week_start.weekday())
+
+    teacher_ids = []
+    for value in teacher_ids_raw:
+        try:
+            teacher_ids.append(int(value))
+        except (TypeError, ValueError):
+            continue
+
+    if not teacher_ids:
+        return JsonResponse({'success': True})
+
+    parities = ['numerator', 'denominator'] if parity_key == 'both' else [parity_key]
+
+    conflicts_payload = []
+
+    teacher_objects = {
+        teacher.id: teacher
+        for teacher in Teacher.objects.filter(id__in=teacher_ids)
+    }
+
+    teacher_slots = ScheduleTeacherSlot.objects.filter(
+        teacher_id__in=teacher_ids,
+        week__week_start=week_start,
+        day_key=day_key,
+        slot_id=slot_key,
+        parity__in=parities,
+    ).exclude(week__group=group).select_related('teacher', 'week__group')
+
+    for slot in teacher_slots:
+        conflicts_payload.append({
+            'teacher': slot.teacher.get_short_name() if slot.teacher else 'Преподаватель',
+            'group': slot.week.group.code if slot.week and slot.week.group else '',
+            'week': slot.week.week_start.strftime('%Y-%m-%d'),
+            'day': slot.day_key,
+            'slot': slot.slot_id,
+            'parity': slot.parity,
+        })
+
+    if not conflicts_payload:
+        other_weeks = ScheduleWeek.objects.filter(
+            week_start=week_start
+        ).exclude(group=group).select_related('group')
+
+        parities_map = {
+            'both': ['numerator', 'denominator'],
+            'numerator': ['numerator'],
+            'denominator': ['denominator'],
+        }
+        allowed_parities = parities_map.get(parity_key, ['numerator', 'denominator'])
+
+        cell_key = f'{day_key}__{slot_key}'
+        for week_entry in other_weeks:
+            lessons_blob = week_entry.lessons or {}
+            if not isinstance(lessons_blob, dict):
+                continue
+            entry = lessons_blob.get(cell_key)
+            if not isinstance(entry, dict):
+                continue
+            for parity_option in allowed_parities:
+                lesson = entry.get(parity_option) or (entry.get('both') if parity_option in ('numerator', 'denominator') else None)
+                if not lesson:
+                    continue
+                lesson_teachers = lesson.get('teacherIds') or lesson.get('teacher_ids') or []
+                for teacher_id in lesson_teachers:
+                    try:
+                        teacher_id_int = int(teacher_id)
+                    except (TypeError, ValueError):
+                        continue
+                    if teacher_id_int not in teacher_ids:
+                        continue
+                    teacher_obj = teacher_objects.get(teacher_id_int)
+                    conflicts_payload.append({
+                        'teacher': teacher_obj.get_short_name() if teacher_obj else 'Преподаватель',
+                        'group': week_entry.group.code if week_entry.group else '',
+                        'week': week_entry.week_start.strftime('%Y-%m-%d'),
+                        'day': day_key,
+                        'slot': slot_key,
+                        'parity': parity_option,
+                    })
+                    break
+                if conflicts_payload:
+                    break
+            if conflicts_payload:
+                break
+
+    if conflicts_payload:
+        message = 'Преподаватель занят в другой группе в это время.'
+        return JsonResponse({'success': False, 'error': message, 'conflicts': conflicts_payload}, status=400)
+
+    return JsonResponse({'success': True})
 
 
 # API-операции для управления студентами в группе

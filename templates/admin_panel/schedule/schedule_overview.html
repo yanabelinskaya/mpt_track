@@ -1,0 +1,310 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Расписание — Админ{% endblock %}
+{% block page_title %}Расписание{% endblock %}
+{% block mobile_title %}Расписание{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/forms.css' %}">
+<link rel="stylesheet" href="{% static 'css/groups.css' %}">
+<link rel="stylesheet" href="{% static 'css/schedule.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="groups-container schedule-catalog">
+    <div class="search-filter-bar">
+        <form class="search-form" id="scheduleFiltersForm" autocomplete="off">
+            <div class="search-container">
+                <div class="search-input-wrapper">
+                    <span class="search-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" width="16" height="16" focusable="false" stroke="currentColor" fill="none">
+                            <circle cx="11" cy="11" r="7.5" stroke-width="1.8"/>
+                            <line x1="16.5" y1="16.5" x2="21" y2="21" stroke-width="1.8" stroke-linecap="round"/>
+                        </svg>
+                    </span>
+                    <input type="text"
+                           name="search"
+                           value="{{ search_query }}"
+                           placeholder="Найти группу или курс..."
+                           class="search-field"
+                           id="scheduleSearchInput"
+                           autocomplete="off">
+                    <button type="submit" class="search-submit" id="scheduleSearchSubmit" title="Найти">
+                        <i class="bi bi-arrow-return-right"></i>
+                    </button>
+                    <button type="button" class="clear-search" id="scheduleSearchClear" title="Очистить" {% if not search_query %}style="display: none;"{% endif %}>
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+
+                <div class="filter-dropdown">
+                    <button type="button" class="filter-trigger" id="scheduleFilterTrigger">
+                        <i class="bi bi-funnel"></i>
+                        <span>Фильтры</span>
+                        {% if filter_badge_count %}
+                            <span class="filter-badge">{{ filter_badge_count }}</span>
+                        {% endif %}
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+
+                    <div class="filter-menu" id="scheduleFilterMenu">
+                        <div class="filter-section">
+                            <label class="filter-title">Специальность</label>
+                            <div class="custom-select filter-custom-select" id="scheduleFacultySelect" data-auto-submit="true">
+                                <select name="faculty" id="scheduleFacultyFilter">
+                                    <option value="" {% if not faculty_filter %}selected{% endif %}>Все специальности</option>
+                                    {% for faculty in faculties %}
+                                        <option value="{{ faculty.id }}" {% if faculty_filter == faculty.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ faculty.name }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="select-trigger {% if not faculty_filter %}placeholder{% endif %}" data-placeholder="Все специальности">
+                                    <span class="select-text">
+                                        {% if faculty_filter %}
+                                            {% for faculty in faculties %}
+                                                {% if faculty_filter == faculty.id|stringformat:"s" %}
+                                                    {{ faculty.name }}
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            Все специальности
+                                        {% endif %}
+                                    </span>
+                                    <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                                </div>
+                                <div class="select-dropdown">
+                                    <div class="select-option {% if not faculty_filter %}selected{% endif %}" data-value="">
+                                        <div class="select-option-text">Все специальности</div>
+                                    </div>
+                                    {% for faculty in faculties %}
+                                    <div class="select-option {% if faculty_filter == faculty.id|stringformat:"s" %}selected{% endif %}" data-value="{{ faculty.id }}">
+                                        <div class="select-option-text">{{ faculty.name }}</div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="filter-section">
+                            <label class="filter-title">Профессия</label>
+                            <div class="custom-select filter-custom-select" id="scheduleProfessionSelect" data-auto-submit="true">
+                                <select name="profession" id="scheduleProfessionFilter">
+                                    <option value="" {% if not profession_filter %}selected{% endif %}>Все профессии</option>
+                                    {% for profession in selected_professions %}
+                                        <option value="{{ profession }}" {% if profession_filter == profession %}selected{% endif %}>{{ profession }}</option>
+                                    {% endfor %}
+                                </select>
+                                <div class="select-trigger {% if not profession_filter %}placeholder{% endif %}" data-placeholder="Все профессии">
+                                    <span class="select-text">
+                                        {% if profession_filter %}
+                                            {{ profession_filter }}
+                                        {% else %}
+                                            Все профессии
+                                        {% endif %}
+                                    </span>
+                                    <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                                </div>
+                                <div class="select-dropdown">
+                                    <div class="select-option {% if not profession_filter %}selected{% endif %}" data-value="">
+                                        <div class="select-option-text">Все профессии</div>
+                                    </div>
+                                    {% for profession in selected_professions %}
+                                    <div class="select-option {% if profession_filter == profession %}selected{% endif %}" data-value="{{ profession }}">
+                                        <div class="select-option-text">{{ profession }}</div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="filter-section">
+                            <label class="filter-title">Статус расписания</label>
+                            <div class="status-filters">
+                                <label class="status-option">
+                                    <input type="radio" name="status" value="" {% if not status_filter %}checked{% endif %}>
+                                    <span class="status-dot status-dot--all"></span>
+                                    <span>Все</span>
+                                </label>
+                                {% for option in status_filter_options %}
+                                <label class="status-option">
+                                    <input type="radio"
+                                           name="status"
+                                           value="{{ option.key }}"
+                                           {% if status_filter == option.key %}checked{% endif %}>
+                                    <span class="status-dot status-dot--{{ option.key }}"></span>
+                                    <span>{{ option.label }}</span>
+                                </label>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <div class="filter-actions">
+                            <button type="submit" class="apply-filters">
+                                <i class="bi bi-check"></i>
+                                Применить
+                            </button>
+                            <a href="{% url 'admin_schedule' %}" class="reset-filters">
+                                <i class="bi bi-arrow-clockwise"></i>
+                                Сбросить
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <input type="hidden" name="course" value="{{ course_filter }}" id="scheduleCourseInput">
+        </form>
+    </div>
+
+    {% if course_tabs %}
+    <div class="course-tabs-section">
+        <div class="course-tabs">
+            {% for course in course_tabs %}
+            <a href="#"
+               class="course-tab {% if course_filter == course %}active{% endif %}{% if course not in available_courses and course_filter != course %} disabled{% endif %}"
+               data-course="{{ course }}">
+                <span>{{ course }} курс</span>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="data-panel">
+        <div class="panel-top">
+            <div class="panel-info">
+                <div class="info-icon">
+                    <i class="bi bi-calendar3"></i>
+                </div>
+                <div>
+                    <h1 class="panel-title">
+                        Расписание групп
+                        {% if course_filter %}
+                        <small style="font-weight: 400; color: var(--bs-secondary);">— {{ course_filter }} курс</small>
+                        {% endif %}
+                    </h1>
+                </div>
+            </div>
+
+            <button class="action-btn" id="scheduleToggleAll">
+                <i class="bi bi-arrows-expand"></i>
+                Развернуть все
+            </button>
+        </div>
+
+        {% if faculty_sections %}
+        <div class="course-content" id="scheduleCatalogContent">
+            {% for section in faculty_sections %}
+            <div class="specialty-section" data-specialty-id="{{ section.faculty.id }}">
+                <div class="specialty-header">
+                    <div class="specialty-info">
+                        <div>
+                            <h3>{{ section.faculty.name }}</h3>
+                            <div class="specialty-code">{{ section.faculty.code }}</div>
+                        </div>
+                    </div>
+                    <i class="bi bi-chevron-down specialty-toggle"></i>
+                </div>
+                <div class="specialty-content">
+                    {% for profession in section.professions %}
+                    <div class="profession-section" data-profession-name="{{ profession.name }}">
+                        <div class="profession-header">
+                            <div class="profession-name">{{ profession.name }}</div>
+                            <i class="bi bi-chevron-right profession-toggle"></i>
+                        </div>
+                        <div class="groups-list">
+                            {% if profession.groups_total %}
+                            <div class="groups-table">
+                                <div class="groups-table-header">
+                                    <div>Группа</div>
+                                    <div>Статус расписания</div>
+                                    <div>Предметов</div>
+                                    <div>Без преподавателя</div>
+                                    <div>Действия</div>
+                                </div>
+                                {% for course in profession.courses %}
+                                    {% for item in course.groups %}
+                                    <div class="group-row"
+                                         data-group-status="{{ item.status_key }}"
+                                         data-group-course="{{ course.course }}"
+                                         data-search="{{ item.group.code|escape }} {{ profession.name|escape }} {{ section.faculty.name|escape }} {{ course.course }} курс {{ item.status_meta.label|escape }}">
+                                        <div class="group-cell group-name-cell">
+                                            <div class="group-name">{{ item.group.code }}</div>
+                                            <div class="group-meta">{{ profession.name }} • {{ course.course }} курс</div>
+                                        </div>
+                                        <div class="group-cell">
+                                            <span class="status-pill {% if item.status_key == 'ready' %}status-ready{% else %}status-draft{% endif %}">
+                                                {{ item.status_meta.label }}
+                                            </span>
+                                        </div>
+                                        <div class="group-cell">
+                                            {{ item.subjects_total }} / {{ item.subjects_with_teachers }}
+                                        </div>
+                                        <div class="group-cell">
+                                            {% if item.subjects_without_teacher %}
+                                                <span class="warning">{{ item.subjects_without_teacher }}</span>
+                                            {% else %}
+                                                <span class="success">0</span>
+                                            {% endif %}
+                                        </div>
+                                        <div class="group-cell actions-cell">
+                                            <div class="actions-menu">
+                                                <a href="{% url 'admin_schedule_group' item.group.id %}"
+                                                   class="action-item"
+                                                   title="Открыть расписание"
+                                                   onclick="event.stopPropagation();">
+                                                    <i class="bi bi-calendar-plus"></i>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% endfor %}
+                            </div>
+                            <div class="empty-state empty-state-course" hidden>
+                                <h4>Нет данных</h4>
+                                <p>Для выбранного курса пока нет расписания по этой профессии.</p>
+                            </div>
+                            {% else %}
+                            <div class="empty-state">
+                                <h4>Нет данных</h4>
+                                <p>Для профессии "{{ profession.name }}" пока нет расписания.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="empty-state">
+                        <h4>Нет профессий</h4>
+                        <p>Для специальности "{{ section.faculty.name }}" пока не добавлены профессии.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="overview-empty" id="scheduleSearchEmpty" hidden>
+            <i class="bi bi-search"></i>
+            <p>По запросу ничего не найдено.</p>
+            <p class="overview-empty__hint">Попробуйте изменить формулировку поиска или сбросить фильтры.</p>
+        </div>
+        {% else %}
+        <div class="overview-empty">
+            <i class="bi bi-calendar2-x"></i>
+            <p>По заданным параметрам расписание не найдено.</p>
+            <p class="overview-empty__hint">Попробуйте сбросить фильтры или уточнить параметры поиска.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+{{ faculty_professions_json|json_script:"scheduleFacultyProfessions" }}
+{{ current_filters_json|json_script:"scheduleCurrentFilters" }}
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/custom_select.js' %}"></script>
+<script src="{% static 'js/schedule_overview.js' %}"></script>
+{% endblock %}

@@ -718,6 +718,104 @@ class ActivityLog(models.Model):
         verbose_name_plural = 'Журнал активности'
         ordering = ['-created_at']
 
+
+class ScheduleWeek(models.Model):
+    """Сохранённая неделя расписания группы"""
+
+    group = models.ForeignKey(
+        Group,
+        on_delete=models.CASCADE,
+        related_name='schedule_weeks',
+        verbose_name='Группа'
+    )
+    week_start = models.DateField('Начало недели')
+    lessons = models.JSONField('Занятия', default=dict, blank=True)
+    day_buildings = models.JSONField('Корпуса по дням', default=dict, blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_schedule_weeks',
+        verbose_name='Создано пользователем'
+    )
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_schedule_weeks',
+        verbose_name='Обновлено пользователем'
+    )
+    created_at = models.DateTimeField('Создано', auto_now_add=True)
+    updated_at = models.DateTimeField('Обновлено', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Неделя расписания'
+        verbose_name_plural = 'Недели расписания'
+        unique_together = ('group', 'week_start')
+        ordering = ['group', 'week_start']
+
+    def __str__(self):
+        return f'{self.group.code} — неделя {self.week_start}'
+
+
+class ScheduleTeacherSlot(models.Model):
+    """Занятость преподавателя в конкретный день/пару/неделю"""
+
+    PARITY_NUMERATOR = 'numerator'
+    PARITY_DENOMINATOR = 'denominator'
+    PARITY_CHOICES = [
+        (PARITY_NUMERATOR, 'Числитель'),
+        (PARITY_DENOMINATOR, 'Знаменатель'),
+    ]
+
+    week = models.ForeignKey(
+        ScheduleWeek,
+        on_delete=models.CASCADE,
+        related_name='teacher_slots',
+        verbose_name='Неделя'
+    )
+    group = models.ForeignKey(
+        Group,
+        on_delete=models.CASCADE,
+        related_name='teacher_slots',
+        verbose_name='Группа'
+    )
+    teacher = models.ForeignKey(
+        Teacher,
+        on_delete=models.CASCADE,
+        related_name='schedule_slots',
+        verbose_name='Преподаватель'
+    )
+    day_key = models.CharField('День недели', max_length=32)
+    slot_id = models.CharField('Пара', max_length=32)
+    parity = models.CharField('Тип недели', max_length=16, choices=PARITY_CHOICES)
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='schedule_slots',
+        verbose_name='Предмет'
+    )
+    subject_name = models.CharField('Название предмета', max_length=150, blank=True)
+    subject_short = models.CharField('Короткое название', max_length=80, blank=True)
+    lesson_type = models.CharField('Тип занятия', max_length=50, blank=True)
+    created_at = models.DateTimeField('Создано', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Занятость преподавателя'
+        verbose_name_plural = 'Занятость преподавателей'
+        unique_together = ('teacher', 'week', 'day_key', 'slot_id', 'parity')
+        indexes = [
+            models.Index(fields=['teacher', 'day_key', 'slot_id', 'parity']),
+            models.Index(fields=['week', 'day_key']),
+        ]
+
+    def __str__(self):
+        return f'{self.teacher.get_short_name()} • {self.day_key} • {self.slot_id} • {self.parity}'
+
     def __str__(self):
         user_display = self.user.get_full_name() if self.user and self.user.get_full_name() else (self.user.username if self.user else 'Система')
         return f'{user_display}: {self.description}'

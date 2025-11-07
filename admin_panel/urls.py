@@ -81,7 +81,10 @@ urlpatterns = [
     path('groups/create/', views.group_create_view, name='group_create'),
 
     # Расписание
-    path('schedule/', views.schedule_main_view, name='admin_schedule'),
+    path('schedule/', views.schedule_overview_view, name='admin_schedule'),
+    path('schedule/<int:group_id>/constructor/', views.schedule_constructor_view, name='admin_schedule_group'),
+    path('schedule/<int:group_id>/save/', views.schedule_save_api, name='schedule_save_api'),
+    path('schedule/<int:group_id>/check-conflict/', views.schedule_check_conflict_api, name='schedule_check_conflict_api'),
 
     # Предметы
     path('subjects/', views.subjects_main_view, name='admin_subjects'),

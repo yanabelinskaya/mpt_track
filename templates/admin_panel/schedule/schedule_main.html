@@ -2,203 +2,219 @@
 {% load static %}
 
 {% block title %}Расписание — Админ{% endblock %}
-
-{% block extra_css %}
-    <link rel="stylesheet" href="{% static 'css/custom_select.css' %}">
-    <link rel="stylesheet" href="{% static 'css/schedule.css' %}">
-{% endblock %}
-
 {% block page_title %}Расписание{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/custom_select.css' %}">
+<link rel="stylesheet" href="{% static 'css/schedule.css' %}">
+{% endblock %}
+
 {% block content %}
-<div class="schedule-page">
-    <div class="schedule-page__header">
-        <div>
-            <h2 class="schedule-page__title">Конструктор расписания</h2>
-            <p class="schedule-page__subtitle">
-                Сформируйте учебную неделю: перетаскивайте предметы в сетку, выбирайте преподавателя и аудиторию.
+<div class="schedule-shell">
+    <nav class="overview-breadcrumbs" aria-label="Навигация">
+        <a href="{{ overview_url }}" class="breadcrumbs-link">
+            <i class="bi bi-calendar3"></i>
+            <span>Расписание</span>
+        </a>
+        <i class="bi bi-chevron-right separator"></i>
+        <span class="breadcrumbs-current">{{ active_group.code }}</span>
+    </nav>
+
+    <header class="schedule-header">
+        <div class="schedule-header__info">
+            <h1 class="schedule-header__title">Расписание группы {{ active_group.code }}</h1>
+            <p class="schedule-header__subtitle">
+                {% if active_group.faculty or active_group.profession %}
+                    {% if active_group.faculty %}{{ active_group.faculty.name }}{% endif %}
+                    {% if active_group.profession %}
+                        {% if active_group.faculty %} • {% endif %}
+                        {{ active_group.profession }}
+                    {% endif %}.
+                {% endif %}
+                Конструктор расписания для {{ active_group.current_course }} курса.
             </p>
-        </div>
-        <div class="schedule-week-switcher" data-current-date="{{ current_date|date:'Y-m-d' }}">
-            <button class="week-switcher__btn" data-action="prev-week" type="button" title="Предыдущая неделя">
-                <i class="bi bi-arrow-left"></i>
-            </button>
-            <div class="week-switcher__range" id="scheduleWeekRange"
-                 data-week-start="{{ week_start|date:'Y-m-d' }}"
-                 data-week-end="{{ week_end|date:'Y-m-d' }}">
-                {{ week_range_label }}
+            <div class="schedule-group-meta">
+                {% if active_group.faculty %}
+                <span class="meta-chip">
+                    <i class="bi bi-mortarboard"></i>
+                    {{ active_group.faculty.name }}
+                </span>
+                {% endif %}
+                {% if active_group.profession %}
+                <span class="meta-chip">
+                    <i class="bi bi-collection"></i>
+                    {{ active_group.profession }}
+                </span>
+                {% endif %}
+                <span class="meta-chip">
+                    <i class="bi bi-bar-chart"></i>
+                    {{ active_group.current_course }} курс
+                </span>
             </div>
-            <button class="week-switcher__btn" data-action="next-week" type="button" title="Следующая неделя">
-                <i class="bi bi-arrow-right"></i>
-            </button>
         </div>
-    </div>
+        <div class="schedule-header__controls">
+            <div class="schedule-header__actions">
+                <a href="{{ overview_url }}" class="action-btn">
+                    <i class="bi bi-arrow-left"></i>
+                    Ко всем группам
+                </a>
+                <a href="{{ group_detail_url }}" class="action-btn action-btn--icon" title="Карточка группы">
+                    <i class="bi bi-person-badge"></i>
+                </a>
+            </div>
+        </div>
+    </header>
 
     <div class="schedule-message" id="scheduleMessage" hidden></div>
 
-    <div class="schedule-toolbar">
-        <div class="schedule-toolbar__filters">
-            <div class="schedule-filter">
-                <label class="schedule-filter__label" for="scheduleFacultySelect">Специальность</label>
-                <div class="schedule-filter__control custom-select filter-custom-select" data-placeholder="Все специальности">
-                    <div class="select-trigger placeholder" data-placeholder="Все специальности">
-                        <span class="select-text">Все специальности</span>
-                        <i class="select-arrow bi bi-chevron-down"></i>
-                    </div>
-                    <div class="select-dropdown">
-                        <div class="select-option" data-value="">
-                            <span class="select-option-text">Все специальности</span>
-                        </div>
-                        {% for faculty in faculties %}
-                        <div class="select-option" data-value="{{ faculty.id }}">
-                            <span class="select-option-text">{{ faculty.name }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <select id="scheduleFacultySelect" class="schedule-select">
-                        <option value="">Все специальности</option>
-                        {% for faculty in faculties %}
-                            <option value="{{ faculty.id }}">{{ faculty.name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <div class="schedule-filter">
-                <label class="schedule-filter__label" for="scheduleGroupSelect">Группа</label>
-                <div class="schedule-filter__control custom-select filter-custom-select" data-placeholder="Выберите группу">
-                    <div class="select-trigger placeholder" data-placeholder="Выберите группу">
-                        <span class="select-text">Выберите группу</span>
-                        <i class="select-arrow bi bi-chevron-down"></i>
-                    </div>
-                    <div class="select-dropdown">
-                        <div class="select-option" data-value="">
-                            <span class="select-option-text">Выберите группу</span>
-                        </div>
-                        {% for group in groups %}
-                        <div class="select-option" data-value="{{ group.id }}">
-                            <span class="select-option-text">{{ group.code }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <select id="scheduleGroupSelect" class="schedule-select">
-                        <option value="">Выберите группу</option>
-                        {% for group in groups %}
-                            <option value="{{ group.id }}" data-faculty="{{ group.faculty_id }}">{{ group.code }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <div class="schedule-filter">
-                <label class="schedule-filter__label" for="scheduleTeacherSelect">Преподаватель</label>
-                <div class="schedule-filter__control custom-select filter-custom-select" data-placeholder="Не выбран">
-                    <div class="select-trigger placeholder" data-placeholder="Не выбран">
-                        <span class="select-text">Не выбран</span>
-                        <i class="select-arrow bi bi-chevron-down"></i>
-                    </div>
-                    <div class="select-dropdown">
-                        <div class="select-option" data-value="">
-                            <span class="select-option-text">Не выбран</span>
-                        </div>
-                        {% for teacher in teachers %}
-                        <div class="select-option" data-value="{{ teacher.id }}">
-                            <span class="select-option-text">{{ teacher.get_full_name }}</span>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    <select id="scheduleTeacherSelect" class="schedule-select">
-                        <option value="">Не выбран</option>
-                        {% for teacher in teachers %}
-                            <option value="{{ teacher.id }}">{{ teacher.get_full_name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-            <div class="schedule-filter schedule-filter--view">
-                <label class="schedule-filter__label" for="scheduleViewToggle">Режим</label>
-                <div class="schedule-filter__segmented" id="scheduleViewToggle" role="tablist" aria-label="Режим отображения расписания">
-                    <button class="segmented-btn active" type="button" data-view-tab="week">Неделя</button>
-                    <button class="segmented-btn" type="button" data-view-tab="day">День</button>
-                    <button class="segmented-btn" type="button" data-view-tab="semester">Полугодие</button>
-                </div>
-            </div>
-        </div>
-        <div class="schedule-toolbar__search">
-            <label class="schedule-filter__label" for="scheduleSearchInput">Быстрый поиск</label>
-            <div class="schedule-filter__search">
-                <i class="bi bi-search"></i>
-                <input id="scheduleSearchInput" type="text" class="schedule-search" placeholder="Поиск по предметам, преподавателям, аудиториям">
-            </div>
-        </div>
-    </div>
-
-    <div class="schedule-layout">
-        <aside class="schedule-panel schedule-panel--library">
-            <div class="panel-header">
+    <section class="schedule-change-log" id="scheduleChangeLog" hidden>
+        <article class="schedule-card schedule-card--log">
+            <div class="schedule-card__header">
                 <div>
-                    <h3>Доступные предметы</h3>
-                    <span class="panel-subtitle">Перетащите предмет в нужный слот</span>
+                    <h3 class="schedule-card__title">История изменений</h3>
+                    <p class="schedule-card__subtitle">Следите за тем, что было добавлено, обновлено или удалено.</p>
                 </div>
-                <button type="button" class="panel-refresh" data-action="refresh-pool" title="Обновить список">
-                    <i class="bi bi-arrow-repeat"></i>
+            </div>
+            <div class="schedule-card__body">
+                <ul class="change-log__list" id="scheduleChangeLogList"></ul>
+            </div>
+        </article>
+    </section>
+
+    <div class="schedule-main">
+        <article class="schedule-card schedule-card--library">
+            <div class="schedule-card__header schedule-card__header--library">
+                <div>
+                    <h3 class="schedule-card__title">Доступные предметы</h3>
+                    <p class="schedule-card__subtitle">Перетащите предмет из списка в сетку или выберите ячейку и назначьте его вручную.</p>
+                </div>
+                <div class="schedule-library-toolbar">
+                    <div class="library-search">
+                        <label class="filter-label" for="scheduleSearchInput">Поиск предмета</label>
+                        <div class="filter-search">
+                            <i class="bi bi-search"></i>
+                            <input id="scheduleSearchInput" type="text" placeholder="Название" autocomplete="off">
+                            <button type="button" class="filter-search__clear" id="scheduleSearchClear" hidden>
+                                <i class="bi bi-x-lg"></i>
+                                <span class="visually-hidden">Очистить поиск</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="library-filter">
+                        <span class="filter-label">Фильтр по преподавателю</span>
+                        <div class="custom-select filter-custom-select" id="scheduleTeacherSelectWrapper" data-placeholder="Все преподаватели">
+                            <select id="scheduleTeacherSelect">
+                                <option value="">Все преподаватели</option>
+                                {% for teacher in teachers %}
+                                    <option value="{{ teacher.id }}">{{ teacher.get_full_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="select-trigger placeholder" data-placeholder="Все преподаватели">
+                                <span class="select-text">Все преподаватели</span>
+                                <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                            </div>
+                            <div class="select-dropdown">
+                                <div class="select-option selected" data-value="">
+                                    <div class="select-option-text">Все преподаватели</div>
+                                </div>
+                                {% for teacher in teachers %}
+                                <div class="select-option" data-value="{{ teacher.id }}">
+                                    <div class="select-option-text">{{ teacher.get_full_name }}</div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="action-btn action-btn--icon" data-action="refresh-pool" title="Обновить список">
+                        <i class="bi bi-arrow-repeat"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="schedule-card__body" id="scheduleSubjectPool">
+                {% if library_items %}
+                    {% for item in library_items %}
+                    <article class="library-item"
+                             data-subject-id="{{ item.id }}"
+                             data-subject-name="{{ item.name|escape }}"
+                             data-subject-short="{{ item.short_name|default:item.name|escape }}"
+                             data-teacher-ids="{{ item.teacher_ids|join:',' }}"
+                             draggable="true">
+                        <div class="library-item__title">{{ item.short_name }}</div>
+                        <div class="library-item__meta">
+                            <span class="library-item__subject">{{ item.name }}</span>
+                            {% if item.teacher_names %}
+                                <span class="library-item__teachers">Преподаватели: {{ item.teacher_names|join:', ' }}</span>
+                            {% else %}
+                                <span class="library-item__teachers library-item__teachers--empty">Преподаватели не назначены</span>
+                            {% endif %}
+                        </div>
+                    </article>
+                    {% endfor %}
+                {% else %}
+                    <div class="schedule-empty">
+                        <i class="bi bi-inboxes"></i>
+                        <p>Для этой группы пока не назначено предметов. Добавьте предметы в разделе «Предметы», затем вернитесь к конструктору.</p>
+                    </div>
+                {% endif %}
+            </div>
+        </article>
+
+        <div class="schedule-secondary-grid">
+            <section class="schedule-card schedule-card--board">
+                <div class="schedule-card__header">
+                    <div>
+                        <h3 class="schedule-card__title">Учебная неделя</h3>
+                        <p class="schedule-card__subtitle">Используйте перетаскивание или выберите ячейку для ручного редактирования.</p>
+                    </div>
+                    <div class="board-actions">
+                        <button class="action-btn" type="button" data-action="clear-week">
+                            <i class="bi bi-calendar-x"></i>
+                            Очистить неделю
+                        </button>
+                        <button class="action-btn" type="button" data-action="apply-semester">
+                            <i class="bi bi-calendar-range" data-semester-icon></i>
+                            <span data-semester-text>На полугодие</span>
+                        </button>
+                        <button class="action-btn add-group-btn" type="button" data-action="save-week">
+                            <i class="bi bi-save" data-save-icon></i>
+                            <span data-save-text>Сохранить неделю</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="schedule-card__body">
+                    <div class="schedule-board-toolbar">
+                        <div class="schedule-week" data-current-date="{{ current_date|date:'Y-m-d' }}">
+                            <button class="week-switcher__btn" data-action="prev-week" type="button" title="Предыдущая неделя">
+                                <i class="bi bi-arrow-left"></i>
+                            </button>
+                <span class="schedule-week__range" id="scheduleWeekRange"
+                      data-week-start="{{ week_start|date:'Y-m-d' }}"
+                      data-week-end="{{ week_end|date:'Y-m-d' }}">
+                    {{ week_range_label }}
+                </span>
+                        <span class="schedule-week__parity" id="scheduleWeekParityLabel" hidden></span>
+                <button class="week-switcher__btn" data-action="next-week" type="button" title="Следующая неделя">
+                    <i class="bi bi-arrow-right"></i>
                 </button>
             </div>
-            <div class="panel-body">
-                <div class="library-group" id="scheduleSubjectPool">
-                    {% if subjects %}
-                        {% for subject in subjects %}
-                        <article class="library-item" data-subject-id="{{ subject.id }}" draggable="true">
-                            <div class="library-item__title">
-                                {{ subject.short_name|default:subject.name }}
-                            </div>
-                            <div class="library-item__meta">
-                                <span class="library-item__subject">{{ subject.name }}</span>
-                                <span class="library-item__teachers">
-                                    Преподавателей: {{ subject.teachers.all|length }}
-                                </span>
-                            </div>
-                            <div class="library-item__actions">
-                                <button type="button" class="btn btn-link btn-sm" data-action="assign-teacher">
-                                    Назначить
-                                </button>
-                                <button type="button" class="btn btn-link btn-sm" data-action="pin">
-                                    Закрепить
-                                </button>
-                            </div>
-                        </article>
-                        {% endfor %}
-                    {% else %}
-                        <div class="panel-empty">
-                            <i class="bi bi-inboxes"></i>
-                            <p>Активные предметы не найдены. Добавьте их в разделе «Предметы».</p>
+                <div class="schedule-views" id="scheduleViewToggle" role="tablist" aria-label="Режим отображения расписания">
+                            <button class="segmented-btn active" type="button" data-view-tab="week">Неделя</button>
+                            <button class="segmented-btn" type="button" data-view-tab="day">День</button>
+                            <button class="segmented-btn" type="button" data-view-tab="semester">Полугодие</button>
                         </div>
-                    {% endif %}
-                </div>
-            </div>
-        </aside>
+                    </div>
+                    <div class="schedule-day-buildings" id="scheduleDayBuildings">
+                        {% for day in weekday_order %}
+                        <div class="building-control" data-day="{{ day.key }}">
+                            <span class="building-control__label">{{ day.short }}</span>
+                            <div class="building-toggle" data-building-day="{{ day.key }}">
+                                <button type="button" class="building-btn" data-building="nakhimovsky">Нахимовский пр-т</button>
+                                <button type="button" class="building-btn" data-building="nezhinskaya">Нежинская ул.</button>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
 
-        <section class="schedule-panel schedule-panel--grid">
-            <div class="panel-header">
-                <div>
-                    <h3>Учебная неделя</h3>
-                    <span class="panel-subtitle">Переключайте режимы выше, чтобы управлять неделей, днём или планом на полгода</span>
-                </div>
-                <div class="panel-actions">
-                    <button class="schedule-action-btn" type="button" data-action="clear-day">
-                        <i class="bi bi-calendar-x"></i>
-                        <span>Очистить день</span>
-                    </button>
-                    <button class="schedule-action-btn" type="button" data-action="auto-fill">
-                        <i class="bi bi-magic"></i>
-                        <span>Автонаполнение</span>
-                    </button>
-                    <button class="schedule-action-btn schedule-action-btn--primary" type="button" data-action="save-week">
-                        <i class="bi bi-save"></i>
-                        <span>Сохранить неделю</span>
-                    </button>
-                </div>
-            </div>
-            <div class="panel-body panel-body--grid">
-                <div class="schedule-workspace">
                     <div class="schedule-view" data-view-panel="week" id="scheduleWeekView">
                         <div class="schedule-grid">
                             <div class="schedule-grid__head">
@@ -206,7 +222,7 @@
                                 {% for day in weekday_order %}
                                 <div class="grid-cell grid-cell--day" data-day="{{ day.key }}">
                                     <span class="day-name">{{ day.short }}</span>
-                                    <span class="day-full">{{ day.label }}</span>
+                                    <span class="day-building-badge" data-building-badge="{{ day.key }}"></span>
                                 </div>
                                 {% endfor %}
                             </div>
@@ -239,6 +255,7 @@
                             <section class="day-board" data-day="{{ day.key }}">
                                 <header class="day-board__header">
                                     <span class="day-board__name">{{ day.label }}</span>
+                                    <span class="day-building-badge day-building-badge--compact" data-building-badge="{{ day.key }}"></span>
                                     <span class="day-board__short">{{ day.short }}</span>
                                 </header>
                                 <div class="day-board__body">
@@ -266,63 +283,123 @@
                         <div class="semester-board" id="scheduleSemesterBoard">
                             <div class="semester-board__intro">
                                 <h4>План на полгода</h4>
-                                <p>Выберите неделю, чтобы перейти к редактированию. Детальное редактирование выполняйте в режиме «Неделя».</p>
+                                <p>Нажмите на нужную неделю, чтобы сделать её активной. Детальное редактирование выполняется в режиме «Неделя».</p>
                             </div>
                             <div class="semester-board__timeline" id="scheduleSemesterTimeline"></div>
                             <div class="semester-board__note">
                                 <i class="bi bi-info-circle"></i>
-                                <span>Полугодовой план помогает удерживать структуру на 24 недели вперёд. Активная неделя подсвечена.</span>
+                                <span>24 недели вперёд. Текущая неделя подсвечена, переход между неделями выполняется по клику.</span>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </section>
+            </section>
 
-        <aside class="schedule-panel schedule-panel--details">
-            <div class="panel-header">
-                <div>
-                    <h3>Детали пары</h3>
-                    <span class="panel-subtitle">Уточните аудиторию и формат занятия</span>
+        </div>
+    </div>
+    <div class="schedule-modal" id="scheduleLessonModal" hidden>
+        <div class="schedule-modal__backdrop" data-modal-close></div>
+        <div class="schedule-modal__dialog" role="dialog" aria-modal="true">
+            <button type="button" class="schedule-modal__close" data-modal-close>
+                <i class="bi bi-x-lg"></i>
+            </button>
+            <header class="schedule-modal__header">
+                <p class="schedule-modal__meta" id="lessonModalSlot"></p>
+                <h3 class="schedule-modal__title" id="lessonSubjectShort">Пара</h3>
+                <p class="schedule-modal__subtitle" id="lessonSubjectName"></p>
+            </header>
+            <form class="schedule-modal__form" id="scheduleLessonForm">
+                <div class="modal-field-group">
+                    <span class="filter-label">Неделя</span>
+                    <div class="parity-toggle" id="lessonParityToggle">
+                        <button type="button" class="parity-toggle__btn" data-parity-option="both">Всегда</button>
+                        <button type="button" class="parity-toggle__btn" data-parity-option="numerator">Числитель</button>
+                        <button type="button" class="parity-toggle__btn" data-parity-option="denominator">Знаменатель</button>
+                    </div>
                 </div>
-            </div>
-            <div class="panel-body panel-body--details" id="scheduleSlotDetails">
-                <div class="details-placeholder">
-                    <i class="bi bi-info-circle"></i>
-                    <p>Выберите ячейку в сетке, чтобы настроить занятие</p>
+                <div class="modal-field-group">
+                    <span class="filter-label">Преподаватели</span>
+                    <div class="teacher-multiselect" id="lessonTeacherSelectWrapper">
+                        <button type="button" class="teacher-multiselect__trigger" data-multiselect-trigger>
+                            <span class="teacher-multiselect__text" id="lessonTeacherSelected">Не назначен</span>
+                            <i class="bi bi-chevron-down"></i>
+                        </button>
+                        <div class="teacher-multiselect__dropdown" id="lessonTeacherOptions"></div>
+                    </div>
                 </div>
+                <div class="modal-field-group">
+                    <label class="filter-label" for="lessonTypeSelect">Тип занятия</label>
+                    <div class="custom-select filter-custom-select" id="lessonTypeSelectWrapper" data-placeholder="Тип занятия">
+                        <select id="lessonTypeSelect"></select>
+                        <div class="select-trigger placeholder" data-placeholder="Тип занятия">
+                            <span class="select-text">Тип занятия</span>
+                            <div class="select-arrow"><i class="bi bi-chevron-down"></i></div>
+                        </div>
+                        <div class="select-dropdown"></div>
+                    </div>
+                </div>
+                <div class="modal-field-group">
+                    <label class="filter-label">Аудитории</label>
+                    <div class="teacher-room-list" id="lessonTeacherRooms"></div>
+                </div>
+                <div class="schedule-modal__actions">
+                    <button type="button" class="action-btn action-btn--danger" id="lessonDeleteButton">
+                        <i class="bi bi-trash"></i>
+                        Удалить пару
+                    </button>
+                    <button type="submit" class="action-btn add-group-btn">
+                        <i class="bi bi-check2"></i>
+                        Сохранить
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div class="schedule-modal schedule-modal--conflict" id="scheduleConflictModal" hidden>
+        <div class="schedule-modal__backdrop" data-conflict-close></div>
+        <div class="schedule-modal__dialog" role="dialog" aria-modal="true">
+            <button type="button" class="schedule-modal__close" data-conflict-close>
+                <i class="bi bi-x-lg"></i>
+            </button>
+            <header class="schedule-modal__header">
+                <p class="schedule-modal__meta text-danger"><i class="bi bi-exclamation-triangle"></i> Конфликт расписания</p>
+                <h3 class="schedule-modal__title" id="conflictModalTitle">Преподаватель занят в это время</h3>
+            </header>
+            <div class="schedule-modal__body">
+                <ul class="conflict-list" id="conflictModalList"></ul>
             </div>
-            <div class="panel-footer">
-                <button class="btn btn-outline-danger w-100" type="button" data-action="delete-lesson" disabled>
-                    Удалить занятие
+            <div class="schedule-modal__actions">
+                <button type="button" class="action-btn add-group-btn" data-conflict-close>
+                    <i class="bi bi-check2"></i>
+                    Понятно
                 </button>
             </div>
-            <div class="panel-note">
-                <h4>Подсказки</h4>
-                <ul>
-                    <li>Для быстрого заполнения перетащите предмет из левой панели в нужный слот.</li>
-                    <li>Щёлкните по ячейке, чтобы добавить аудиторию, преподавателя и тип занятия.</li>
-                    <li>Используйте фильтры сверху, чтобы сузить список предметов и групп.</li>
-                    <li>Кнопка «Автонаполнение» подберёт пары на основе закреплённых предметов.</li>
-                </ul>
-            </div>
-        </aside>
+        </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-    <script>
-        window.scheduleInitialData = {
-            weekStart: '{{ week_start|date:"Y-m-d" }}',
-            weekEnd: '{{ week_end|date:"Y-m-d" }}',
-            groups: {{ groups_json|safe }},
-            teachers: {{ teachers_json|safe }},
-            subjects: {{ subjects_json|safe }},
-            weekdayOrder: {{ weekday_order_json|safe }},
-            timeSlots: {{ time_slots_json|safe }},
-        };
-    </script>
-    <script src="{% static 'js/custom_select.js' %}"></script>
-    <script src="{% static 'js/schedule.js' %}"></script>
+<script>
+    window.scheduleInitialData = {
+        weekStart: '{{ week_start|date:"Y-m-d" }}',
+        weekEnd: '{{ week_end|date:"Y-m-d" }}',
+        groups: {{ groups_json|safe }},
+        teachers: {{ teachers_json|safe }},
+        subjects: {{ subjects_json|safe }},
+        weekdayOrder: {{ weekday_order_json|safe }},
+        timeSlots: {{ time_slots_json|safe }},
+        weekLessons: {{ week_lessons_json|safe }},
+        dayBuildings: {{ day_buildings_json|safe }},
+        weekBuildings: {{ week_buildings_json|safe }},
+        activeGroup: {{ active_group_json|safe }},
+        endpoints: {
+            save: '{{ schedule_save_url|escapejs }}',
+            checkConflict: '{{ schedule_conflict_check_url|escapejs }}'
+        },
+        csrfToken: '{{ csrf_token }}',
+    };
+</script>
+<script src="{% static 'js/custom_select.js' %}"></script>
+<script src="{% static 'js/schedule.js' %}"></script>
 {% endblock %}
