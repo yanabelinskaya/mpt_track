@@ -44,6 +44,7 @@ try:
         ActivityLog,
         ScheduleWeek,
         ScheduleTeacherSlot,
+        PasswordResetRequest,
     )
     MODELS_AVAILABLE = True
 except:
@@ -249,6 +250,11 @@ def students_list_view(request):
         for group in groups:
             group.total_students = counts_map.get(group.id, 0)
         
+        password_requests = PasswordResetRequest.objects.select_related('student').filter(
+            role=PasswordResetRequest.ROLE_STUDENT,
+            status=PasswordResetRequest.STATUS_PENDING
+        ).order_by('created_at')
+
         context = {
             'page_obj': page_obj,
             'groups': groups,
@@ -262,7 +268,8 @@ def students_list_view(request):
                 'search': search,
                 'group': group_filter,
                 'status': status_filter,
-            }
+            },
+            'password_reset_requests': password_requests,
         }
         
         return render(request, 'admin_panel/students/students_list.html', context)
@@ -339,6 +346,11 @@ def teachers_list_view(request):
         if status_filter:
             active_filters += 1
 
+        password_requests = PasswordResetRequest.objects.select_related('teacher').filter(
+            role=PasswordResetRequest.ROLE_TEACHER,
+            status=PasswordResetRequest.STATUS_PENDING
+        ).order_by('created_at')
+
         context = {
             'page_obj': page_obj,
             'subjects': subjects,
@@ -352,6 +364,7 @@ def teachers_list_view(request):
                 'subject': subject_filter,
                 'status': status_filter,
             },
+            'password_reset_requests': password_requests,
         }
 
         return render(request, 'admin_panel/teachers/list.html', context)

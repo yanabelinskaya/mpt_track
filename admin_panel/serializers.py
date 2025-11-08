@@ -323,6 +323,10 @@ class PasswordResetSerializer(serializers.Serializer):
     send_email = serializers.BooleanField(default=True)
 
 
+class PasswordRecoveryRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+
 # Response сериализаторы
 class StudentListResponseSerializer(serializers.Serializer):
     success = serializers.BooleanField()

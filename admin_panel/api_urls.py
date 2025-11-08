@@ -3,6 +3,10 @@ from django.urls import path
 from . import api_views
 
 urlpatterns = [
+    # === АУТЕНТИФИКАЦИЯ ===
+    path('auth/password-recovery/', api_views.password_recovery_request_api, name='password_recovery_request_api'),
+    path('auth/password-recovery/<int:request_id>/process/', api_views.password_recovery_process_api, name='password_recovery_process_api'),
+
     # === СТУДЕНТЫ API ===
     path('students/<int:student_id>/delete/', api_views.student_delete_api, name='student_delete_api'),
     path('students/<int:student_id>/toggle-status/', api_views.student_toggle_status_api, name='student_toggle_status_api'),

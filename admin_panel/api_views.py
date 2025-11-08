@@ -16,10 +16,12 @@ import secrets
 import string
 import re
 from datetime import datetime
+from django.utils import timezone
 
 from .serializers import (
     StudentSerializer, BulkOperationSerializer, CreateAccessSerializer,
-    PasswordResetSerializer, StudentListResponseSerializer, StudentListSerializer,
+    PasswordResetSerializer, PasswordRecoveryRequestSerializer,
+    StudentListResponseSerializer, StudentListSerializer,
     PaginationSerializer, FacultySerializer, FacultyCreateSerializer,
     FacultyListSerializer, FacultyBulkOperationSerializer, FacultyListResponseSerializer,
     TeacherSerializer, TeacherCreateSerializer, TeacherListSerializer,
@@ -28,7 +30,7 @@ from .serializers import (
 
 # Безопасная проверка импорта моделей
 try:
-    from .models import Student, Group, Faculty, Teacher, Subject, ActivityLog
+    from .models import Student, Group, Faculty, Teacher, Subject, ActivityLog, PasswordResetRequest
     MODELS_AVAILABLE = True
 except ImportError:
     MODELS_AVAILABLE = False
@@ -161,6 +163,82 @@ def send_password_email(student, password):
         print(f"Ошибка отправки email: {e}")
         return False
 
+
+def issue_student_password(student):
+    """Создает или обновляет учетную запись студента и возвращает данные доступа"""
+    account_created = False
+    if not student.user:
+        username = generate_username(student.first_name, student.last_name)
+        password = generate_password()
+        user = User.objects.create_user(
+            username=username,
+            email=student.email,
+            first_name=student.first_name,
+            last_name=student.last_name,
+            password=password
+        )
+        user.is_active = True
+        user.save()
+        student.user = user
+        student.save()
+        email_sent = send_credentials_email(student, username, password)
+        account_created = True
+        return {
+            'password': password,
+            'username': username,
+            'email_sent': email_sent,
+            'account_created': account_created
+        }
+
+    password = generate_password()
+    student.user.set_password(password)
+    student.user.save()
+    email_sent = send_password_email(student, password)
+    return {
+        'password': password,
+        'username': student.user.username,
+        'email_sent': email_sent,
+        'account_created': account_created
+    }
+
+
+def issue_teacher_password(teacher):
+    """Создает или обновляет учетную запись преподавателя и возвращает данные доступа"""
+    account_created = False
+    if not teacher.user:
+        username = generate_username(teacher.first_name, teacher.last_name)
+        password = generate_password()
+        user = User.objects.create_user(
+            username=username,
+            email=teacher.email,
+            first_name=teacher.first_name,
+            last_name=teacher.last_name,
+            password=password
+        )
+        user.is_active = True
+        user.save()
+        teacher.user = user
+        teacher.save()
+        email_sent = send_teacher_credentials_email(teacher, username, password)
+        account_created = True
+        return {
+            'password': password,
+            'username': username,
+            'email_sent': email_sent,
+            'account_created': account_created
+        }
+
+    password = generate_password()
+    teacher.user.set_password(password)
+    teacher.user.save()
+    email_sent = send_teacher_credentials_email(teacher, teacher.user.username, password)
+    return {
+        'password': password,
+        'username': teacher.user.username,
+        'email_sent': email_sent,
+        'account_created': account_created
+    }
+
 def apply_student_filters(queryset, filters):
     """Применить фильтры к queryset студентов"""
     search = filters.get('search', '').strip()
@@ -220,6 +298,222 @@ def apply_teacher_filters(queryset, filters):
             queryset = queryset.filter(is_curator=True)
 
     return queryset.distinct()
+
+# ====================================
+# API ДЛЯ ВОССТАНОВЛЕНИЯ ПАРОЛЯ
+# ====================================
+
+@swagger_auto_schema(
+    method='post',
+    request_body=PasswordRecoveryRequestSerializer,
+    operation_summary='Создать запрос на восстановление пароля',
+    operation_description='Пользователь указывает email, система определяет роль и уведомляет администратора',
+    tags=['Аутентификация'],
+    responses={
+        200: openapi.Response('Запрос принят', openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                'message': openapi.Schema(type=openapi.TYPE_STRING),
+                'role': openapi.Schema(type=openapi.TYPE_STRING),
+                'request_id': openapi.Schema(type=openapi.TYPE_INTEGER),
+                'already_pending': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+            }
+        )),
+        400: 'Ошибка в данных',
+        404: 'Email не найден'
+    }
+)
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def password_recovery_request_api(request):
+    """Создать запрос на восстановление пароля"""
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    serializer = PasswordRecoveryRequestSerializer(data=request.data or {})
+    serializer.is_valid(raise_exception=True)
+
+    email = serializer.validated_data['email'].strip()
+
+    students = list(Student.objects.filter(email__iexact=email))
+    teachers = list(Teacher.objects.filter(email__iexact=email))
+
+    if students and teachers:
+        return Response({
+            'success': False,
+            'message': 'Система обнаружила студента и преподавателя с таким email. Обратитесь к администратору.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if not students and not teachers:
+        return Response({
+            'success': False,
+            'message': 'Пользователь с таким email не найден'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    if len(students) > 1:
+        return Response({
+            'success': False,
+            'message': 'Найдено несколько студентов с указанным email. Уточните адрес у администратора.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if len(teachers) > 1:
+        return Response({
+            'success': False,
+            'message': 'Найдено несколько преподавателей с указанным email. Уточните адрес у администратора.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
+    if students:
+        student = students[0]
+        existing_request = PasswordResetRequest.objects.filter(
+            student=student,
+            status=PasswordResetRequest.STATUS_PENDING
+        ).first()
+
+        if existing_request:
+            request_obj = existing_request
+            created = False
+        else:
+            request_obj = PasswordResetRequest.objects.create(
+                email=student.email,
+                role=PasswordResetRequest.ROLE_STUDENT,
+                student=student
+            )
+            created = True
+    else:
+        teacher = teachers[0]
+        existing_request = PasswordResetRequest.objects.filter(
+            teacher=teacher,
+            status=PasswordResetRequest.STATUS_PENDING
+        ).first()
+
+        if existing_request:
+            request_obj = existing_request
+            created = False
+        else:
+            request_obj = PasswordResetRequest.objects.create(
+                email=teacher.email,
+                role=PasswordResetRequest.ROLE_TEACHER,
+                teacher=teacher
+            )
+            created = True
+
+    if created:
+        target_name = request_obj.target_name or request_obj.email
+        log_activity(
+            request.user,
+            ActivityLog.ACTION_CREATE,
+            f'Получен запрос на восстановление от { "студента" if request_obj.role == PasswordResetRequest.ROLE_STUDENT else "преподавателя" } "{target_name}"',
+            'bi-envelope-exclamation',
+            {
+                'role': request_obj.role,
+                'email': request_obj.email,
+                'request_id': request_obj.id,
+            }
+        )
+
+    return Response({
+        'success': True,
+        'message': 'Запрос отправлен. Как только администратор подтвердит данные, новый пароль придет на почту.',
+        'role': request_obj.role,
+        'request_id': request_obj.id,
+        'already_pending': not created
+    }, status=status.HTTP_200_OK)
+
+
+@swagger_auto_schema(
+    method='post',
+    operation_summary='Обработать запрос на восстановление пароля',
+    operation_description='Администратор подтверждает запрос и отправляет новый пароль',
+    tags=['Аутентификация'],
+    request_body=openapi.Schema(
+        type=openapi.TYPE_OBJECT,
+        properties={
+            'comment': openapi.Schema(type=openapi.TYPE_STRING, description='Комментарий администратора', nullable=True),
+        },
+        required=[]
+    ),
+    responses={
+        200: openapi.Response('Запрос обработан', openapi.Schema(
+            type=openapi.TYPE_OBJECT,
+            properties={
+                'success': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                'message': openapi.Schema(type=openapi.TYPE_STRING),
+                'email_sent': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Пароль, если письмо не удалось отправить', nullable=True),
+                'username': openapi.Schema(type=openapi.TYPE_STRING),
+                'account_created': openapi.Schema(type=openapi.TYPE_BOOLEAN),
+            }
+        )),
+        400: 'Неверный статус запроса',
+        404: 'Запрос не найден'
+    }
+)
+@api_view(['POST'])
+@permission_classes([IsAdminUser])
+def password_recovery_process_api(request, request_id):
+    """Администратор обрабатывает запрос на восстановление"""
+    if not MODELS_AVAILABLE:
+        return Response({'success': False, 'message': 'Модели недоступны'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    try:
+        reset_request = PasswordResetRequest.objects.select_related(
+            'student', 'student__user', 'teacher', 'teacher__user'
+        ).get(id=request_id)
+    except PasswordResetRequest.DoesNotExist:
+        return Response({'success': False, 'message': 'Запрос не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+    if reset_request.status != PasswordResetRequest.STATUS_PENDING:
+        return Response({'success': False, 'message': 'Запрос уже обработан'}, status=status.HTTP_400_BAD_REQUEST)
+
+    comment = ''
+    if isinstance(request.data, dict):
+        comment = (request.data.get('comment') or '').strip()
+
+    try:
+        if reset_request.role == PasswordResetRequest.ROLE_STUDENT and reset_request.student:
+            result = issue_student_password(reset_request.student)
+            description = f'Обработан запрос восстановления пароля студента "{reset_request.student.get_full_name()}"'
+            icon = 'bi-person-lock'
+        elif reset_request.role == PasswordResetRequest.ROLE_TEACHER and reset_request.teacher:
+            result = issue_teacher_password(reset_request.teacher)
+            description = f'Обработан запрос восстановления пароля преподавателя "{reset_request.teacher.get_full_name()}"'
+            icon = 'bi-mortarboard'
+        else:
+            return Response({'success': False, 'message': 'Некорректный тип запроса'}, status=status.HTTP_400_BAD_REQUEST)
+
+        log_activity(
+            request.user,
+            ActivityLog.ACTION_UPDATE,
+            description,
+            icon,
+            {
+                'email_sent': result['email_sent'],
+                'request_id': reset_request.id,
+                'account_created': result['account_created']
+            }
+        )
+
+        reset_request.status = PasswordResetRequest.STATUS_PROCESSED
+        reset_request.processed_by = request.user
+        reset_request.processed_at = timezone.now()
+        if comment:
+            reset_request.comment = comment
+        reset_request.save(update_fields=['status', 'processed_by', 'processed_at', 'comment'])
+
+        message = 'Новый пароль отправлен на email пользователя.' if result['email_sent'] else 'Пароль сгенерирован, но письмо не отправлено. Сообщите пользователю вручную.'
+
+        return Response({
+            'success': True,
+            'message': message,
+            'email_sent': result['email_sent'],
+            'password': None if result['email_sent'] else result['password'],
+            'username': result['username'],
+            'account_created': result['account_created']
+        }, status=status.HTTP_200_OK)
+    except Exception as exc:
+        return Response({'success': False, 'message': str(exc)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 # ====================================
 # API ENDPOINTS ДЛЯ СТУДЕНТОВ

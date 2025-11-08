@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Faculty, Group, Student, Subject, Teacher, SubjectAssignment
+from .models import Faculty, Group, Student, Subject, Teacher, SubjectAssignment, PasswordResetRequest
 from admin_panel.models import Backup
 
 
@@ -197,6 +197,29 @@ class StudentAdmin(admin.ModelAdmin):
                     )
         self.message_user(request, f'Создан доступ для {created} студентов.')
     create_system_access.short_description = "Создать доступ к системе"
+
+
+@admin.register(PasswordResetRequest)
+class PasswordResetRequestAdmin(admin.ModelAdmin):
+    list_display = ('email', 'role', 'status', 'target_display', 'created_at', 'processed_by')
+    list_filter = ('role', 'status', 'created_at')
+    search_fields = ('email', 'student__first_name', 'student__last_name', 'teacher__first_name', 'teacher__last_name')
+    readonly_fields = ('email', 'role', 'student', 'teacher', 'created_at', 'processed_at', 'processed_by')
+    fieldsets = (
+        (None, {
+            'fields': ('email', 'role', 'student', 'teacher')
+        }),
+        ('Статус', {
+            'fields': ('status', 'comment')
+        }),
+        ('Обработка', {
+            'fields': ('created_at', 'processed_at', 'processed_by')
+        })
+    )
+
+    def target_display(self, obj):
+        return obj.target_name or '—'
+    target_display.short_description = 'Пользователь'
 
 
 @admin.register(Backup)

@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
 from django.utils import timezone
@@ -673,6 +674,100 @@ class Teacher(models.Model):
     @property
     def curated_groups(self):
         return self.groups.all()
+
+
+class PasswordResetRequest(models.Model):
+    """Заявка на восстановление пароля"""
+
+    ROLE_STUDENT = 'student'
+    ROLE_TEACHER = 'teacher'
+
+    STATUS_PENDING = 'pending'
+    STATUS_PROCESSED = 'processed'
+    STATUS_REJECTED = 'rejected'
+
+    ROLE_CHOICES = [
+        (ROLE_STUDENT, 'Студент'),
+        (ROLE_TEACHER, 'Преподаватель'),
+    ]
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'Ожидает обработки'),
+        (STATUS_PROCESSED, 'Обработана'),
+        (STATUS_REJECTED, 'Отклонена'),
+    ]
+
+    email = models.EmailField('Email запроса')
+    role = models.CharField('Тип пользователя', max_length=16, choices=ROLE_CHOICES)
+    student = models.ForeignKey(
+        'Student',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='password_requests',
+        verbose_name='Студент'
+    )
+    teacher = models.ForeignKey(
+        'Teacher',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='password_requests',
+        verbose_name='Преподаватель'
+    )
+    status = models.CharField('Статус', max_length=16, choices=STATUS_CHOICES, default=STATUS_PENDING)
+    comment = models.TextField('Комментарий администратора', blank=True)
+    created_at = models.DateTimeField('Создано', auto_now_add=True)
+    processed_at = models.DateTimeField('Обработано', null=True, blank=True)
+    processed_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='processed_password_requests',
+        verbose_name='Обработал'
+    )
+
+    class Meta:
+        verbose_name = 'Запрос на восстановление пароля'
+        verbose_name_plural = 'Запросы на восстановление пароля'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['student'],
+                condition=Q(status='pending'),
+                name='unique_pending_student_password_request'
+            ),
+            models.UniqueConstraint(
+                fields=['teacher'],
+                condition=Q(status='pending'),
+                name='unique_pending_teacher_password_request'
+            ),
+        ]
+
+    def __str__(self):
+        target = self.target_name
+        return f'{self.get_role_display()} — {self.email} ({self.get_status_display()})' if target else self.email
+
+    @property
+    def target(self):
+        return self.student or self.teacher
+
+    @property
+    def target_name(self):
+        if self.role == self.ROLE_STUDENT and self.student:
+            return self.student.get_full_name()
+        if self.role == self.ROLE_TEACHER and self.teacher:
+            return self.teacher.get_full_name()
+        return None
+
+    def mark_processed(self, user, comment=''):
+        self.status = self.STATUS_PROCESSED
+        self.processed_by = user
+        self.processed_at = timezone.now()
+        if comment:
+            self.comment = comment
+        self.save(update_fields=['status', 'processed_by', 'processed_at', 'comment'])
 
 
 class ActivityLog(models.Model):

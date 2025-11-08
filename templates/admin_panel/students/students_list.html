@@ -429,6 +429,41 @@
     </form>
 </div>
 
+{% if password_reset_requests %}
+<div class="password-requests-card">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+            <h3><i class="bi bi-shield-lock me-2"></i>Запросы на восстановление</h3>
+            <p class="password-requests-description">Студенты ожидают новый пароль. После подтверждения письмо уйдёт автоматически.</p>
+        </div>
+        <span class="badge bg-primary">{{ password_reset_requests|length }}</span>
+    </div>
+    {% for request in password_reset_requests %}
+    <div class="password-request-item">
+        <div class="password-request-avatar">
+            <i class="bi bi-mortarboard"></i>
+        </div>
+        <div class="password-request-info">
+            <div class="password-request-name">{{ request.target_name|default:request.email }}</div>
+            <div class="password-request-meta">
+                <span>{{ request.email }}</span>
+                {% if request.student and request.student.group %}
+                    <span>{{ request.student.group.code }}</span>
+                {% endif %}
+                <span>{{ request.created_at|date:"d.m.Y H:i" }}</span>
+            </div>
+        </div>
+        <div class="password-request-action">
+            <button type="button" data-password-request-id="{{ request.id }}">
+                <i class="bi bi-arrow-repeat"></i>
+                Восстановить
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- Основная панель студентов -->
 <div class="data-panel students-panel">
     <div class="panel-top">
@@ -912,6 +947,7 @@ window.STUDENT_BULK_DEACTIVATE_URL = "{% url 'student_bulk_deactivate_api' %}";
 window.STUDENT_BULK_DELETE_URL = "{% url 'student_bulk_delete_api' %}";
 window.STUDENT_BULK_CREATE_ACCESS_URL = "{% url 'student_bulk_create_access_api' %}";
 window.STUDENT_EXPORT_URL = "{% url 'student_export' %}";
+window.PASSWORD_REQUEST_PROCESS_URL = "{% url 'password_recovery_process_api' 0 %}".replace('0', '{id}');
 
 // Переменные для модальных окон и выбора
 let studentIdToDelete = null;
@@ -2224,4 +2260,5 @@ document.addEventListener('DOMContentLoaded', function() {
 
 console.log('✅ Students script with fixed modals and dropdowns loaded successfully!');
 </script>
+<script src="{% static 'js/password_requests.js' %}"></script>
 {% endblock %}

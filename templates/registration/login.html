@@ -90,7 +90,7 @@
             </div>
 
             <div class="remember-me">
-                <a href="#" class="forgot-password">Забыли пароль?</a>
+                <a href="#" class="forgot-password" id="forgotPasswordLink">Забыли пароль?</a>
             </div>
 
             <button type="submit" class="login-btn" id="loginBtn">
@@ -105,7 +105,46 @@
         </form>
     </div>
 
+    <div class="modal-overlay" id="passwordRecoveryModal" aria-hidden="true">
+        <div class="modal-dialog" role="dialog" aria-modal="true">
+            <button type="button" class="modal-close" data-modal-close aria-label="Закрыть">&times;</button>
+            <div class="modal-icon">
+                <i class="bi bi-envelope-open"></i>
+            </div>
+            <h2>Восстановление пароля</h2>
+            <p>Укажите корпоративный email. Мы определим ваш профиль и отправим запрос администратору.</p>
+            <form id="passwordRecoveryForm" class="modal-form">
+                {% csrf_token %}
+                <label for="recoveryEmail" class="form-label">Электронная почта</label>
+                <input type="email" id="recoveryEmail" name="email" class="form-control" placeholder="name@example.com" required>
+                <div class="form-hint">Email должен совпадать с тем, что указан в системе</div>
+                <div class="form-error" id="passwordRecoveryError"></div>
+                <button type="submit" class="login-btn" id="passwordRecoverySubmit">
+                    <i class="bi bi-send"></i>
+                    Отправить запрос
+                </button>
+            </form>
+            <p class="modal-note">Администратор увидит запрос в соответствующем разделе.</p>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="passwordRecoveryResultModal" aria-hidden="true">
+        <div class="modal-dialog" role="alertdialog" aria-modal="true">
+            <button type="button" class="modal-close" data-modal-close aria-label="Закрыть">&times;</button>
+            <div class="modal-icon success">
+                <i class="bi bi-check2-circle"></i>
+            </div>
+            <h2>Запрос зарегистрирован</h2>
+            <p id="passwordRecoveryResultMessage">Мы отправили запрос администратору. Проверьте почту в течение нескольких минут.</p>
+            <div class="modal-actions">
+                <button type="button" class="login-btn" data-modal-close>Хорошо</button>
+            </div>
+        </div>
+    </div>
+
     <script>
+        const PASSWORD_RECOVERY_API_URL = "{% url 'password_recovery_request_api' %}";
+
         // Переключение темы
         function toggleTheme() {
             const html = document.documentElement;
@@ -153,6 +192,33 @@
         }
 
         // Загрузка сохраненной темы и инициализация
+        function getCsrfToken() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'csrftoken') {
+                    return decodeURIComponent(value);
+                }
+            }
+            return '';
+        }
+
+        function openModal(modal) {
+            if (!modal) return;
+            modal.removeAttribute('aria-hidden');
+            modal.classList.add('active');
+            document.body.classList.add('modal-open');
+        }
+
+        function closeModal(modal) {
+            if (!modal) return;
+            modal.setAttribute('aria-hidden', 'true');
+            modal.classList.remove('active');
+            if (!document.querySelector('.modal-overlay.active')) {
+                document.body.classList.remove('modal-open');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', function() {
             const savedTheme = localStorage.getItem('theme');
             const html = document.documentElement;
@@ -203,6 +269,79 @@
                     if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         togglePassword('{{ form.password.id_for_label }}');
+                    }
+                });
+            }
+
+            const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+            const recoveryModal = document.getElementById('passwordRecoveryModal');
+            const recoveryForm = document.getElementById('passwordRecoveryForm');
+            const recoveryError = document.getElementById('passwordRecoveryError');
+            const recoverySubmit = document.getElementById('passwordRecoverySubmit');
+            const resultModal = document.getElementById('passwordRecoveryResultModal');
+            const resultMessage = document.getElementById('passwordRecoveryResultMessage');
+
+            document.querySelectorAll('[data-modal-close]').forEach(button => {
+                button.addEventListener('click', () => closeModal(button.closest('.modal-overlay')));
+            });
+
+            [recoveryModal, resultModal].forEach(modal => {
+                modal?.addEventListener('click', (event) => {
+                    if (event.target === modal) {
+                        closeModal(modal);
+                    }
+                });
+            });
+
+            if (forgotPasswordLink && recoveryModal) {
+                forgotPasswordLink.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    recoveryError.textContent = '';
+                    recoveryForm.reset();
+                    openModal(recoveryModal);
+                    setTimeout(() => document.getElementById('recoveryEmail')?.focus(), 150);
+                });
+            }
+
+            if (recoveryForm) {
+                recoveryForm.addEventListener('submit', async (event) => {
+                    event.preventDefault();
+                    const formData = new FormData(recoveryForm);
+                    const email = formData.get('email')?.trim();
+
+                    if (!email) {
+                        recoveryError.textContent = 'Введите email, который указан в системе';
+                        return;
+                    }
+
+                    recoveryError.textContent = '';
+                    recoverySubmit.disabled = true;
+                    recoverySubmit.innerHTML = '<i class="bi bi-hourglass-split"></i> Отправка...';
+
+                    try {
+                        const response = await fetch(PASSWORD_RECOVERY_API_URL, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRFToken': getCsrfToken(),
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({ email }),
+                        });
+
+                        const data = await response.json();
+
+                        if (!response.ok || !data.success) {
+                            throw new Error(data.message || 'Не удалось отправить запрос');
+                        }
+
+                        closeModal(recoveryModal);
+                        resultMessage.textContent = 'Мы отправили запрос администратору. Как только пароль обновят, вы получите письмо.';
+                        openModal(resultModal);
+                    } catch (error) {
+                        recoveryError.textContent = error.message || 'Произошла ошибка. Попробуйте позже.';
+                    } finally {
+                        recoverySubmit.disabled = false;
+                        recoverySubmit.innerHTML = '<i class="bi bi-send"></i> Отправить запрос';
                     }
                 });
             }

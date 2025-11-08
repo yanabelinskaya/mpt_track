@@ -117,6 +117,38 @@
     </form>
 </div>
 
+{% if password_reset_requests %}
+<div class="password-requests-card">
+    <div class="d-flex justify-content-between align-items-start mb-2">
+        <div>
+            <h3><i class="bi bi-key me-2"></i>Запросы преподавателей</h3>
+            <p class="password-requests-description">Эти преподаватели ожидают новый пароль. После обработки им придут обновлённые данные.</p>
+        </div>
+        <span class="badge bg-primary">{{ password_reset_requests|length }}</span>
+    </div>
+    {% for request in password_reset_requests %}
+    <div class="password-request-item">
+        <div class="password-request-avatar">
+            <i class="bi bi-person-badge"></i>
+        </div>
+        <div class="password-request-info">
+            <div class="password-request-name">{{ request.target_name|default:request.email }}</div>
+            <div class="password-request-meta">
+                <span>{{ request.email }}</span>
+                <span>{{ request.created_at|date:"d.m.Y H:i" }}</span>
+            </div>
+        </div>
+        <div class="password-request-action">
+            <button type="button" data-password-request-id="{{ request.id }}">
+                <i class="bi bi-arrow-repeat"></i>
+                Восстановить
+            </button>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <!-- Основная панель преподавателей -->
 <div class="data-panel teachers-panel">
     <div class="panel-top">
@@ -414,6 +446,8 @@ window.TEACHER_BULK_DELETE_URL = "{% url 'teacher_bulk_delete_api' %}";
 window.TEACHER_BULK_CREATE_ACCESS_URL = "{% url 'teacher_bulk_create_access_api' %}";
 window.TEACHER_EXPORT_URL = "{% url 'teacher_export' %}";
 window.TEACHER_IMPORT_URL = "{% url 'admin_teacher_import' %}";
+window.PASSWORD_REQUEST_PROCESS_URL = "{% url 'password_recovery_process_api' 0 %}".replace('0', '{id}');
 </script>
 <script src="{% static 'js/teachers.js' %}"></script>
+<script src="{% static 'js/password_requests.js' %}"></script>
 {% endblock %}
