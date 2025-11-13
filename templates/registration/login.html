@@ -111,8 +111,8 @@
             <div class="modal-icon">
                 <i class="bi bi-envelope-open"></i>
             </div>
-            <h2>Восстановление пароля</h2>
-            <p>Укажите корпоративный email. Мы определим ваш профиль и отправим запрос администратору.</p>
+            <h2 class="modal-note">Восстановление пароля</h2>
+            <p class="modal-note">Укажите корпоративный email. Мы определим ваш профиль и отправим запрос администратору.</p>
             <form id="passwordRecoveryForm" class="modal-form">
                 {% csrf_token %}
                 <label for="recoveryEmail" class="form-label">Электронная почта</label>
@@ -134,7 +134,7 @@
             <div class="modal-icon success">
                 <i class="bi bi-check2-circle"></i>
             </div>
-            <h2>Запрос зарегистрирован</h2>
+            <h2 class="modal-note">Запрос зарегистрирован</h2>
             <p id="passwordRecoveryResultMessage">Мы отправили запрос администратору. Проверьте почту в течение нескольких минут.</p>
             <div class="modal-actions">
                 <button type="button" class="login-btn" data-modal-close>Хорошо</button>

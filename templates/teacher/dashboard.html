@@ -1,0 +1,158 @@
+{% extends 'teacher/base.html' %}
+{% load static %}
+
+{% block title %}МПТ Журнал — Преподаватель{% endblock %}
+{% block page_title %}МПТ Журнал{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/teacher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/schedule.css' %}">
+<link rel="stylesheet" href="{% static 'css/teacher_week_adminlook.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="teacher-dashboard">
+
+  <!-- Хедер: Фамилия И.О. -->
+  <section class="teacher-hero-panel panel">
+    <div>
+      <p class="teacher-hero-label">Преподавательский модуль</p>
+      <h1>
+        {% with fi=teacher.first_name|default:''|slice:":1" mi=teacher.middle_name|default:''|slice:":1" %}
+          {{ teacher.last_name }}{% if fi %} {{ fi }}.{% endif %}{% if mi %} {{ mi }}.{% endif %}
+        {% endwith %}
+        , добро пожаловать!
+      </h1>
+      <p class="teacher-hero-subtitle">Всё расписание и группы — в одном месте.</p>
+    </div>
+  </section>
+
+  <!-- Быстрые переходы -->
+  <section class="panel quick-panel">
+    <header>
+      <h2>Быстрые переходы</h2>
+      <p>всё нужное под рукой</p>
+    </header>
+    <div class="quick-links">
+      <a href="{% url 'teacher_schedule' %}"><i class="bi bi-calendar-week"></i> Расписание</a>
+      <a href="{% url 'admin_students' %}"><i class="bi bi-people"></i> Студенты</a>
+      <a href="{% url 'admin_teachers' %}"><i class="bi bi-person-badge"></i> Профиль</a>
+      <a href="{% url 'groups_main' %}"><i class="bi bi-collection"></i> Группы</a>
+    </div>
+  </section>
+
+  <!-- Статистика -->
+  <section class="teacher-stats-grid">
+    <article class="stat-card">
+      <p>Группы</p>
+      <strong>{{ stats.groups }}</strong>
+      <span>активные</span>
+    </article>
+    <article class="stat-card">
+      <p>Предметы</p>
+      <strong>{{ stats.subjects }}</strong>
+      <span>закреплённые</span>
+    </article>
+    <article class="stat-card">
+      <p>Студенты</p>
+      <strong>{{ stats.students }}</strong>
+      <span>под наблюдением</span>
+    </article>
+  </section>
+
+  <!-- Календарь текущей недели -->
+  <section class="panel calendar-panel calendar-full adminlook teacher-calendar-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Календарь текущей недели</h2>
+        <p class="calendar-subtitle">
+          Сегодня {{ today_label }} • {{ week_parity_label }} • {{ week_range_label }}
+        </p>
+      </div>
+    </div>
+
+    <div class="schedule-grid teacher-calendar-grid">
+      <div class="schedule-grid__head">
+        <div class="grid-cell grid-cell--time">Время</div>
+        {% for day in weekday_order %}
+        <div class="grid-cell grid-cell--day" data-day="{{ day.key }}">
+          <span class="day-name">{{ day.short }}</span>
+          <span class="day-building-badge">{{ day.building_label }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="schedule-grid__body">
+        {% for row in week_grid_rows %}
+        <div class="grid-row">
+          <div class="grid-cell grid-cell--time">
+            <span class="slot-order">{{ row.slot.order }} пара</span>
+            <span class="slot-range">{{ row.slot.start }} – {{ row.slot.end }}</span>
+          </div>
+
+          {% for cell in row.cells %}
+          <div class="grid-cell grid-cell--droppable{% if cell.lesson %} has-lesson{% endif %}"
+               data-day="{{ cell.day_key }}"
+               data-slot="{{ cell.slot_id }}">
+            {% if cell.lesson %}
+              <div class="schedule-lesson">
+                <div class="schedule-lesson__title">
+                  {{ cell.lesson.subject }}
+                </div>
+                <div class="schedule-lesson__meta">
+                  <span class="lesson-line">{{ cell.lesson.group_code }}</span>
+                  <span class="lesson-line">{{ cell.lesson.lesson_type }}</span>
+                </div>
+              </div>
+            {% else %}
+              <div class="grid-cell__placeholder">
+                <i class="bi bi-dash-lg"></i>
+                <span>Нет пары</span>
+              </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+  <!-- Группы: карточки -->
+  <section class="panel groups-panel">
+    <div class="panel-header">
+      <div>
+        <h2>Группы</h2>
+        <p>ваши предметы и курсы</p>
+      </div>
+    </div>
+    <div class="groups-grid">
+      {% for card in group_cards %}
+      <article class="group-card">
+        <div class="group-card-top">
+          <div class="group-chip">{{ card.group.code }}</div>
+          <div class="group-stats">
+            <span class="group-count"><i class="bi bi-people"></i> {{ card.group.student_total|default:"0" }}</span>
+            {% if card.course %}<span class="group-course"><i class="bi bi-mortarboard"></i> {{ card.course }} курс</span>{% endif %}
+          </div>
+        </div>
+        <h3 class="group-title">{{ card.subject_name|default:"Предмет не указан" }}</h3>
+        <p class="group-submeta">
+          {% if card.group.faculty %}
+            {{ card.group.faculty.name }}
+          {% else %}
+            Специальность не указана
+          {% endif %}
+        </p>
+        <a href="{% url 'group_detail' card.group.id %}" class="btn-link">
+          Перейти к группе <i class="bi bi-arrow-right-short"></i>
+        </a>
+      </article>
+      {% empty %}
+      <p class="empty">Группы пока не закреплены.</p>
+      {% endfor %}
+    </div>
+  </section>
+
+</div>
+{% endblock %}

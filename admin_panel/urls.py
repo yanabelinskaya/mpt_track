@@ -7,6 +7,7 @@ urlpatterns = [
     path('', views.dashboard_view, name='home'),  # Главная страница с перенаправлением
     path('admin-panel/', views.admin_dashboard_view, name='admin_dashboard'),  # Админ-панель
     path('student-cabinet/', views.student_dashboard_view, name='student_dashboard'),  # Кабинет студента
+    path('teacher-cabinet/', views.teacher_dashboard_view, name='teacher_dashboard'),  # Кабинет преподавателя
     path('accounts/', include('django.contrib.auth.urls')),
     path('activity-logs/add/', views.activity_log_add_view, name='activity_log_add'),
     path('activity-logs/remove/', views.activity_log_remove_view, name='activity_log_remove'),
@@ -85,6 +86,7 @@ urlpatterns = [
     path('schedule/<int:group_id>/constructor/', views.schedule_constructor_view, name='admin_schedule_group'),
     path('schedule/<int:group_id>/save/', views.schedule_save_api, name='schedule_save_api'),
     path('schedule/<int:group_id>/check-conflict/', views.schedule_check_conflict_api, name='schedule_check_conflict_api'),
+    path('teacher-schedule/', views.teacher_schedule_view, name='teacher_schedule'),
 
     # Предметы
     path('subjects/', views.subjects_main_view, name='admin_subjects'),

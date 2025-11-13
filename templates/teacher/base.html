@@ -1,0 +1,156 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}МПТ Журнал{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'css/admin_panel.css' %}">
+    <link rel="stylesheet" href="{% static 'css/teacher_panel.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <nav class="sidebar teacher-sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div>
+                <a href="{% url 'teacher_dashboard' %}" class="logo">
+                    <i class="bi bi-journal-bookmark-fill me-2"></i>
+                    <span class="logo-text">МПТ Журнал</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="sidebar-nav">
+            <div class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'teacher_dashboard' %}active{% endif %}"
+                   href="{% url 'teacher_dashboard' %}">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Обзор</span>
+                </a>
+            </div>
+
+            <div class="nav-section-title">
+                <i class="bi bi-book-half"></i>
+                Учебный процесс
+            </div>
+            <div class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'teacher_schedule' %}active{% endif %}"
+                   href="{% url 'teacher_schedule' %}">
+                    <i class="bi bi-calendar-week"></i>
+                    <span>Расписание</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'groups_main' %}active{% endif %}"
+                   href="{% url 'groups_main' %}">
+                    <i class="bi bi-diagram-3"></i>
+                    <span>Мои группы</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link {% if request.resolver_match.url_name == 'admin_subjects' %}active{% endif %}"
+                   href="{% url 'admin_subjects' %}">
+                    <i class="bi bi-journals"></i>
+                    <span>Предметы</span>
+                </a>
+            </div>
+
+            <div class="nav-section-title">
+                <i class="bi bi-journal-bookmark"></i>
+                Журналы
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="bi bi-pencil-square"></i>
+                    <span>Оценки и ведомости</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="bi bi-check2-circle"></i>
+                    <span>Посещаемость</span>
+                </a>
+            </div>
+
+            <div class="nav-section-title">
+                <i class="bi bi-gear"></i>
+                Служебные
+            </div>
+            <div class="nav-item">
+                <a class="nav-link" href="mailto:{{ request.user.email }}">
+                    <i class="bi bi-envelope"></i>
+                    <span>Связь с деканатом</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="nav-item">
+                <form id="logoutForm" method="post" action="{% url 'logout' %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="nav-link text-danger w-100 text-start"
+                            style="display: block; padding: 0.75rem 1rem; border: none; background: none;">
+                        <i class="bi bi-box-arrow-right"></i>
+                        <span>Выйти</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-content">
+        <header class="main-header">
+            <div class="d-flex align-items-center">
+                <button class="btn btn-link d-lg-none me-3" id="sidebarToggle">
+                    <i class="bi bi-list fs-5"></i>
+                </button>
+                <h5 class="mb-0">{% block page_title %}МПТ Журнал{% endblock %}</h5>
+            </div>
+            <div class="d-flex align-items-center gap-3">
+                <button class="theme-toggle" id="themeToggle" title="Переключить тему">
+                    <i class="bi bi-sun" id="themeIcon"></i>
+                </button>
+            </div>
+        </header>
+
+        <main class="p-4">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="{% static 'js/admin_panel.js' %}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const currentPath = window.location.pathname;
+            const navLinks = document.querySelectorAll('.nav-link');
+
+            navLinks.forEach(link => link.classList.remove('active'));
+
+            let bestMatch = null;
+            let bestMatchLength = 0;
+
+            navLinks.forEach(link => {
+                const linkPath = link.getAttribute('href');
+                if (linkPath && linkPath !== '#' && currentPath.includes(linkPath) && linkPath.length > bestMatchLength) {
+                    bestMatch = link;
+                    bestMatchLength = linkPath.length;
+                }
+            });
+
+            if (bestMatch) {
+                bestMatch.classList.add('active');
+            }
+
+            if (currentPath === '/' || currentPath === '/teacher-cabinet/' || currentPath === '/teacher-cabinet') {
+                document.querySelector('a[href*="teacher-cabinet"]')?.classList.add('active');
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

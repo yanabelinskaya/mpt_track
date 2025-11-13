@@ -20,16 +20,16 @@ import pandas as pd
 import io
 import re
 import uuid
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from importlib import import_module
 from urllib.parse import urlencode
-from collections import defaultdict
 import tempfile
 import os
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.contrib.sessions.models import Session
+from collections import defaultdict
 
 
 # Безопасная проверка импорта моделей
@@ -72,6 +72,13 @@ def dashboard_view(request):
     try:
         student = request.user.student_profile
         return redirect('student_dashboard')
+    except AttributeError:
+        pass
+
+    # Если преподаватель - перенаправляем в кабинет преподавателя
+    try:
+        teacher = request.user.teacher_profile
+        return redirect('teacher_dashboard')
     except AttributeError:
         pass
     
@@ -2766,6 +2773,382 @@ def student_dashboard_view(request):
     
     return render(request, 'student/dashboard.html', context)
 
+
+def start_of_week(value):
+    """Старт недели (понедельник)"""
+    if not value:
+        return None
+    return value - timedelta(days=value.weekday())
+
+
+def get_academic_year_start_week(reference_date):
+    """Начало учебного года (первая неделя сентября)"""
+    if reference_date.month >= 9:
+        year = reference_date.year
+    else:
+        year = reference_date.year - 1
+    september_first = date(year, 9, 1)
+    return start_of_week(september_first)
+
+
+def collect_week_starts(range_start, range_end):
+    """Список стартов недель между двумя датами включительно"""
+    starts = []
+    cursor = start_of_week(range_start)
+    if cursor is None or range_end < cursor:
+        return starts
+    while cursor <= range_end:
+        starts.append(cursor)
+        cursor += timedelta(days=7)
+    return starts
+
+
+def build_academic_year_week_starts(reference_date):
+    """Генерируем список недель академического года"""
+    if reference_date.month >= 9:
+        year = reference_date.year
+    else:
+        year = reference_date.year - 1
+
+    fall_start = start_of_week(date(year, 9, 1))
+    fall_end = date(year, 12, 31)
+    spring_start = start_of_week(date(year + 1, 1, 8))
+    spring_end = date(year + 1, 7, 5)
+
+    weeks = []
+    if fall_start and fall_start <= fall_end:
+        weeks.extend(collect_week_starts(fall_start, fall_end))
+    if spring_start and spring_start <= spring_end:
+        weeks.extend(collect_week_starts(spring_start, spring_end))
+
+    return weeks
+
+
+def calculate_week_parity(week_start_date):
+    """На основе академических недель определяем, числитель или знаменатель"""
+    if not week_start_date:
+        return 'numerator'
+    academic_weeks = build_academic_year_week_starts(week_start_date)
+    try:
+        index = academic_weeks.index(week_start_date)
+        return 'numerator' if index % 2 == 0 else 'denominator'
+    except ValueError:
+        base_week = get_academic_year_start_week(week_start_date)
+        if not base_week:
+            return 'numerator'
+        weeks_diff = (week_start_date - base_week).days // 7
+        weeks_diff = abs(weeks_diff)
+        return 'numerator' if weeks_diff % 2 == 0 else 'denominator'
+
+
+LESSON_TYPE_LABELS = {
+    'lesson': 'Пара',
+    'lecture': 'Лекция',
+    'practice': 'Практика',
+    'lab': 'Лабораторная',
+    'consultation': 'Консультация',
+    'other': 'Другое',
+}
+
+BUILDING_DISPLAY = {
+    'nakhimovsky': 'Нахимовский',
+    'nezhinskaya': 'Нежинская',
+}
+
+
+@login_required
+def teacher_dashboard_view(request):
+    """Личный кабинет преподавателя"""
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к кабинету преподавателя')
+        return redirect('login')
+
+    groups = teacher.groups.filter(is_active=True).select_related('faculty').annotate(student_total=Count('students')).order_by('code')
+    subjects = teacher.subjects.filter(is_active=True).order_by('name')
+    students_count = Student.objects.filter(group__in=groups).count() if groups else 0
+
+    day_map = {
+        'monday': 'Понедельник',
+        'tuesday': 'Вторник',
+        'wednesday': 'Среда',
+        'thursday': 'Четверг',
+        'friday': 'Пятница',
+        'saturday': 'Суббота',
+        'sunday': 'Воскресенье'
+    }
+
+    base_weekday_order = [
+        {'key': 'monday', 'label': 'Понедельник', 'short': 'Пн'},
+        {'key': 'tuesday', 'label': 'Вторник', 'short': 'Вт'},
+        {'key': 'wednesday', 'label': 'Среда', 'short': 'Ср'},
+        {'key': 'thursday', 'label': 'Четверг', 'short': 'Чт'},
+        {'key': 'friday', 'label': 'Пятница', 'short': 'Пт'},
+        {'key': 'saturday', 'label': 'Суббота', 'short': 'Сб'},
+    ]
+
+    time_slots = [
+        {'id': 'slot1', 'order': 1, 'start': '08:30', 'end': '10:00'},
+        {'id': 'slot2', 'order': 2, 'start': '10:10', 'end': '11:40'},
+        {'id': 'slot3', 'order': 3, 'start': '12:00', 'end': '13:30'},
+        {'id': 'slot4', 'order': 4, 'start': '13:50', 'end': '15:20'},
+        {'id': 'slot5', 'order': 5, 'start': '15:30', 'end': '17:00'},
+    ]
+
+    weekday_keys = [day['key'] for day in base_weekday_order]
+    today = timezone.localdate()
+    week_start = start_of_week(today) or today
+    week_end = week_start + timedelta(days=5)
+    week_range_label = f"{week_start.strftime('%d.%m')} – {week_end.strftime('%d.%m')}"
+    week_parity = calculate_week_parity(week_start)
+    parity_labels = {
+        'numerator': 'Числитель',
+        'denominator': 'Знаменатель',
+    }
+    week_parity_label = parity_labels.get(week_parity, 'Всегда')
+    today_index = today.weekday()
+    today_key = weekday_keys[today_index] if today_index < len(weekday_keys) else 'sunday'
+    today_label = f"{day_map.get(today_key, today.strftime('%A'))}, {today.strftime('%d.%m')}"
+
+    day_buildings_map = {key: 'nakhimovsky' for key in weekday_keys}
+    if groups:
+        schedule_weeks = ScheduleWeek.objects.filter(group__in=groups, week_start=week_start).only('day_buildings')
+        for week in schedule_weeks:
+            buildings = week.day_buildings or {}
+            for raw_day, building_value in buildings.items():
+                normalized_day = (raw_day or '').lower()
+                normalized_building = (building_value or '').lower()
+                if normalized_day in day_buildings_map and normalized_building in BUILDING_DISPLAY:
+                    day_buildings_map[normalized_day] = normalized_building
+
+    day_buildings_display = {
+        key: BUILDING_DISPLAY.get(day_buildings_map.get(key), BUILDING_DISPLAY['nakhimovsky'])
+        for key in weekday_keys
+    }
+
+    weekday_order = [
+        {**day, 'building_label': day_buildings_display.get(day['key'], BUILDING_DISPLAY['nakhimovsky'])}
+        for day in base_weekday_order
+    ]
+
+    week_slots = list(
+        teacher.schedule_slots.filter(
+            week__week_start=week_start,
+            parity=week_parity
+        ).select_related('group', 'subject', 'week')
+    )
+
+    lessons_by_day_slot = {}
+    for slot in week_slots:
+        day_key = (slot.day_key or '').lower()
+        if day_key not in day_buildings_map:
+            continue
+        subject_label = ''
+        if slot.subject:
+            subject_label = slot.subject.short_name or slot.subject.name
+        subject_label = subject_label or slot.subject_short or slot.subject_name or 'Пара'
+        lesson_type_key = (slot.lesson_type or '').strip().lower()
+        lesson_type_label = LESSON_TYPE_LABELS.get(lesson_type_key, slot.lesson_type)
+        lessons_by_day_slot.setdefault(day_key, {})[slot.slot_id] = {
+            'subject': subject_label,
+            'group_code': slot.group.code if slot.group else 'Группа',
+            'lesson_type': lesson_type_label or 'Занятие',
+            'building_label': day_buildings_display.get(day_key, BUILDING_DISPLAY['nakhimovsky']),
+            'parity_label': slot.get_parity_display(),
+        }
+
+    week_grid_rows = []
+    for slot in time_slots:
+        cells = []
+        for day in weekday_order:
+            lesson = lessons_by_day_slot.get(day['key'], {}).get(slot['id'])
+            cells.append({
+                'day_key': day['key'],
+                'slot_id': slot['id'],
+                'lesson': lesson,
+            })
+        week_grid_rows.append({
+            'slot': slot,
+            'cells': cells,
+        })
+
+    group_subject_map = {}
+    for slot in teacher.schedule_slots.select_related('group', 'subject'):
+        if slot.group_id and slot.subject and slot.group_id not in group_subject_map:
+            subject_name = slot.subject.short_name or slot.subject.name
+            group_subject_map[slot.group_id] = subject_name
+
+    group_cards = []
+    first_subject = teacher.subjects.first()
+    first_subject_name = (first_subject.short_name if first_subject else '') or (first_subject.name if first_subject else '')
+    for group in groups:
+        course = getattr(group, 'current_course', None) or getattr(group, 'course', None)
+        group_cards.append({
+            'group': group,
+            'subject_name': group_subject_map.get(group.id, first_subject_name),
+            'course': course
+        })
+
+    context = {
+        'teacher': teacher,
+        'groups': groups,
+        'subjects': subjects,
+        'students_count': students_count,
+        'stats': {
+            'groups': groups.count(),
+            'subjects': subjects.count(),
+            'students': students_count,
+            'is_curator': teacher.is_curator,
+        },
+        'group_cards': group_cards,
+        'weekday_order': weekday_order,
+        'time_slots': time_slots,
+        'week_grid_rows': week_grid_rows,
+        'today_label': today_label,
+        'week_range_label': week_range_label,
+        'week_parity': week_parity,
+        'week_parity_label': week_parity_label,
+    }
+
+    return render(request, 'teacher/dashboard.html', context)
+
+
+@login_required
+def teacher_schedule_view(request):
+    """Расписание преподавателя"""
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к кабинету преподавателя')
+        return redirect('login')
+
+    today = timezone.localdate()
+    week_param = request.GET.get('week')
+
+    week_start = start_of_week(today) or today
+    if week_param:
+        try:
+            parsed_week = datetime.strptime(week_param, '%Y-%m-%d').date()
+            normalized = start_of_week(parsed_week)
+            if normalized:
+                week_start = normalized
+        except (TypeError, ValueError):
+            pass
+
+    week_end = week_start + timedelta(days=5)
+    week_range_label = f"{week_start.strftime('%d.%m')} – {week_end.strftime('%d.%m')}"
+    week_parity_key = calculate_week_parity(week_start)
+    week_parity_label = 'Числитель' if week_parity_key == 'numerator' else 'Знаменатель'
+    week_prev = week_start - timedelta(days=7)
+    week_next = week_start + timedelta(days=7)
+    share_link = request.build_absolute_uri()
+
+    base_weekday_order = [
+        {'key': 'monday', 'label': 'Понедельник', 'short': 'Пн'},
+        {'key': 'tuesday', 'label': 'Вторник', 'short': 'Вт'},
+        {'key': 'wednesday', 'label': 'Среда', 'short': 'Ср'},
+        {'key': 'thursday', 'label': 'Четверг', 'short': 'Чт'},
+        {'key': 'friday', 'label': 'Пятница', 'short': 'Пт'},
+        {'key': 'saturday', 'label': 'Суббота', 'short': 'Сб'},
+    ]
+
+    time_slots = [
+        {'id': 'slot1', 'order': 1, 'start': '08:30', 'end': '10:00'},
+        {'id': 'slot2', 'order': 2, 'start': '10:10', 'end': '11:40'},
+        {'id': 'slot3', 'order': 3, 'start': '12:00', 'end': '13:30'},
+        {'id': 'slot4', 'order': 4, 'start': '13:50', 'end': '15:20'},
+        {'id': 'slot5', 'order': 5, 'start': '15:30', 'end': '17:00'},
+    ]
+
+    lessons_qs = teacher.schedule_slots.select_related('group', 'subject', 'week').filter(
+        week__week_start=week_start,
+        parity=week_parity_key
+    )
+
+    lessons = list(lessons_qs)
+    weekday_keys = {day['key'] for day in base_weekday_order}
+    lessons_map = defaultdict(lambda: defaultdict(list))
+    groups_set = set()
+    day_building_labels = {}
+
+    for lesson in lessons:
+        day_key = (lesson.day_key or '').lower()
+        slot_id = lesson.slot_id
+        if day_key not in weekday_keys or not slot_id:
+            continue
+        group_code = lesson.group.code if lesson.group else '—'
+        groups_set.add(group_code)
+
+        # subject name tracking removed—parity-driven view does not expose multi-parity info
+
+        week_buildings = (lesson.week.day_buildings or {}) if lesson.week else {}
+        building_key = (week_buildings.get(day_key) or '').lower()
+        building_label = BUILDING_DISPLAY.get(building_key, BUILDING_DISPLAY['nakhimovsky'])
+        if day_key not in day_building_labels:
+            day_building_labels[day_key] = building_label
+
+        lesson_type_key = (lesson.lesson_type or '').strip().lower()
+        lesson_type_label = LESSON_TYPE_LABELS.get(lesson_type_key, lesson.lesson_type) or 'Занятие'
+
+        subject_label = ''
+        if lesson.subject:
+            subject_label = lesson.subject.short_name or lesson.subject.name
+        subject_label = subject_label or lesson.subject_short or lesson.subject_name or 'Пара'
+
+        lessons_map[day_key][slot_id].append({
+            'subject': subject_label,
+            'group_code': group_code,
+            'lesson_type': lesson_type_label,
+            'building_label': building_label,
+            'parity_label': lesson.get_parity_display(),
+            'parity_key': lesson.parity,
+        })
+
+    parity_order = {'numerator': 0, 'denominator': 1, None: 2}
+    for day_slots in lessons_map.values():
+        for slot_details in day_slots.values():
+            slot_details.sort(key=lambda detail: parity_order.get(detail.get('parity_key')))
+
+    week_grid_rows = []
+    for slot in time_slots:
+        cells = []
+        for day in base_weekday_order:
+            cells.append({
+                'day_key': day['key'],
+                'lesson_details': lessons_map.get(day['key'], {}).get(slot['id'], []),
+            })
+        week_grid_rows.append({'slot': slot, 'cells': cells})
+
+    weekday_order = [
+        {**day, 'building_label': day_building_labels.get(day['key'], BUILDING_DISPLAY['nakhimovsky'])}
+        for day in base_weekday_order
+    ]
+
+    total_hours = len(lessons) * 2
+
+    week_end_iso = week_end.strftime('%Y-%m-%d')
+
+    context = {
+        'teacher': teacher,
+        'weekday_order': weekday_order,
+        'time_slots': time_slots,
+        'week_grid_rows': week_grid_rows,
+        'week_range_label': week_range_label,
+        'week_parity_label': week_parity_label,
+        'current_date': today,
+        'week_start_iso': week_start.strftime('%Y-%m-%d'),
+        'week_end_iso': week_end_iso,
+        'week_prev_iso': week_prev.strftime('%Y-%m-%d'),
+        'week_next_iso': week_next.strftime('%Y-%m-%d'),
+        'total_lessons': len(lessons),
+        'total_hours': total_hours,
+        'unique_groups_count': len(groups_set),
+        'share_link': share_link,
+    }
+
+    return render(request, 'teacher/schedule.html', context)
+
 def redirect_user_after_login(request):
     """Перенаправление пользователя в зависимости от его роли"""
     if not request.user.is_authenticated:
@@ -2779,6 +3162,13 @@ def redirect_user_after_login(request):
     try:
         student = request.user.student_profile
         return redirect('student_dashboard')
+    except AttributeError:
+        pass
+
+    # Если преподаватель
+    try:
+        teacher = request.user.teacher_profile
+        return redirect('teacher_dashboard')
     except AttributeError:
         pass
     

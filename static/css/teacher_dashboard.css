@@ -1,0 +1,235 @@
+body {
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    margin: 0;
+    color: var(--bs-body-color, var(--text));
+    background: var(--bs-body-bg, var(--surface));
+}
+
+.teacher-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 2rem 1rem 3rem;
+}
+
+.panel {
+    border-radius: 18px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+    padding: 1.25rem;
+}
+
+.teacher-hero-panel {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    border-radius: 22px;
+    color: var(--bs-body-color, var(--text));
+}
+
+.teacher-hero-label {
+    margin: 0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--text-muted);
+}
+
+.teacher-hero-panel h1 {
+    margin: 0.4rem 0 0;
+    font-size: clamp(1.8rem, 2.4vw, 2.3rem);
+    color: var(--bs-body-color, var(--text));
+}
+
+.teacher-hero-subtitle {
+    margin: 0.25rem 0 0;
+    color: var(--text-muted);
+}
+
+/* Статистика */
+.teacher-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+.stat-card {
+    background: var(--muted-bg);
+    border-radius: 16px;
+    padding: 1rem 1.25rem;
+    border: 1px solid var(--border);
+}
+.stat-card p {
+    margin: 0;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+.stat-card strong {
+    display: block;
+    font-size: 2rem;
+    margin: 0.35rem 0;
+}
+.stat-card span {
+    color: var(--text-muted);
+}
+
+/* Быстрые переходы */
+.quick-panel { border-radius: 22px; }
+.quick-panel header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: .5rem;
+}
+.quick-panel header h2 { margin: 0; font-size: 1.2rem; }
+.quick-panel header p { margin: 0; color: var(--text-muted); }
+.quick-links {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+.quick-links a {
+    border-radius: 14px;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid var(--border);
+    color: var(--bs-body-color, var(--text));
+    text-decoration: none;
+    display: inline-flex;
+    gap: 0.5rem;
+    align-items: center;
+    background: var(--muted-bg);
+    transition: .2s ease;
+}
+.quick-links a:hover {
+    border-color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.08);
+    transform: translateY(-1px);
+}
+
+/* Календарь на всю ширину */
+.calendar-panel { border-radius: 22px; padding-bottom: 1.25rem; }
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+.panel-header h2 { margin: 0; font-size: 1.2rem; }
+.panel-header p { margin: 0; color: var(--text-muted); }
+
+.calendar-controls button {
+    width: 38px; height: 38px; border: 0; border-radius: 10px;
+    background: var(--muted-bg); color: var(--text);
+    display: inline-flex; align-items: center; justify-content: center;
+    box-shadow: var(--shadow); cursor: pointer; transition: .2s ease;
+}
+.calendar-controls button:hover { transform: translateY(-1px); }
+
+.calendar-panel.calendar-full .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(160px, 1fr));
+    gap: 0.9rem;
+}
+
+.calendar-day {
+    background: #fbfdff;
+    border-radius: 16px;
+    padding: 0.75rem;
+    border: 1px solid var(--border);
+    min-height: 140px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.calendar-day header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.calendar-day ul {
+    list-style: none;
+    padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: 0.6rem;
+}
+.calendar-day li {
+    padding: 0.6rem 0.75rem;
+    border-radius: 12px;
+    background: rgba(99,102,241,.08);
+    font-size: 0.92rem;
+    border: 1px solid rgba(99,102,241,.18);
+}
+.calendar-day li strong {
+    display: block; font-size: 1rem; margin: 0.2rem 0 0.1rem;
+}
+.calendar-day .lesson-meta {
+    display: flex; justify-content: space-between;
+    font-size: 0.8rem; color: var(--text-muted);
+}
+.lesson-slot { font-weight: 600; }
+.lesson-group { text-transform: uppercase; letter-spacing: 0.06em; }
+.calendar-day .empty { opacity: .7; }
+
+/* Группы — обновлённые карточки */
+.groups-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+}
+.group-card {
+    border-radius: 16px;
+    padding: 1rem;
+    border: 1px solid var(--border);
+    background:
+        radial-gradient(1200px 240px at 0% 0%, rgba(99,102,241,.08), transparent 60%),
+        linear-gradient(140deg, rgba(99,102,241,.06), rgba(99,102,241,.02));
+    transition: .2s ease;
+}
+.group-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15,23,42,.08); }
+.group-card-top {
+    display: flex; justify-content: space-between; align-items: center; gap: .5rem;
+}
+.group-chip {
+    padding: .35rem .6rem;
+    border-radius: 10px;
+    background: rgba(99,102,241,.12);
+    border: 1px solid rgba(99,102,241,.22);
+    font-weight: 600;
+}
+.group-stats { display: flex; gap: .6rem; color: var(--text-muted); font-size: .9rem; }
+.group-title { margin: .6rem 0 .25rem; font-size: 1.05rem; }
+.group-submeta { margin: 0; color: var(--text-muted); }
+
+.group-card .btn-link {
+    margin-top: .7rem;
+    display: inline-flex; gap: .25rem; align-items: center;
+    font-weight: 600; color: var(--key-color); text-decoration: none;
+}
+.group-card .btn-link:hover { text-decoration: underline; }
+
+.empty { color: var(--text-muted); margin: 0; }
+
+/* Респонсив */
+@media (max-width: 1200px) {
+    .calendar-panel.calendar-full .calendar-grid {
+        grid-template-columns: repeat(7, minmax(140px, 1fr));
+    }
+}
+@media (max-width: 960px) {
+    .calendar-panel.calendar-full .calendar-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 560px) {
+    .calendar-panel.calendar-full .calendar-grid {
+        grid-template-columns: 1fr;
+    }
+}

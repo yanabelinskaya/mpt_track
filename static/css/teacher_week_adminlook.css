@@ -1,0 +1,198 @@
+.teacher-calendar-panel {
+    padding: 1.35rem 1.4rem 1.25rem;
+}
+
+.teacher-calendar-panel .panel-header {
+    padding-bottom: 0.35rem;
+    margin-bottom: 0.9rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.teacher-calendar-panel .panel-header h2 {
+    margin-bottom: 0;
+}
+
+.calendar-subtitle {
+    margin: 0.15rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+}
+
+.teacher-calendar-grid {
+    display: flex;
+    flex-direction: column;
+    border-radius: 1.2rem;
+    border: 1px solid var(--border);
+    background: var(--schedule-surface);
+    box-shadow: var(--shadow);
+}
+
+.teacher-calendar-grid .schedule-grid__head {
+    border-bottom: 1px solid var(--border);
+    background: var(--schedule-surface);
+}
+
+.teacher-calendar-grid .grid-cell--day {
+    gap: 0.2rem;
+}
+
+.teacher-calendar-grid .day-building-badge {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--schedule-muted);
+    text-transform: uppercase;
+}
+
+.teacher-calendar-grid .grid-cell {
+    border-right: 1px solid var(--border);
+}
+
+.teacher-calendar-grid .grid-row:last-child .grid-cell {
+    border-bottom: none;
+}
+
+.teacher-calendar-grid .grid-cell__placeholder {
+    background: var(--schedule-surface-subtle);
+}
+
+.schedule-board-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.6rem;
+}
+
+.schedule-week {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+}
+
+.calendar-nav-btn {
+    border-radius: 10px;
+    border: 1px solid var(--schedule-border);
+    background: var(--schedule-surface-subtle);
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bs-body-color);
+    text-decoration: none;
+}
+
+.schedule-week__range {
+    font-weight: 600;
+}
+
+.schedule-board-toolbar__meta {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: var(--schedule-muted);
+}
+
+.schedule-parity-filter {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
+}
+
+.schedule-parity-option {
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid transparent;
+    background: var(--schedule-surface-subtle);
+    color: var(--schedule-muted);
+    font-weight: 600;
+    text-decoration: none;
+    transition: .2s ease;
+}
+
+.schedule-parity-option.active {
+    border-color: var(--schedule-accent);
+    background: var(--schedule-accent-soft);
+    color: var(--bs-body-color);
+}
+
+.schedule-helpers-panel {
+    margin-top: 1.5rem;
+    padding: 1.25rem;
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.schedule-helpers-panel header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    color: var(--bs-body-color);
+}
+
+.schedule-helpers-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 0.9rem;
+}
+
+.helper-card {
+    border-radius: 14px;
+    padding: 1rem;
+    background: var(--schedule-surface-subtle);
+    border: 1px solid var(--schedule-border);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.helper-card h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--bs-body-color);
+}
+
+.helper-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.helper-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+}
+
+.helper-chip {
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    border: 1px solid var(--schedule-border);
+    background: var(--schedule-surface);
+    font-size: 0.85rem;
+    color: var(--schedule-muted);
+}
+
+.helper-list {
+    margin: 0;
+    padding-left: 1rem;
+    color: var(--schedule-muted);
+}
+
+.helper-actions {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.schedule-lesson--stacked {
+    margin-bottom: 0.6rem;
+    padding: 0.6rem;
+}
+
+.schedule-lesson--stacked:last-child {
+    margin-bottom: 0;
+}

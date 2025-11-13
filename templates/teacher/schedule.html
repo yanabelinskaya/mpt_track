@@ -1,0 +1,136 @@
+{% extends 'teacher/base.html' %}
+{% load static %}
+
+{% block title %}Расписание — Преподаватель{% endblock %}
+{% block page_title %}Расписание{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/schedule.css' %}">
+<link rel="stylesheet" href="{% static 'css/teacher_week_adminlook.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="teacher-dashboard">
+  <section class="panel teacher-calendar-panel calendar-full adminlook">
+    <div class="panel-header">
+      <div>
+        <h2>Расписание преподавателя</h2>
+        <p class="calendar-subtitle">
+          {{ week_range_label }} • {{ week_parity_label }}
+        </p>
+      </div>
+    </div>
+
+    <div class="schedule-board-toolbar">
+      <div class="schedule-week" data-current-date="{{ current_date|date:'Y-m-d' }}">
+        <button class="week-switcher__btn" data-action="prev-week" type="button" title="Предыдущая неделя">
+          <i class="bi bi-arrow-left"></i>
+        </button>
+        <span class="schedule-week__range" id="scheduleWeekRange"
+              data-week-start="{{ week_start_iso }}"
+              data-week-end="{{ week_end_iso }}">
+          {{ week_range_label }}
+        </span>
+        <span class="schedule-week__parity" id="scheduleWeekParityLabel" title="{{ week_parity_label }}">
+          {{ week_parity_label }}
+        </span>
+        <button class="week-switcher__btn" data-action="next-week" type="button" title="Следующая неделя">
+          <i class="bi bi-arrow-right"></i>
+        </button>
+      </div>
+      <div class="schedule-board-toolbar__meta">
+        <span>{{ total_lessons }} пар за неделю</span>
+        <span>{{ unique_groups_count }} групп</span>
+        <span>{{ total_hours }} часов</span>
+      </div>
+    </div>
+
+    <div class="schedule-grid teacher-calendar-grid">
+      <div class="schedule-grid__head">
+        <div class="grid-cell grid-cell--time">Время</div>
+        {% for day in weekday_order %}
+        <div class="grid-cell grid-cell--day" data-day="{{ day.key }}">
+          <span class="day-name">{{ day.short }}</span>
+        </div>
+        {% endfor %}
+      </div>
+
+      <div class="schedule-grid__body">
+        {% for row in week_grid_rows %}
+        <div class="grid-row">
+          <div class="grid-cell grid-cell--time">
+            <span class="slot-order">{{ row.slot.order }} пара</span>
+            <span class="slot-range">{{ row.slot.start }} – {{ row.slot.end }}</span>
+          </div>
+
+          {% for cell in row.cells %}
+          <div class="grid-cell grid-cell--droppable{% if cell.lesson_details %} has-lesson{% endif %}"
+               data-day="{{ cell.day_key }}"
+               data-slot="{{ cell.slot_id }}">
+            {% if cell.lesson_details %}
+              {% for detail in cell.lesson_details %}
+              <div class="schedule-lesson schedule-lesson--stacked">
+                <div class="schedule-lesson__title">{{ detail.subject }}</div>
+                <div class="schedule-lesson__meta">
+                  <span class="lesson-line">{{ detail.group_code }}</span>
+                  <span class="lesson-line">{{ detail.lesson_type }}</span>
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="grid-cell__placeholder">
+                <i class="bi bi-dash-lg"></i>
+                <span>Нет пары</span>
+              </div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const weekRange = document.getElementById('scheduleWeekRange');
+    if (!weekRange) {
+      return;
+    }
+    const parseIsoDate = (value) => {
+      if (!value) {
+        return null;
+      }
+      const [year, month, day] = value.split('-').map((part) => Number(part));
+      if ([year, month, day].some((num) => Number.isNaN(num))) {
+        return null;
+      }
+      return new Date(year, month - 1, day);
+    };
+    const formatIsoDate = (date) => {
+      // Format using the local components to keep the date anchored to the current timezone.
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+    const navigateToWeek = (offset) => {
+      const start = parseIsoDate(weekRange.dataset.weekStart);
+      if (!start) {
+        return;
+      }
+      const targetWeek = new Date(start);
+      targetWeek.setDate(targetWeek.getDate() + offset);
+      const params = new URLSearchParams(window.location.search);
+      params.set('week', formatIsoDate(targetWeek));
+      window.location.href = `${window.location.pathname}?${params}`;
+    };
+    document.querySelector('[data-action="prev-week"]')?.addEventListener('click', () => navigateToWeek(-7));
+    document.querySelector('[data-action="next-week"]')?.addEventListener('click', () => navigateToWeek(7));
+  });
+</script>
+{% endblock %}
