@@ -1,0 +1,156 @@
+{% extends 'teacher/base.html' %}
+{% load static %}
+
+{% block title %}Оценки и ведомости — Преподаватель{% endblock %}
+{% block page_title %}Оценки и ведомости{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/teacher_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/teacher_week_adminlook.css' %}">
+<link rel="stylesheet" href="{% static 'css/custom_select.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="teacher-dashboard">
+  <section class="panel groups-panel">
+    <div class="search-filter-bar">
+      <div class="search-container">
+        <div class="filter-field">
+          <label class="filter-label" for="groupSearch">Поиск</label>
+          <div class="search-input-wrapper">
+            <i class="bi bi-search search-icon"></i>
+            <input id="groupSearch"
+                  type="search"
+                  class="search-field shadow-none"
+                  placeholder="Код группы или предмет">
+          </div>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label" for="subjectFilter">Предмет</label>
+          <div class="custom-select filter-custom-select" id="subjectFilterWrapper" data-placeholder="Все предметы">
+            <select id="subjectFilter">
+              <option value="" selected>Все предметы</option>
+              {% for subject in subjects %}
+              <option value="{{ subject.id }}">{{ subject.name }}</option>
+              {% endfor %}
+            </select>
+            <div class="select-trigger placeholder">
+              <span class="select-text">Все предметы</span>
+              <span class="select-arrow"><i class="bi bi-chevron-down"></i></span>
+            </div>
+            <div class="select-dropdown">
+              <div class="select-option selected" data-value="">
+                <div class="select-option-text">Все предметы</div>
+              </div>
+              {% for subject in subjects %}
+              <div class="select-option" data-value="{{ subject.id }}">
+                <div class="select-option-text">{{ subject.name }}</div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="filter-field">
+          <label class="filter-label" for="courseFilter">Курс</label>
+          <div class="custom-select filter-custom-select" id="courseFilterWrapper" data-placeholder="Все курсы">
+            <select id="courseFilter">
+              <option value="" selected>Все курсы</option>
+              {% for course in course_options %}
+              <option value="{{ course }}">{{ course }} курс</option>
+              {% endfor %}
+            </select>
+            <div class="select-trigger placeholder">
+              <span class="select-text">Все курсы</span>
+              <span class="select-arrow"><i class="bi bi-chevron-down"></i></span>
+            </div>
+            <div class="select-dropdown">
+              <div class="select-option selected" data-value="">
+                <div class="select-option-text">Все курсы</div>
+              </div>
+              {% for course in course_options %}
+              <div class="select-option" data-value="{{ course }}">
+                <div class="select-option-text">{{ course }} курс</div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="groups-grid">
+      {% for card in group_cards %}
+      <article
+        class="group-card"
+        data-group-card
+        data-group-name="{{ card.group.code|lower }} {{ card.subject_name|lower }}"
+        data-subject-id="{{ card.subject_id|default:'' }}"
+        data-course="{{ card.course|default:'' }}"
+      >
+        <div class="group-card-top">
+          <span class="group-chip">{{ card.group.code }}</span>
+          <div class="group-stats">
+            <span class="group-count"><i class="bi bi-people"></i> {{ card.group.students_total|default:"0" }} студентов</span>
+            {% if card.course %}
+            <span class="group-course"><i class="bi bi-mortarboard"></i> {{ card.course }} курс</span>
+            {% endif %}
+          </div>
+        </div>
+        <h3 class="group-title">{{ card.subject_name|default:"Предмет не указан" }}</h3>
+        <p class="group-submeta">
+          {% if card.group.faculty %}
+            {{ card.group.faculty.name }}
+          {% else %}
+            Специальность не указана
+          {% endif %}
+        </p>
+        <a href="{% url 'teacher_journal_detail' card.group.id %}" class="btn-link">
+          Открыть группу <i class="bi bi-arrow-right-short"></i>
+        </a>
+      </article>
+      {% empty %}
+      <p class="empty text-center w-100">Группы пока не закреплены.</p>
+      {% endfor %}
+    </div>
+
+    <p id="groupEmptyMessage" class="text-muted text-center mt-3" style="display:none;">Ничего не найдено по текущему фильтру.</p>
+  </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/custom_select.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const searchInput = document.getElementById('groupSearch');
+  const subjectSelect = document.getElementById('subjectFilter');
+  const courseSelect = document.getElementById('courseFilter');
+  const groupCards = Array.from(document.querySelectorAll('[data-group-card]'));
+  const emptyMessage = document.getElementById('groupEmptyMessage');
+
+  const applyFilter = () => {
+    const query = searchInput?.value.trim().toLowerCase() || '';
+    const subject = subjectSelect?.value || '';
+    const course = courseSelect?.value || '';
+    let visible = 0;
+
+    groupCards.forEach(card => {
+      const matchesName = !query || card.dataset.groupName.includes(query);
+      const matchesSubject = !subject || card.dataset.subjectId === subject;
+      const matchesCourse = !course || card.dataset.course === course;
+      const shouldShow = matchesName && matchesSubject && matchesCourse;
+      card.style.display = shouldShow ? '' : 'none';
+      if (shouldShow) visible += 1;
+    });
+
+    if (emptyMessage) {
+      emptyMessage.style.display = visible === 0 ? 'block' : 'none';
+    }
+  };
+
+  searchInput?.addEventListener('input', applyFilter);
+  subjectSelect?.addEventListener('change', applyFilter);
+  courseSelect?.addEventListener('change', applyFilter);
+});
+</script>
+{% endblock %}

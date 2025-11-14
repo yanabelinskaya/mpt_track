@@ -44,13 +44,13 @@
         <span>{{ total_hours }} часов</span>
       </div>
     </div>
-
-    <div class="schedule-grid teacher-calendar-grid">
-      <div class="schedule-grid__head">
-        <div class="grid-cell grid-cell--time">Время</div>
-        {% for day in weekday_order %}
-        <div class="grid-cell grid-cell--day" data-day="{{ day.key }}">
-          <span class="day-name">{{ day.short }}</span>
+    <div class="schedule-view" data-view-panel="week">
+      <div class="schedule-grid teacher-calendar-grid">
+        <div class="schedule-grid__head">
+          <div class="grid-cell grid-cell--time">Время</div>
+          {% for day in weekday_order %}
+          <div class="grid-cell grid-cell--day" data-day="{{ day.key }}">
+            <span class="day-name">{{ day.short }}</span>
         </div>
         {% endfor %}
       </div>
@@ -89,6 +89,49 @@
         {% endfor %}
       </div>
     </div>
+
+    <div class="schedule-view" data-view-panel="groups" hidden>
+      <div class="teacher-groups-panel">
+        {% if teacher_groups %}
+          {% for group in teacher_groups %}
+          <article class="teacher-group-card">
+            <header class="teacher-group-card__head">
+              <div>
+                <p class="teacher-group-card__code">{{ group.code }}</p>
+                <p class="teacher-group-card__meta">
+                  {% if group.faculty %}
+                    {{ group.faculty.name }}
+                  {% else %}
+                    Без специальности
+                  {% endif %}
+                  {% if group.profession %} • {{ group.profession }}{% endif %}
+                </p>
+              </div>
+              <span class="teacher-group-card__status">{{ group.status_display }}</span>
+            </header>
+            <div class="teacher-group-card__details">
+              <div class="teacher-group-card__stat">
+                <span class="teacher-group-card__label">Курс</span>
+                <strong>{{ group.current_course }} курс</strong>
+              </div>
+              <div class="teacher-group-card__stat">
+                <span class="teacher-group-card__label">Студентов</span>
+                <strong>{{ group.students_total }}</strong>
+              </div>
+              <div class="teacher-group-card__stat">
+                <span class="teacher-group-card__label">Активных</span>
+                <strong>{{ group.active_students }}</strong>
+              </div>
+            </div>
+          </article>
+          {% endfor %}
+        {% else %}
+          <div class="teacher-groups-empty">
+            <p>У вас пока нет закрепленных групп. Как только вы будете назначены на группы, они появятся здесь.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
   </section>
 
 </div>
@@ -98,39 +141,61 @@
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     const weekRange = document.getElementById('scheduleWeekRange');
-    if (!weekRange) {
-      return;
+    if (weekRange) {
+      const parseIsoDate = (value) => {
+        if (!value) {
+          return null;
+        }
+        const [year, month, day] = value.split('-').map((part) => Number(part));
+        if ([year, month, day].some((num) => Number.isNaN(num))) {
+          return null;
+        }
+        return new Date(year, month - 1, day);
+      };
+      const formatIsoDate = (date) => {
+        // Format using the local components to keep the date anchored to the current timezone.
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      };
+      const navigateToWeek = (offset) => {
+        const start = parseIsoDate(weekRange.dataset.weekStart);
+        if (!start) {
+          return;
+        }
+        const targetWeek = new Date(start);
+        targetWeek.setDate(targetWeek.getDate() + offset);
+        const params = new URLSearchParams(window.location.search);
+        params.set('week', formatIsoDate(targetWeek));
+        window.location.href = `${window.location.pathname}?${params}`;
+      };
+      document.querySelector('[data-action="prev-week"]')?.addEventListener('click', () => navigateToWeek(-7));
+      document.querySelector('[data-action="next-week"]')?.addEventListener('click', () => navigateToWeek(7));
     }
-    const parseIsoDate = (value) => {
-      if (!value) {
-        return null;
-      }
-      const [year, month, day] = value.split('-').map((part) => Number(part));
-      if ([year, month, day].some((num) => Number.isNaN(num))) {
-        return null;
-      }
-      return new Date(year, month - 1, day);
+
+    const viewTabs = document.querySelectorAll('[data-view-tab]');
+    const viewPanels = document.querySelectorAll('[data-view-panel]');
+
+    const activateView = (viewName) => {
+      viewTabs.forEach((btn) => {
+        const target = btn.dataset.viewTab || 'week';
+        btn.classList.toggle('active', target === viewName);
+      });
+      viewPanels.forEach((panel) => {
+        panel.hidden = panel.dataset.viewPanel !== viewName;
+      });
     };
-    const formatIsoDate = (date) => {
-      // Format using the local components to keep the date anchored to the current timezone.
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    };
-    const navigateToWeek = (offset) => {
-      const start = parseIsoDate(weekRange.dataset.weekStart);
-      if (!start) {
-        return;
-      }
-      const targetWeek = new Date(start);
-      targetWeek.setDate(targetWeek.getDate() + offset);
-      const params = new URLSearchParams(window.location.search);
-      params.set('week', formatIsoDate(targetWeek));
-      window.location.href = `${window.location.pathname}?${params}`;
-    };
-    document.querySelector('[data-action="prev-week"]')?.addEventListener('click', () => navigateToWeek(-7));
-    document.querySelector('[data-action="next-week"]')?.addEventListener('click', () => navigateToWeek(7));
+
+    viewTabs.forEach((tab) => {
+      tab.addEventListener('click', (event) => {
+        event.preventDefault();
+        const name = tab.dataset.viewTab || 'week';
+        activateView(name);
+      });
+    });
+
+    activateView('week');
   });
 </script>
 {% endblock %}

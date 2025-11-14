@@ -1,7 +1,7 @@
 from django.db import models
 from django.db.models import Q
 from django.contrib.auth.models import User
-from django.core.validators import RegexValidator
+from django.core.validators import RegexValidator, MinValueValidator, MaxValueValidator
 from django.utils import timezone
 from django.core.exceptions import ValidationError
 import os
@@ -674,6 +674,67 @@ class Teacher(models.Model):
     @property
     def curated_groups(self):
         return self.groups.all()
+
+
+class GradeRecord(models.Model):
+    """Фиксация оценок преподавателя по датам"""
+    teacher = models.ForeignKey(
+        Teacher,
+        on_delete=models.CASCADE,
+        related_name='grade_records',
+        verbose_name='Преподаватель',
+    )
+    group = models.ForeignKey(
+        'Group',
+        on_delete=models.CASCADE,
+        related_name='grade_records',
+        verbose_name='Группа',
+    )
+    student = models.ForeignKey(
+        'Student',
+        on_delete=models.CASCADE,
+        related_name='grade_records',
+        verbose_name='Студент',
+    )
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='grade_records',
+        verbose_name='Предмет',
+    )
+    lesson_date = models.DateField('Дата занятия')
+    slot_id = models.CharField('Пара', max_length=20, blank=True, default='')
+    value = models.PositiveSmallIntegerField(
+        'Оценка',
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    comment = models.CharField('Комментарий', max_length=255, blank=True)
+    created_at = models.DateTimeField('Создано', auto_now_add=True)
+    updated_at = models.DateTimeField('Обновлено', auto_now=True)
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_grade_records',
+        verbose_name='Кем обновлено',
+    )
+
+    class Meta:
+        verbose_name = 'Оценка'
+        verbose_name_plural = 'Оценки'
+        ordering = ['lesson_date', 'slot_id', 'student__last_name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['student', 'group', 'lesson_date', 'slot_id', 'teacher'],
+                name='unique_student_grade_per_slot',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.lesson_date} • {self.student.get_full_name()} → {self.value}'
 
 
 class PasswordResetRequest(models.Model):

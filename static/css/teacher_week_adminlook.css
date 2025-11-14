@@ -154,6 +154,174 @@
     color: var(--bs-body-color);
 }
 
+.teacher-groups-panel {
+    margin-top: 1.5rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.2rem;
+}
+
+.teacher-group-card {
+    border-radius: 1.2rem;
+    border: 1px solid rgba(99, 102, 241, 0.6);
+    padding: 1.3rem;
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.05), var(--schedule-surface));
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+}
+
+.teacher-group-card:hover {
+    transform: translateY(-5px);
+}
+
+.teacher-group-card__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: flex-start;
+}
+
+.teacher-group-card__code {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.teacher-group-card__meta {
+    margin: 0.1rem 0 0;
+    font-size: 0.85rem;
+    color: var(--schedule-muted);
+}
+
+.teacher-group-card__status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--schedule-accent);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.teacher-group-card__details {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.teacher-group-card__stat {
+    flex: 1;
+    min-width: 110px;
+    border-radius: 0.9rem;
+    border: 1px solid var(--border);
+    padding: 0.5rem 0.75rem;
+    background: var(--schedule-surface-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.teacher-group-card__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--schedule-muted);
+}
+
+.teacher-group-card__stat strong {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.teacher-groups-empty {
+    padding: 1.25rem;
+    border-radius: 1rem;
+    border: 1px dashed var(--border);
+    background: var(--schedule-surface-subtle);
+    color: var(--schedule-muted);
+}
+
+.teacher-groups-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.teacher-groups-layout__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.teacher-groups-layout__intro {
+    margin: 0.3rem 0 0;
+    color: var(--schedule-muted);
+}
+
+.teacher-groups-layout__header-actions {
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+
+.teacher-groups-layout__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.75rem;
+}
+
+.teacher-groups-stat {
+    padding: 0.9rem 1rem;
+    border-radius: 0.9rem;
+    background: rgba(99, 102, 241, 0.08);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    text-align: center;
+}
+
+.teacher-groups-stat__label {
+    font-size: 0.75rem;
+    color: var(--schedule-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.teacher-groups-stat strong {
+    display: block;
+    font-size: 1.7rem;
+    color: var(--bs-body-color);
+}
+
+.teacher-groups-featured {
+    border-radius: 1rem;
+    padding: 1.1rem 1.3rem;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.05));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+}
+
+.teacher-groups-featured__inner h3 {
+    margin: 0;
+}
+
+.teacher-groups-featured__inner p {
+    margin: 0.35rem 0 0;
+    color: var(--schedule-muted);
+}
+
+.teacher-group-panel .panel-header {
+    border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.teacher-group-panel .panel-stats {
+    display: none;
+}
+
 .helper-value {
     font-size: 1.6rem;
     font-weight: 700;
@@ -195,4 +363,102 @@
 
 .schedule-lesson--stacked:last-child {
     margin-bottom: 0;
+}
+
+.teacher-group-detail__header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+}
+
+.teacher-group-detail__badge {
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--bs-white);
+    background: var(--schedule-accent);
+    padding: 0.55rem 1rem;
+    border-radius: 999px;
+}
+
+.teacher-group-detail__stats {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+}
+
+.teacher-group-detail__stat-card {
+    padding: 0.6rem 0.9rem;
+    border-radius: 0.8rem;
+    background: rgba(99, 102, 241, 0.1);
+    border: 1px solid transparent;
+    text-align: center;
+    min-width: 110px;
+}
+
+.teacher-group-detail__students-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.teacher-student-item {
+    border: 1px solid rgba(15, 23, 42, 0.1);
+    border-radius: 0.9rem;
+    padding: 0.95rem 1.1rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    background: var(--schedule-surface);
+}
+
+.teacher-student-item__name {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.teacher-student-item__meta {
+    font-size: 0.85rem;
+    color: var(--schedule-muted);
+}
+
+.teacher-group-detail__summary {
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.8rem;
+}
+
+.teacher-group-detail__summary dl {
+    margin: 0;
+    background: transparent;
+}
+
+.teacher-group-panel {
+    background: var(--schedule-surface-subtle);
+    border-radius: 1.25rem;
+    padding: 1.5rem;
+    border: 1px solid rgba(99, 102, 241, 0.2);
+    box-shadow: 0 15px 40px -25px rgba(15, 23, 42, 0.8);
+}
+
+.teacher-group-detail__header,
+.teacher-group-detail__summary,
+.teacher-group-detail__students,
+.teacher-group-detail__actions {
+    padding: 0.65rem 0;
+}
+
+.teacher-group-detail__summary dl {
+    background: rgba(255, 255, 255, 0.45);
 }

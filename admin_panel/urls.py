@@ -87,6 +87,12 @@ urlpatterns = [
     path('schedule/<int:group_id>/save/', views.schedule_save_api, name='schedule_save_api'),
     path('schedule/<int:group_id>/check-conflict/', views.schedule_check_conflict_api, name='schedule_check_conflict_api'),
     path('teacher-schedule/', views.teacher_schedule_view, name='teacher_schedule'),
+    path('teacher-journals/', views.teacher_journals_view, name='teacher_journals'),
+    path('teacher-journals/<int:group_id>/', views.teacher_journal_detail_view, name='teacher_journal_detail'),
+    path('teacher-journals/<int:group_id>/save/', views.teacher_journal_save_api, name='teacher_journal_save_api'),
+    path('teacher-groups/', views.teacher_groups_view, name='teacher_groups'),
+    path('teacher-groups/<int:group_id>/', views.teacher_group_detail_view, name='teacher_group_detail'),
+    path('teacher-attendance/', views.teacher_attendance_view, name='teacher_attendance'),
 
     # Предметы
     path('subjects/', views.subjects_main_view, name='admin_subjects'),

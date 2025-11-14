@@ -11,7 +11,80 @@ body {
     gap: 1.5rem;
     max-width: 1280px;
     margin: 0 auto;
-    padding: 2rem 1rem 3rem;
+}
+
+.search-filter-bar {
+    background: var(--sidebar-bg);
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 16px 20px;
+    margin-bottom: 16px;
+    box-shadow: var(--card-shadow);
+}
+
+.search-container {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.search-input-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 240px;
+}
+
+.search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--bs-secondary, #64748b);
+    font-size: 16px;
+    width: 1rem;
+    height: 1rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    z-index: 10;
+}
+
+.search-field {
+    width: 100%;
+    padding: 10px 12px 10px 40px;
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    background: var(--sidebar-bg);
+    color: var(--bs-body-color, var(--text));
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.search-field:focus {
+    outline: none;
+    border-color: var(--bs-primary, #6366f1);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.1);
+}
+
+.filter-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    min-width: 200px;
+}
+
+.filter-field .custom-select {
+    width: 100%;
+}
+
+.filter-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--text-muted);
 }
 
 .panel {
@@ -188,9 +261,6 @@ body {
     border-radius: 16px;
     padding: 1rem;
     border: 1px solid var(--border);
-    background:
-        radial-gradient(1200px 240px at 0% 0%, rgba(99,102,241,.08), transparent 60%),
-        linear-gradient(140deg, rgba(99,102,241,.06), rgba(99,102,241,.02));
     transition: .2s ease;
 }
 .group-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(15,23,42,.08); }
@@ -200,7 +270,6 @@ body {
 .group-chip {
     padding: .35rem .6rem;
     border-radius: 10px;
-    background: rgba(99,102,241,.12);
     border: 1px solid rgba(99,102,241,.22);
     font-weight: 600;
 }
@@ -211,7 +280,9 @@ body {
 .group-card .btn-link {
     margin-top: .7rem;
     display: inline-flex; gap: .25rem; align-items: center;
-    font-weight: 600; color: var(--key-color); text-decoration: none;
+    font-weight: 600; 
+    color: var(--bs-primary); 
+    text-decoration: none;
 }
 .group-card .btn-link:hover { text-decoration: underline; }
 

@@ -1,0 +1,88 @@
+{% extends 'teacher/base.html' %}
+{% load static %}
+
+{% block title %}Мои группы — Преподаватель{% endblock %}
+{% block page_title %}Мои группы{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/teacher_week_adminlook.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="teacher-dashboard">
+  <section class="panel teacher-calendar-panel calendar-full adminlook teacher-group-panel">
+    <div class="teacher-groups-layout">
+      <div class="teacher-groups-layout__header">
+        <div>
+          <h2>Мои группы</h2>
+          <p class="teacher-groups-layout__intro">
+            Управляйте расписанием, следите за очной активностью и быстро переходите к деталям группы.
+          </p>
+        </div>
+      </div>
+
+      <div class="teacher-groups-layout__stats">
+        <div class="teacher-groups-stat">
+          <span class="teacher-groups-stat__label">Групп</span>
+          <strong>{{ total_groups }}</strong>
+        </div>
+        <div class="teacher-groups-stat">
+          <span class="teacher-groups-stat__label">Всего студентов</span>
+          <strong>{{ total_students }}</strong>
+        </div>
+        <div class="teacher-groups-stat">
+          <span class="teacher-groups-stat__label">Активных</span>
+          <strong>{{ total_active_students }}</strong>
+        </div>
+      </div>
+
+      <div class="teacher-groups-featured">
+        <div class="teacher-groups-featured__inner">
+          <h3>Панель контроля</h3>
+          <p>Вы видите только те группы, за которые отвечаете. Каждая карточка ведёт к актуальной информации и списку студентов.</p>
+        </div>
+      </div>
+
+      <div class="teacher-groups-panel">
+        {% if teacher_groups %}
+          {% for group in teacher_groups %}
+          <a class="teacher-group-card" href="{% url 'teacher_group_detail' group.id %}">
+            <header class="teacher-group-card__head">
+              <div>
+                <p class="teacher-group-card__code">{{ group.code }}</p>
+                <p class="teacher-group-card__meta">
+                  {% if group.faculty %}
+                    {{ group.faculty.name }}
+                  {% else %}
+                    Специальность не указана
+                  {% endif %}
+                  {% if group.profession %} • {{ group.profession }}{% endif %}
+                </p>
+              </div>
+            </header>
+            <div class="teacher-group-card__details">
+              <div class="teacher-group-card__stat">
+                <span class="teacher-group-card__label">Курс</span>
+                <strong>{{ group.current_course }} курс</strong>
+              </div>
+              <div class="teacher-group-card__stat">
+                <span class="teacher-group-card__label">Студентов</span>
+                <strong>{{ group.students_total }}</strong>
+              </div>
+              <div class="teacher-group-card__stat">
+                <span class="teacher-group-card__label">Активных</span>
+                <strong>{{ group.active_students }}</strong>
+              </div>
+            </div>
+          </a>
+          {% endfor %}
+        {% else %}
+          <div class="teacher-groups-empty">
+            <p>У вас пока нет закрепленных групп. Как только вы будете назначены на группы, они появятся здесь.</p>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

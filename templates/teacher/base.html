@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="{% static 'css/teacher_panel.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body{% if active_nav %} data-nav-active="{{ active_nav }}"{% endif %}>
     <nav class="sidebar teacher-sidebar" id="sidebar">
         <div class="sidebar-header">
             <div>
@@ -23,9 +23,11 @@
             </div>
         </div>
 
+        {% with nav_active=active_nav|default:request.resolver_match.url_name %}
         <div class="sidebar-nav">
             <div class="nav-item">
-                <a class="nav-link {% if request.resolver_match.url_name == 'teacher_dashboard' %}active{% endif %}"
+                <a class="nav-link {% if nav_active == 'teacher_dashboard' %}active{% endif %}"
+                   data-nav-id="teacher_dashboard"
                    href="{% url 'teacher_dashboard' %}">
                     <i class="bi bi-speedometer2"></i>
                     <span>Обзор</span>
@@ -37,21 +39,24 @@
                 Учебный процесс
             </div>
             <div class="nav-item">
-                <a class="nav-link {% if request.resolver_match.url_name == 'teacher_schedule' %}active{% endif %}"
+                <a class="nav-link {% if nav_active == 'teacher_schedule' %}active{% endif %}"
+                   data-nav-id="teacher_schedule"
                    href="{% url 'teacher_schedule' %}">
                     <i class="bi bi-calendar-week"></i>
                     <span>Расписание</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a class="nav-link {% if request.resolver_match.url_name == 'groups_main' %}active{% endif %}"
-                   href="{% url 'groups_main' %}">
+                <a class="nav-link {% if nav_active == 'teacher_groups' %}active{% endif %}"
+                   data-nav-id="teacher_groups"
+                   href="{% url 'teacher_groups' %}">
                     <i class="bi bi-diagram-3"></i>
                     <span>Мои группы</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a class="nav-link {% if request.resolver_match.url_name == 'admin_subjects' %}active{% endif %}"
+                <a class="nav-link {% if nav_active == 'admin_subjects' %}active{% endif %}"
+                   data-nav-id="admin_subjects"
                    href="{% url 'admin_subjects' %}">
                     <i class="bi bi-journals"></i>
                     <span>Предметы</span>
@@ -63,13 +68,17 @@
                 Журналы
             </div>
             <div class="nav-item">
-                <a class="nav-link" href="#">
+                <a class="nav-link {% if nav_active == 'teacher_journals' %}active{% endif %}"
+                   data-nav-id="teacher_journals"
+                   href="{% url 'teacher_journals' %}">
                     <i class="bi bi-pencil-square"></i>
-                    <span>Оценки и ведомости</span>
+                    <span>Оценки</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a class="nav-link" href="#">
+                <a class="nav-link {% if nav_active == 'teacher_attendance' %}active{% endif %}"
+                   data-nav-id="teacher_attendance"
+                   href="{% url 'teacher_attendance' %}">
                     <i class="bi bi-check2-circle"></i>
                     <span>Посещаемость</span>
                 </a>
@@ -86,6 +95,7 @@
                 </a>
             </div>
         </div>
+        {% endwith %}
 
         <div class="sidebar-footer">
             <div class="nav-item">
@@ -108,7 +118,6 @@
                 <button class="btn btn-link d-lg-none me-3" id="sidebarToggle">
                     <i class="bi bi-list fs-5"></i>
                 </button>
-                <h5 class="mb-0">{% block page_title %}МПТ Журнал{% endblock %}</h5>
             </div>
             <div class="d-flex align-items-center gap-3">
                 <button class="theme-toggle" id="themeToggle" title="Переключить тему">
@@ -126,9 +135,21 @@
     <script src="{% static 'js/admin_panel.js' %}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const currentPath = window.location.pathname;
-            const navLinks = document.querySelectorAll('.nav-link');
+            const navLinks = Array.from(document.querySelectorAll('.nav-link[data-nav-id]'));
+            const forcedNav = document.body.dataset.navActive;
 
+            if (forcedNav) {
+                navLinks.forEach(link => {
+                    if (link.dataset.navId === forcedNav) {
+                        link.classList.add('active');
+                    } else {
+                        link.classList.remove('active');
+                    }
+                });
+                return;
+            }
+
+            const currentPath = window.location.pathname;
             navLinks.forEach(link => link.classList.remove('active'));
 
             let bestMatch = null;

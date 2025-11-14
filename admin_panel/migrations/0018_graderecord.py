@@ -1,0 +1,41 @@
+from django.conf import settings
+from django.db import migrations, models
+import django.core.validators
+import django.db.models.deletion
+
+
+class Migration(migrations.Migration):
+
+    dependencies = [
+        migrations.swappable_dependency(settings.AUTH_USER_MODEL),
+        ('admin_panel', '0017_passwordresetrequest'),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='GradeRecord',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('lesson_date', models.DateField(verbose_name='Дата занятия')),
+                ('slot_id', models.CharField(blank=True, default='', max_length=20, verbose_name='Пара')),
+                ('value', models.PositiveSmallIntegerField(validators=[django.core.validators.MinValueValidator(1), django.core.validators.MaxValueValidator(6)], verbose_name='Оценка')),
+                ('comment', models.CharField(blank=True, max_length=255, verbose_name='Комментарий')),
+                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Создано')),
+                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Обновлено')),
+                ('group', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='grade_records', to='admin_panel.group', verbose_name='Группа')),
+                ('student', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='grade_records', to='admin_panel.student', verbose_name='Студент')),
+                ('subject', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='grade_records', to='admin_panel.subject', verbose_name='Предмет')),
+                ('teacher', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='grade_records', to='admin_panel.teacher', verbose_name='Преподаватель')),
+                ('updated_by', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='updated_grade_records', to=settings.AUTH_USER_MODEL, verbose_name='Кем обновлено')),
+            ],
+            options={
+                'verbose_name': 'Оценка',
+                'verbose_name_plural': 'Оценки',
+                'ordering': ['lesson_date', 'slot_id', 'student__last_name'],
+            },
+        ),
+        migrations.AddConstraint(
+            model_name='graderecord',
+            constraint=models.UniqueConstraint(fields=('student', 'group', 'lesson_date', 'slot_id', 'teacher'), name='unique_student_grade_per_slot'),
+        ),
+    ]

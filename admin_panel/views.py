@@ -45,6 +45,7 @@ try:
         ScheduleWeek,
         ScheduleTeacherSlot,
         PasswordResetRequest,
+        GradeRecord,
     )
     MODELS_AVAILABLE = True
 except:
@@ -2850,6 +2851,46 @@ LESSON_TYPE_LABELS = {
     'other': 'Другое',
 }
 
+GRADE_DAY_INDEX = {
+    'monday': 0,
+    'tuesday': 1,
+    'wednesday': 2,
+    'thursday': 3,
+    'friday': 4,
+    'saturday': 5,
+    'sunday': 6,
+}
+
+GRADE_DAY_LABELS = {
+    'monday': 'Понедельник',
+    'tuesday': 'Вторник',
+    'wednesday': 'Среда',
+    'thursday': 'Четверг',
+    'friday': 'Пятница',
+    'saturday': 'Суббота',
+    'sunday': 'Воскресенье',
+}
+
+GRADE_DAY_SHORT_LABELS = {
+    'monday': 'Пн',
+    'tuesday': 'Вт',
+    'wednesday': 'Ср',
+    'thursday': 'Чт',
+    'friday': 'Пт',
+    'saturday': 'Сб',
+    'sunday': 'Вс',
+}
+
+GRADE_SLOT_CONFIG = {
+    'slot1': {'order': 1, 'label': '1-я пара', 'time_range': '08:30 – 10:00'},
+    'slot2': {'order': 2, 'label': '2-я пара', 'time_range': '10:10 – 11:40'},
+    'slot3': {'order': 3, 'label': '3-я пара', 'time_range': '12:00 – 13:30'},
+    'slot4': {'order': 4, 'label': '4-я пара', 'time_range': '13:50 – 15:20'},
+    'slot5': {'order': 5, 'label': '5-я пара', 'time_range': '15:30 – 17:00'},
+}
+
+
+
 BUILDING_DISPLAY = {
     'nakhimovsky': 'Нахимовский',
     'nezhinskaya': 'Нежинская',
@@ -3148,6 +3189,366 @@ def teacher_schedule_view(request):
     }
 
     return render(request, 'teacher/schedule.html', context)
+
+
+@login_required
+def get_teacher_groups_with_stats(teacher):
+    if not teacher:
+        return Group.objects.none()
+
+    return (
+        teacher.groups.select_related('faculty')
+        .annotate(
+            students_total=Count('students', distinct=True),
+            active_students=Count(
+                'students',
+                filter=Q(students__study_status='active'),
+                distinct=True,
+            ),
+        )
+        .order_by('code')
+    )
+
+
+@login_required
+def teacher_groups_view(request):
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к кабинету преподавателя')
+        return redirect('login')
+
+    teacher_groups = list(get_teacher_groups_with_stats(teacher))
+    total_students = sum(getattr(group, 'students_total', 0) for group in teacher_groups)
+    total_active_students = sum(getattr(group, 'active_students', 0) for group in teacher_groups)
+
+    context = {
+        'teacher': teacher,
+        'teacher_groups': teacher_groups,
+        'total_groups': len(teacher_groups),
+        'total_students': total_students,
+        'total_active_students': total_active_students,
+    }
+    return render(request, 'teacher/groups.html', context)
+
+
+@login_required
+def teacher_group_detail_view(request, group_id):
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к кабинету преподавателя')
+        return redirect('login')
+
+    group = get_object_or_404(Group, id=group_id)
+    if not teacher.groups.filter(id=group.id).exists():
+        messages.error(request, 'У вас нет доступа к этой группе')
+        return redirect('teacher_groups')
+
+    context = _build_teacher_group_detail_context(teacher, group)
+    context.update({
+        'active_nav': 'teacher_groups',
+        'back_link_url': reverse('teacher_groups'),
+        'back_link_label': 'Вернуться к списку',
+        'detail_view_mode': 'groups',
+    })
+    return render(request, 'teacher/group_detail.html', context)
+
+
+def _build_teacher_group_cards_context(teacher):
+    teacher_groups = list(get_teacher_groups_with_stats(teacher))
+    students_count = Student.objects.filter(group__in=teacher_groups).count() if teacher_groups else 0
+    subjects = teacher.subjects.filter(is_active=True).order_by('name')
+
+    first_subject = subjects.first()
+    first_subject_name = (first_subject.short_name if first_subject else '') or (first_subject.name if first_subject else '')
+    first_subject_id = first_subject.id if first_subject else None
+
+    group_subject_map = {}
+    group_subject_ids = {}
+    for slot in teacher.schedule_slots.select_related('group', 'subject'):
+        if slot.group_id and slot.group_id not in group_subject_map:
+            subject_name = ''
+            if slot.subject:
+                subject_name = slot.subject.name
+            subject_name = subject_name or slot.subject_short or slot.subject_name or ''
+            group_subject_map[slot.group_id] = subject_name
+            group_subject_ids[slot.group_id] = slot.subject_id
+
+    group_cards = []
+    for group in teacher_groups:
+        course = getattr(group, 'current_course', None) or getattr(group, 'course', None)
+        display_subject_name = group_subject_map.get(group.id) or first_subject_name or 'Предмет не указан'
+        group_cards.append({
+            'group': group,
+            'subject_name': display_subject_name,
+            'subject_id': group_subject_ids.get(group.id) or first_subject_id,
+            'course': course,
+        })
+
+    course_options = sorted({card['course'] for card in group_cards if card['course']}, key=lambda value: (str(value)))
+
+    return {
+        'teacher_groups': teacher_groups,
+        'group_cards': group_cards,
+        'subjects': subjects,
+        'course_options': course_options,
+        'stats': {
+            'groups': len(teacher_groups),
+            'subjects': subjects.count(),
+            'students': students_count,
+        },
+    }
+
+
+def _build_grade_columns_for_group(teacher, group, lookahead_weeks=4):
+    """Определяем даты занятий для оценочной таблицы (с начала учебного года)"""
+    today = timezone.localdate()
+    lookahead_span = timedelta(days=7 * lookahead_weeks)
+    start_week = get_academic_year_start_week(today) or today
+
+    if group.enrollment_date:
+        enrollment_start = start_of_week(group.enrollment_date)
+        if enrollment_start and enrollment_start < start_week:
+            start_week = enrollment_start
+
+    end_week = start_of_week(today + lookahead_span) or today
+    default_subject_id = teacher.subjects.values_list('id', flat=True).first()
+
+    slots = ScheduleTeacherSlot.objects.filter(
+        teacher=teacher,
+        group=group,
+        week__week_start__gte=start_week,
+        week__week_start__lte=end_week,
+    ).select_related('week')
+
+    columns_map = {}
+    for slot in slots:
+        day_key = (slot.day_key or '').lower()
+        day_index = GRADE_DAY_INDEX.get(day_key)
+        if day_index is None or not slot.week or not slot.week.week_start:
+            continue
+
+        date_value = slot.week.week_start + timedelta(days=day_index)
+        slot_info = GRADE_SLOT_CONFIG.get(slot.slot_id, {'order': 0, 'label': slot.slot_id, 'time_range': ''})
+        column_key = (date_value, slot.slot_id, slot_info['order'])
+        # keep first slot for duplicated dates/slottings
+        if column_key in columns_map:
+            continue
+        slot_identifier = slot.slot_id or f"slot-{slot.pk}"
+        slot_identifier = str(slot_identifier)
+        subject_id = slot.subject_id or default_subject_id
+
+        columns_map[column_key] = {
+            'date': date_value,
+            'date_iso': date_value.isoformat(),
+            'day_label': GRADE_DAY_LABELS.get(day_key, ''),
+            'day_short': GRADE_DAY_SHORT_LABELS.get(day_key, ''),
+            'slot_label': slot_info['label'],
+            'time_range': slot_info['time_range'],
+            'slot_order': slot_info['order'],
+            'is_future': date_value > today,
+            'is_today': date_value == today,
+            'slot_id': slot_identifier,
+            'subject_id': subject_id,
+            'column_key': f"{date_value.isoformat()}|{slot_identifier}",
+            'is_past': date_value < today,
+        }
+
+    sorted_columns = sorted(columns_map.values(), key=lambda column: (column['date'], column['slot_order']))
+    return sorted_columns
+
+
+def _build_teacher_group_detail_context(teacher, group):
+    students = Student.objects.filter(group=group).order_by('last_name', 'first_name')
+    grade_columns = _build_grade_columns_for_group(teacher, group)
+    grade_values_map = {}
+
+    if grade_columns:
+        column_dates = {column['date'] for column in grade_columns}
+        grade_records = GradeRecord.objects.filter(
+            group=group,
+            teacher=teacher,
+            lesson_date__in=column_dates,
+            student__in=students,
+        ).only('student_id', 'lesson_date', 'slot_id', 'value')
+
+        for record in grade_records:
+            student_map = grade_values_map.setdefault(record.student_id, {})
+            key = f"{record.lesson_date.isoformat()}|{record.slot_id or ''}"
+            student_map[key] = record.value
+
+    for student in students:
+        grade_values_map.setdefault(student.id, {})
+
+    return {
+        'teacher': teacher,
+        'group': group,
+        'students': students,
+        'grade_columns': grade_columns,
+        'grade_today': timezone.localdate(),
+        'grade_values_map': grade_values_map,
+    }
+
+
+@login_required
+def teacher_journals_view(request):
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к кабинету преподавателя')
+        return redirect('login')
+
+    context = _build_teacher_group_cards_context(teacher)
+    context['teacher'] = teacher
+    return render(request, 'teacher/journals.html', context)
+
+
+@login_required
+def teacher_journal_detail_view(request, group_id):
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к кабинету преподавателя')
+        return redirect('login')
+
+    group = get_object_or_404(Group, id=group_id)
+    if not teacher.groups.filter(id=group.id).exists():
+        messages.error(request, 'У вас нет доступа к этой группе')
+        return redirect('teacher_journals')
+
+    context = _build_teacher_group_detail_context(teacher, group)
+    context.update({
+        'active_nav': 'teacher_journals',
+        'back_link_url': reverse('teacher_journals'),
+        'back_link_label': 'Назад к списку журналов',
+        'detail_view_mode': 'journal',
+    })
+    return render(request, 'teacher/group_detail.html', context)
+
+
+@login_required
+@require_POST
+def teacher_journal_save_api(request, group_id):
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        return JsonResponse({'success': False, 'error': 'У вас нет доступа к кабинету преподавателя'}, status=403)
+
+    group = get_object_or_404(Group, id=group_id)
+    if not teacher.groups.filter(id=group.id).exists():
+        return JsonResponse({'success': False, 'error': 'У вас нет доступа к этой группе'}, status=403)
+
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Некорректный формат данных'}, status=400)
+
+    entries = payload.get('grades') if isinstance(payload, dict) else payload
+    if not isinstance(entries, list):
+        return JsonResponse({'success': False, 'error': 'Некорректный список оценок'}, status=400)
+
+    saved = 0
+    deleted = 0
+    errors = []
+    students_cache = {}
+
+    for index, entry in enumerate(entries):
+        student_raw = entry.get('student_id') or entry.get('student')
+        date_str = entry.get('date') or entry.get('column_date')
+        slot_id = (entry.get('slot_id') or '').strip()
+        subject_raw = entry.get('subject_id') or entry.get('subject')
+        value_raw = entry.get('value')
+
+        try:
+            student_id = int(student_raw)
+        except (TypeError, ValueError):
+            errors.append(f'#{index + 1}: некорректный студент')
+            continue
+
+        if not date_str or not slot_id:
+            errors.append(f'#{index + 1}: не указаны дата или слот')
+            continue
+
+        student = students_cache.get(student_id)
+        if not student:
+            student = Student.objects.filter(id=student_id, group=group).first()
+            if not student:
+                errors.append(f'#{index + 1}: студент не найден в группе')
+                continue
+            students_cache[student_id] = student
+
+        try:
+            lesson_date = date.fromisoformat(date_str)
+        except ValueError:
+            errors.append(f'#{index + 1}: неверный формат даты')
+            continue
+
+        subject_id = None
+        if subject_raw:
+            try:
+                subject_id = int(subject_raw)
+            except (TypeError, ValueError):
+                errors.append(f'#{index + 1}: некорректный предмет')
+                continue
+
+        if value_raw in (None, ''):
+            deleted_count, _ = GradeRecord.objects.filter(
+                student=student,
+                group=group,
+                teacher=teacher,
+                lesson_date=lesson_date,
+                slot_id=slot_id,
+            ).delete()
+            if deleted_count:
+                deleted += deleted_count
+            continue
+
+        try:
+            value_int = int(value_raw)
+        except (TypeError, ValueError):
+            errors.append(f'#{index + 1}: неверное значение оценки')
+            continue
+
+        if not 1 <= value_int <= 5:
+            errors.append(f'#{index + 1}: оценка вне диапазона 1-5')
+            continue
+
+        GradeRecord.objects.update_or_create(
+            student=student,
+            group=group,
+            teacher=teacher,
+            lesson_date=lesson_date,
+            slot_id=slot_id,
+            defaults={
+                'value': value_int,
+                'subject_id': subject_id,
+                'updated_by': request.user,
+            }
+        )
+        saved += 1
+
+    status_code = 200 if not errors else 207
+    return JsonResponse({
+        'success': not errors,
+        'saved': saved,
+        'deleted': deleted,
+        'errors': errors,
+    }, status=status_code)
+
+
+@login_required
+def teacher_attendance_view(request):
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к кабинету преподавателя')
+        return redirect('login')
+
+    context = _build_teacher_group_cards_context(teacher)
+    context['teacher'] = teacher
+    return render(request, 'teacher/attendance.html', context)
+
 
 def redirect_user_after_login(request):
     """Перенаправление пользователя в зависимости от его роли"""

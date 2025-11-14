@@ -1,0 +1,859 @@
+{% extends 'teacher/base.html' %}
+{% load static teacher_tags %}
+
+{% block title %}{% if detail_view_mode == 'journal' %}Журнал {{ group.code }} — Преподаватель{% else %}Группа {{ group.code }} — Преподаватель{% endif %}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/teacher_week_adminlook.css' %}">
+<style>
+.teacher-group-detail__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.journal-back-link {
+    margin-bottom: 1rem;
+    display: inline-flex;
+}
+
+.teacher-group-detail__badge {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--schedule-accent);
+    background: rgba(99, 102, 241, 0.12);
+    padding: 0.4rem 0.8rem;
+    border-radius: 999px;
+}
+
+.teacher-group-detail__stats {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.85rem;
+}
+
+.teacher-group-detail__stat-card {
+    padding: 0.65rem 0.9rem;
+    border-radius: 0.85rem;
+    border: 1px solid var(--border);
+    background: var(--schedule-surface-subtle);
+    text-align: center;
+    min-width: 120px;
+}
+
+.teacher-group-detail__stat-card strong {
+    display: block;
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.teacher-group-detail__summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-top: 1.25rem;
+}
+
+.teacher-group-detail__summary dl {
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+}
+
+.teacher-group-detail__summary dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--schedule-muted);
+}
+
+.teacher-group-detail__summary dd {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.teacher-group-detail__students {
+    margin-top: 1.5rem;
+}
+
+.teacher-group-detail__students h3 {
+    margin-bottom: 0.5rem;
+}
+
+.teacher-group-detail__students-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.75rem;
+}
+
+.teacher-student-item {
+    border: 1px solid var(--border);
+    border-radius: 0.9rem;
+    padding: 0.85rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    background: var(--schedule-surface);
+}
+
+.teacher-student-item__info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.teacher-student-item__name {
+    margin: 0;
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+.teacher-student-item__meta {
+    font-size: 0.85rem;
+    color: var(--schedule-muted);
+}
+
+.action-link {
+    border-radius: 0.85rem;
+    border: 1px solid var(--border);
+    padding: 0.55rem 0.9rem;
+    background: var(--schedule-surface);
+    color: var(--bs-body-color);
+    font-weight: 600;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.action-link--primary {
+    background: var(--schedule-accent);
+    border-color: transparent;
+    color: #fff;
+}
+
+.teacher-grade-panel {
+    margin-top: 1.5rem;
+}
+
+.grade-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.grade-panel-header h3 {
+    margin: 0;
+}
+
+.grade-panel-meta {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+}
+
+.grade-table-wrapper {
+    margin-top: 1rem;
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    background: var(--surface);
+    padding: 0.75rem;
+    box-shadow: var(--shadow);
+}
+
+.grade-table-scroll {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 520px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.35) transparent;
+    overscroll-behavior: contain;
+    cursor: grab;
+}
+
+.grade-table-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.grade-table-scroll::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(99, 102, 241, 0.8), rgba(129, 140, 248, 0.6));
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.grade-table-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.grade-table-scroll.is-dragging {
+    cursor: grabbing;
+}
+
+.grades-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 840px;
+}
+
+.grades-table th,
+.grades-table td {
+    border: 1px solid var(--border);
+    padding: 0.65rem 0.5rem;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.grades-table thead th {
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    z-index: 5;
+    font-size: 0.7rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+}
+
+.student-column,
+.student-column-header {
+    position: sticky;
+    left: 0;
+    background: var(--surface);
+    z-index: 5;
+    min-width: 300px;
+    text-align: left;
+}
+
+.average-column,
+.average-column-header {
+    position: sticky;
+    right: 0;
+    background: var(--surface);
+    z-index: 5;
+    min-width: 110px;
+    box-shadow: -6px 0 16px rgba(15, 23, 42, 0.08);
+}
+
+.grade-column-header {
+    padding: 0.75rem 0.5rem;
+    vertical-align: bottom;
+    min-height: 140px;
+}
+
+.grade-column-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+    color: var(--bs-body-color);
+    text-align: center;
+}
+
+.grade-column-date {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-weight: 600;
+    flex-direction: column;
+}
+
+.grade-day-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: var(--schedule-surface-subtle);
+    border: 1px solid var(--border);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.grade-date {
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.grade-slot-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.grade-time-range {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.grade-column-header--today {
+    background: linear-gradient(160deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05));
+    border-bottom: 2px solid rgba(99, 102, 241, 0.5);
+    box-shadow: inset 0 -6px 12px rgba(99, 102, 241, 0.08);
+}
+
+.grade-column-header--future {
+    background: rgba(15, 23, 42, 0.02);
+    color: var(--schedule-muted);
+}
+
+.grade-column-header--past {
+    background: var(--surface);
+}
+
+.grade-cell {
+    padding: 0.35rem;
+    position: relative;
+}
+
+.grade-cell--today {
+    background: rgba(99, 102, 241, 0.08);
+}
+
+.grade-cell--future {
+    background: rgba(148, 163, 184, 0.12);
+}
+
+.grade-input {
+    width: 52px;
+    height: 40px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--muted-bg);
+    font-weight: 600;
+    text-align: center;
+}
+
+.grade-input--today {
+    border-color: rgba(99, 102, 241, 0.8);
+    background: #fff;
+}
+
+.grade-input--locked {
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    border-style: dashed;
+}
+
+.grade-input--dirty {
+    border-color: rgba(99, 102, 241, 0.9);
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
+    background: rgba(99, 102, 241, 0.05);
+}
+
+.grade-input:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.grade-input:disabled {
+    background: rgba(148, 163, 184, 0.15);
+    color: var(--text-muted);
+    cursor: not-allowed;
+}
+
+.grades-table tbody tr:nth-child(odd) {
+    background: rgba(99, 102, 241, 0.04);
+}
+
+.student-row-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    align-items:flex-start;
+}
+
+.student-name {
+    margin: 0;
+    font-weight: 600;
+}
+
+.student-meta {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.student-average {
+    font-weight: 700;
+    font-size: 1rem;
+}
+
+.empty-table-message {
+    padding: 2rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.grade-calendar-toolbar {
+    margin-top: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.grade-calendar-legend {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 999px;
+    display: inline-block;
+    border: 2px solid transparent;
+}
+
+.legend-dot--past {
+    background: rgba(15, 23, 42, 0.15);
+}
+
+.legend-dot--today {
+    background: rgba(99, 102, 241, 0.3);
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.legend-dot--future {
+    background: rgba(148, 163, 184, 0.25);
+}
+
+.grade-save-group {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.grade-save-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border-radius: 10px;
+    padding: 0.5rem 1.1rem;
+    font-weight: 600;
+    background: var(--bs-primary);
+    border: 1px solid var(--schedule-accent);
+    color: #fff;
+}
+
+.grade-save-btn:disabled {
+    opacity: 0.65;
+    box-shadow: none;
+}
+
+.grade-save-status {
+    font-size: 0.85rem;
+    color: var(--schedule-muted);
+    min-height: 1.25rem;
+}
+
+.grade-save-status.is-success {
+    color: var(--schedule-success, #22c55e);
+}
+
+.grade-save-status.is-error {
+    color: var(--schedule-danger, #ef4444);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="teacher-dashboard">
+  <div class="journal-back-link">
+    {% if back_link_url %}
+    <a href="{{ back_link_url }}" class="action-link">
+      <i class="bi bi-arrow-left-short"></i>
+      {{ back_link_label|default:'Вернуться к списку' }}
+    </a>
+    {% else %}
+    <a href="{% url 'teacher_groups' %}" class="action-link">
+      <i class="bi bi-arrow-left-short"></i>
+      Вернуться к списку
+    </a>
+    {% endif %}
+  </div>
+  <section class="panel teacher-calendar-panel calendar-full adminlook teacher-group-panel">
+    <div class="panel-header">
+      <div>
+        <h2>
+          {% if detail_view_mode == 'journal' %}
+          Журнал группы {{ group.code }}
+          {% else %}
+          Группа {{ group.code }}
+          {% endif %}
+        </h2>
+        <p class="calendar-subtitle">
+          {{ group.profession }}{% if group.current_course %} • {{ group.current_course }} курс{% endif %}
+          {% if detail_view_mode == 'journal' %} • Режим выставления оценок{% endif %}
+        </p>
+      </div>
+    </div>
+
+    <div class="teacher-grade-panel">
+      <div class="grade-panel-header">
+        <div>
+          <h3>Оценочная таблица</h3>
+          <p class="text-muted">Выставляйте оценки по датам из расписания — будущие ячейки заблокированы.</p>
+        </div>
+        <div class="grade-panel-meta">
+          <span>Запланировано занятий: {{ grade_columns|length }}</span>
+          <span>Сегодня: {{ grade_today|date:"d.m.Y" }}</span>
+        </div>
+      </div>
+      <div class="grade-calendar-toolbar">
+        <div class="grade-calendar-legend" aria-hidden="true">
+          <span class="legend-item">
+            <span class="legend-dot legend-dot--today"></span> Сегодня
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot legend-dot--past"></span> Прошедшие занятия
+          </span>
+          <span class="legend-item">
+            <span class="legend-dot legend-dot--future"></span> Будущие даты
+          </span>
+        </div>
+        <div class="grade-save-group">
+          <button type="button"
+                  class="grade-save-btn"
+                  id="gradeSaveBtn"
+                  data-grade-save
+                  disabled>
+            <i class="bi bi-save"></i>
+            <span>Сохранить</span>
+          </button>
+          <span class="grade-save-status" id="gradeSaveStatus" role="status" aria-live="polite"></span>
+        </div>
+      </div>
+      <div class="grade-table-wrapper"
+           data-grade-table
+           data-save-url="{% url 'teacher_journal_save_api' group.id %}">
+        {% if grade_columns %}
+        <div class="grade-table-scroll">
+          <table class="grades-table">
+            <thead>
+              <tr>
+                <th class="student-column-header" style="z-index:50">Студент</th>
+                {% for column in grade_columns %}
+                <th class="grade-column-header {% if column.is_today %}grade-column-header--today{% elif column.is_future %}grade-column-header--future{% else %}grade-column-header--past{% endif %}"
+                    data-column-date="{{ column.date_iso }}"
+                    data-slot-id="{{ column.slot_id }}">
+                  <div class="grade-column-label">
+                    <div class="grade-column-date">
+                      <span class="grade-day-chip">{{ column.day_short }}</span>
+                      <span class="grade-date">{{ column.date|date:"d.m" }}</span>
+                    </div>
+                  </div>
+                </th>
+                {% endfor %}
+                <th class="average-column-header"  style="z-index:50">Средний балл</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for student in students %}
+              <tr data-student-id="{{ student.id }}">
+                <td class="student-column">
+                  <div class="student-row-info">
+                    <p class="student-name">{{ student.get_full_name }}</p>
+                  </div>
+                </td>
+                {% with student_grades=grade_values_map|dict_get:student.id %}
+                  {% for column in grade_columns %}
+                  <td class="grade-cell {% if column.is_today %}grade-cell--today{% elif column.is_future %}grade-cell--future{% endif %}">
+                    {% with cell_value=student_grades|dict_get:column.column_key %}
+                  <input
+                    type="text"
+                    inputmode="numeric"
+                    maxlength="1"
+                    class="grade-input shadow-none {% if column.is_today %}grade-input--today{% endif %} {% if cell_value %}grade-input--locked{% endif %}"
+                    pattern="[1-5]"
+                    data-column-date="{{ column.date_iso }}"
+                    data-slot-id="{{ column.slot_id }}"
+                    data-subject-id="{{ column.subject_id|default:'' }}"
+                    data-entry-key="{{ student.id }}::{{ column.column_key }}"
+                    data-initial-value="{{ cell_value|default:'' }}"
+                    {% if column.is_future or cell_value %}disabled aria-label="{% if cell_value %}Оценка уже сохранена{% else %}Будущая дата{% endif %}"{% endif %}
+                    placeholder="–"
+                    value="{{ cell_value|default:'' }}"
+                    autocomplete="off"
+                  >
+                    {% endwith %}
+                  </td>
+                  {% endfor %}
+                {% endwith %}
+                <td class="average-column">
+                  <span class="student-average">—</span>
+                </td>
+              </tr>
+              {% empty %}
+              <tr>
+                <td class="student-column" colspan="{{ grade_columns|length|add:2 }}">
+                  Нет студентов.
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="empty-table-message">Нет запланированных занятий для этой группы. Проверьте расписание.</p>
+        {% endif %}
+      </div>
+    </div>
+
+  </section>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const gradeWrapper = document.querySelector('[data-grade-table]');
+  const gradeTable = document.querySelector('.grades-table');
+  const saveBtn = document.getElementById('gradeSaveBtn');
+  const saveStatus = document.getElementById('gradeSaveStatus');
+
+  if (!gradeWrapper || !gradeTable) {
+    if (saveBtn) {
+      saveBtn.disabled = true;
+    }
+    return;
+  }
+
+  const scrollContainer = gradeWrapper.querySelector('.grade-table-scroll');
+  const studentColumnHeader = gradeTable.querySelector('.student-column-header');
+  const columnHeaders = Array.from(gradeTable.querySelectorAll('.grade-column-header'));
+  const dirtyEntries = new Map();
+  let isSaving = false;
+
+  const getCsrfToken = () => {
+    const match = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
+    return match ? decodeURIComponent(match[2]) : '';
+  };
+
+  const setStatus = (message, tone = 'neutral') => {
+    if (!saveStatus) return;
+    saveStatus.textContent = message || '';
+    saveStatus.classList.remove('is-success', 'is-error');
+    if (tone === 'success') {
+      saveStatus.classList.add('is-success');
+    } else if (tone === 'error') {
+      saveStatus.classList.add('is-error');
+    }
+  };
+
+  const formatAverage = (value) => {
+    if (!Number.isFinite(value)) return '—';
+    const rounded = Math.round(value * 100) / 100;
+    return Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(2).replace(/\.?0+$/, '');
+  };
+
+  const updateRowAverage = (row) => {
+    if (!row) return;
+    const inputs = Array.from(row.querySelectorAll('.grade-input'));
+    let sum = 0;
+    let count = 0;
+    inputs.forEach(input => {
+      const numeric = parseInt(input.value, 10);
+      if (!Number.isNaN(numeric) && numeric >= 1 && numeric <= 5) {
+        sum += numeric;
+        count += 1;
+      }
+    });
+    const avgCell = row.querySelector('.student-average');
+    if (!avgCell) return;
+    if (!count) {
+      avgCell.textContent = '—';
+      return;
+    }
+    avgCell.textContent = formatAverage(sum / count);
+  };
+
+  const updateSaveState = () => {
+    if (!saveBtn) return;
+    saveBtn.disabled = isSaving || dirtyEntries.size === 0;
+  };
+
+  const markDirty = (input) => {
+    if (!input || input.disabled) return;
+    const key = input.dataset.entryKey;
+    if (!key) return;
+    const initial = (input.dataset.initialValue || '').trim();
+    const current = (input.value || '').trim();
+    if (current !== initial) {
+      dirtyEntries.set(key, input);
+      input.classList.add('grade-input--dirty');
+    } else {
+      dirtyEntries.delete(key);
+      input.classList.remove('grade-input--dirty');
+    }
+    updateSaveState();
+  };
+
+  const lockInput = (input) => {
+    input.disabled = true;
+    input.classList.add('grade-input--locked');
+  };
+
+  gradeTable.querySelectorAll('.grade-input').forEach(input => {
+    if ((input.dataset.initialValue || '').trim() !== '' && !input.disabled) {
+      lockInput(input);
+      return;
+    }
+
+    if (input.disabled) return;
+    input.addEventListener('input', function () {
+      const sanitized = this.value.replace(/[^1-5]/g, '').slice(0, 1);
+      if (sanitized !== this.value) {
+        this.value = sanitized;
+      }
+      updateRowAverage(this.closest('tr'));
+      markDirty(this);
+    });
+
+    input.addEventListener('blur', function () {
+      markDirty(this);
+    });
+  });
+
+  gradeTable.querySelectorAll('tbody tr[data-student-id]').forEach(updateRowAverage);
+  updateSaveState();
+
+  const scrollToNearestColumn = () => {
+    if (!scrollContainer || !columnHeaders.length) return;
+
+    let target = columnHeaders.find(header => header.classList.contains('grade-column-header--today'));
+    if (!target) {
+      target = columnHeaders.find(header => !header.classList.contains('grade-column-header--past')) ||
+        columnHeaders[columnHeaders.length - 1];
+    }
+
+    if (!target) return;
+    const fixedLeft = studentColumnHeader ? studentColumnHeader.offsetWidth : 0;
+    const offset = Math.max(0, target.offsetLeft - fixedLeft - 24);
+    scrollContainer.scrollLeft = offset;
+  };
+  scrollToNearestColumn();
+
+  const collectPayload = () => {
+    const grades = [];
+    dirtyEntries.forEach((input, key) => {
+      const [studentPart, columnKey] = key.split('::');
+      if (!columnKey) return;
+      const studentId = Number(studentPart);
+      if (Number.isNaN(studentId)) return;
+      const [dateIso, slotFromKey] = columnKey.split('|');
+      const entry = {
+        student_id: studentId,
+        date: dateIso,
+        slot_id: input.dataset.slotId || slotFromKey || '',
+      };
+      const subjectRaw = input.dataset.subjectId;
+      if (subjectRaw) {
+        const parsedSubject = Number(subjectRaw);
+        if (!Number.isNaN(parsedSubject)) {
+          entry.subject_id = parsedSubject;
+        }
+      }
+      const trimmedValue = (input.value || '').trim();
+      entry.value = trimmedValue === '' ? '' : Number(trimmedValue);
+      if (entry.date && entry.slot_id) {
+        grades.push(entry);
+      }
+    });
+    return grades;
+  };
+
+  const handleSave = () => {
+    if (!saveBtn || isSaving) return;
+    const saveUrl = gradeWrapper.dataset.saveUrl;
+    if (!saveUrl) {
+      setStatus('Недоступно сохранение оценок', 'error');
+      return;
+    }
+    const grades = collectPayload();
+    if (!grades.length) {
+      return;
+    }
+    isSaving = true;
+    updateSaveState();
+    setStatus('Сохраняем изменения…');
+
+    fetch(saveUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      },
+      body: JSON.stringify({ grades }),
+    })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const errorMessage = (data && data.errors && data.errors.join('; ')) || 'Ошибка сохранения';
+          throw new Error(errorMessage);
+        }
+        return data;
+      })
+      .then(data => {
+        if (Array.isArray(data.errors) && data.errors.length) {
+          setStatus(data.errors.join('; '), 'error');
+          return;
+        }
+        dirtyEntries.forEach(input => {
+          const trimmedValue = (input.value || '').trim();
+          input.dataset.initialValue = trimmedValue;
+          input.classList.remove('grade-input--dirty');
+          if (trimmedValue !== '') {
+            lockInput(input);
+          }
+        });
+        dirtyEntries.clear();
+        setStatus('Оценки сохранены', 'success');
+      })
+      .catch(error => {
+        console.error(error);
+        setStatus(error.message || 'Не удалось сохранить оценки', 'error');
+      })
+      .finally(() => {
+        isSaving = false;
+        updateSaveState();
+      });
+  };
+
+  saveBtn?.addEventListener('click', handleSave);
+});
+</script>
+{% endblock %}

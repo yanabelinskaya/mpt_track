@@ -266,6 +266,13 @@ body {
     }
 }
 
+@media (max-width: 990px) {
+    .main-content {
+        margin-left: 0;
+    }
+}
+
+
 /* Дополнительные стили для расширенной навигации */
 
 .nav-section-title {
