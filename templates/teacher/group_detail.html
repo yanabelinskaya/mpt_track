@@ -5,6 +5,7 @@
 
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/teacher_week_adminlook.css' %}">
+<link rel="stylesheet" href="{% static 'css/custom_select.css' %}">
 <style>
 .teacher-group-detail__header {
     display: flex;
@@ -167,6 +168,55 @@
     align-items: center;
 }
 
+.grade-day-chip {
+    border: none;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.2);
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    padding: 0.25rem 0.85rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: var(--bs-body-color);
+}
+
+.grade-day-chip .chip-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(148, 163, 184, 0.65);
+    display: inline-block;
+}
+
+.grade-day-chip.is-configured {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.4);
+}
+
+.grade-day-chip.is-configured .chip-status {
+    background: rgba(99, 102, 241, 0.95);
+}
+
+.grade-day-chip.is-missing {
+    border-color: rgba(249, 115, 22, 0.6);
+    background: rgba(249, 115, 22, 0.12);
+}
+
+.grade-day-chip.is-missing .chip-status {
+    background: rgba(249, 115, 22, 0.9);
+}
+
+.grade-day-chip:focus-visible {
+    outline: 3px solid rgba(99, 102, 241, 0.35);
+    outline-offset: 2px;
+}
+
 .grade-table-wrapper {
     margin-top: 1rem;
     border: 1px solid var(--border);
@@ -323,6 +373,7 @@
 .grade-cell {
     padding: 0.35rem;
     position: relative;
+    padding-right: 2rem;
 }
 
 .grade-cell--today {
@@ -348,13 +399,6 @@
     background: #fff;
 }
 
-.grade-input--locked {
-    background: rgba(148, 163, 184, 0.15);
-    color: var(--text-muted);
-    cursor: not-allowed;
-    border-style: dashed;
-}
-
 .grade-input--dirty {
     border-color: rgba(99, 102, 241, 0.9);
     box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
@@ -371,6 +415,212 @@
     background: rgba(148, 163, 184, 0.15);
     color: var(--text-muted);
     cursor: not-allowed;
+}
+
+.grade-comment-trigger {
+    position: absolute;
+    right: 0.35rem;
+    bottom: 0.35rem;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    padding: 0.15rem;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: color 0.2s ease, background 0.2s ease;
+}
+
+.grade-comment-trigger:hover,
+.grade-comment-trigger:focus-visible {
+    color: var(--bs-primary);
+    background: rgba(99, 102, 241, 0.12);
+    outline: none;
+}
+
+.grade-comment-trigger.has-comment {
+    color: var(--bs-primary);
+}
+
+.grade-comment-trigger.is-hidden {
+    display: none !important;
+}
+
+.grade-comment-popover {
+    position: absolute;
+    min-width: 260px;
+    max-width: 320px;
+    background: var(--surface);
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.3);
+    padding: 1rem;
+    z-index: 1200;
+}
+
+.grade-comment-popover header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.grade-comment-popover header h4 {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.grade-comment-popover header button {
+    border: none;
+    background: transparent;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.grade-comment-popover label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.grade-comment-popover input,
+.grade-comment-popover select,
+.grade-comment-popover textarea {
+    border-radius: 0.65rem;
+    border: 1px solid var(--border);
+    padding: 0.45rem 0.65rem;
+    background: var(--schedule-surface);
+    font-size: 0.9rem;
+    resize: vertical;
+}
+
+.grade-comment-popover textarea {
+    min-height: 80px;
+}
+
+.grade-comment-popover .popover-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.grade-comment-popover .popover-actions button {
+    border: none;
+    border-radius: 0.65rem;
+    padding: 0.45rem 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
+}
+
+.popover-save-btn {
+    background: var(--bs-primary);
+    color: #fff;
+}
+
+.popover-clear-btn {
+    background: rgba(148, 163, 184, 0.2);
+    color: var(--text-muted);
+}
+
+.column-context-popover {
+    position: absolute;
+    min-width: 280px;
+    max-width: 340px;
+    background: var(--surface);
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.3);
+    padding: 1.1rem;
+    z-index: 1250;
+}
+
+.column-context-popover header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.9rem;
+}
+
+.column-context-popover header h4 {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.column-context-popover header button {
+    border: none;
+    background: transparent;
+    font-size: 1.25rem;
+    cursor: pointer;
+    color: var(--text-muted);
+}
+
+.column-context-popover .column-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 0.95rem;
+}
+
+.column-context-popover .column-field-label {
+    font-size: 0.78rem;
+    color: var(--schedule-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.column-topic-input {
+    border-radius: 0.85rem;
+    border: 1px solid var(--border);
+    padding: 0.6rem 0.85rem;
+    background: var(--schedule-surface);
+    font-weight: 500;
+    font-size: 0.92rem;
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: none;
+}
+
+.column-topic-input:focus {
+    outline: none;
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+.column-custom-select .select-trigger {
+    background: var(--schedule-surface);
+    border-color: var(--border);
+    padding: 0.6rem 0.85rem;
+    min-height: 48px;
+    font-size: 0.9rem;
+}
+
+.column-custom-select .select-dropdown {
+    border-radius: 0.85rem;
+}
+
+.column-custom-select .select-option {
+    padding: 0.6rem 0.85rem;
+}
+
+.column-custom-select .select-arrow {
+    font-size: 0.85rem;
+}
+
+.column-context-popover .popover-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+}
+
+.column-context-popover .popover-actions button {
+    border: none;
+    border-radius: 0.65rem;
+    padding: 0.45rem 0.85rem;
+    cursor: pointer;
+    font-weight: 600;
 }
 
 .grades-table tbody tr:nth-child(odd) {
@@ -566,16 +816,28 @@
               <tr>
                 <th class="student-column-header" style="z-index:50">Студент</th>
                 {% for column in grade_columns %}
+                {% with column_context=column_context_map|dict_get:column.column_key %}
                 <th class="grade-column-header {% if column.is_today %}grade-column-header--today{% elif column.is_future %}grade-column-header--future{% else %}grade-column-header--past{% endif %}"
                     data-column-date="{{ column.date_iso }}"
-                    data-slot-id="{{ column.slot_id }}">
+                    data-slot-id="{{ column.slot_id }}"
+                    data-column-key="{{ column.column_key }}">
                   <div class="grade-column-label">
                     <div class="grade-column-date">
-                      <span class="grade-day-chip">{{ column.day_short }}</span>
+                      <button type="button"
+                              class="grade-day-chip {% if column_context.lesson_topic or column_context.grade_type %}is-configured{% else %}is-missing{% endif %}"
+                              data-column-trigger
+                              data-column-key="{{ column.column_key }}"
+                              data-column-topic="{{ column_context.lesson_topic|default:'' }}"
+                              data-column-grade-type="{{ column_context.grade_type|default:'' }}"
+                              aria-label="Настроить занятие на {{ column.date|date:'d.m.Y' }}">
+                        <span class="chip-status" aria-hidden="true"></span>
+                        <span>{{ column.day_short }}</span>
+                      </button>
                       <span class="grade-date">{{ column.date|date:"d.m" }}</span>
                     </div>
                   </div>
                 </th>
+                {% endwith %}
                 {% endfor %}
                 <th class="average-column-header"  style="z-index:50">Средний балл</th>
               </tr>
@@ -590,26 +852,37 @@
                 </td>
                 {% with student_grades=grade_values_map|dict_get:student.id %}
                   {% for column in grade_columns %}
+                  {% with cell_entry=student_grades|dict_get:column.column_key %}
+                  {% with cell_value=cell_entry.value|default_if_none:'' cell_comment=cell_entry.comment|default:'' %}
                   <td class="grade-cell {% if column.is_today %}grade-cell--today{% elif column.is_future %}grade-cell--future{% endif %}">
-                    {% with cell_value=student_grades|dict_get:column.column_key %}
-                  <input
-                    type="text"
-                    inputmode="numeric"
-                    maxlength="1"
-                    class="grade-input shadow-none {% if column.is_today %}grade-input--today{% endif %} {% if cell_value %}grade-input--locked{% endif %}"
-                    pattern="[1-5]"
-                    data-column-date="{{ column.date_iso }}"
-                    data-slot-id="{{ column.slot_id }}"
-                    data-subject-id="{{ column.subject_id|default:'' }}"
-                    data-entry-key="{{ student.id }}::{{ column.column_key }}"
-                    data-initial-value="{{ cell_value|default:'' }}"
-                    {% if column.is_future or cell_value %}disabled aria-label="{% if cell_value %}Оценка уже сохранена{% else %}Будущая дата{% endif %}"{% endif %}
-                    placeholder="–"
-                    value="{{ cell_value|default:'' }}"
-                    autocomplete="off"
-                  >
-                    {% endwith %}
+                    <input
+                      type="text"
+                      inputmode="numeric"
+                      maxlength="1"
+                      class="grade-input shadow-none {% if column.is_today %}grade-input--today{% endif %}"
+                      pattern="[1-5]"
+                      data-column-date="{{ column.date_iso }}"
+                      data-slot-id="{{ column.slot_id }}"
+                      data-subject-id="{{ column.subject_id|default:'' }}"
+                      data-entry-key="{{ student.id }}::{{ column.column_key }}"
+                      data-column-key="{{ column.column_key }}"
+                      data-initial-value="{{ cell_value|default:'' }}"
+                      data-comment="{{ cell_comment }}"
+                      data-initial-comment="{{ cell_comment }}"
+                      {% if column.is_future %}disabled aria-label="Будущая дата"{% endif %}
+                      placeholder="–"
+                      value="{{ cell_value|default:'' }}"
+                      autocomplete="off"
+                    >
+                    <button type="button"
+                            class="grade-comment-trigger {% if not cell_value %}is-hidden{% endif %} {% if cell_comment %}has-comment{% endif %}"
+                            data-entry-key="{{ student.id }}::{{ column.column_key }}"
+                            aria-label="{% if cell_comment %}Изменить комментарий{% else %}Добавить комментарий{% endif %}">
+                      <i class="bi bi-chat-dots"></i>
+                    </button>
                   </td>
+                  {% endwith %}
+                  {% endwith %}
                   {% endfor %}
                 {% endwith %}
                 <td class="average-column">
@@ -633,17 +906,80 @@
     </div>
 
   </section>
+  <template id="gradeCommentTemplate">
+    <div class="grade-comment-popover" role="dialog" aria-modal="true">
+      <header>
+        <h4>Комментарий к оценке</h4>
+        <button type="button" data-comment-close aria-label="Закрыть">&times;</button>
+      </header>
+      <div class="popover-content">
+        <label>
+          Комментарий
+          <textarea data-field="comment" placeholder="Кратко поясните результат"></textarea>
+        </label>
+      </div>
+      <div class="popover-actions">
+        <button type="button" class="popover-clear-btn" data-comment-clear>Очистить</button>
+        <button type="button" class="popover-save-btn" data-comment-save>Сохранить</button>
+      </div>
+    </div>
+  </template>
+  <template id="gradeColumnTemplate">
+    <div class="column-context-popover" role="dialog" aria-modal="true">
+      <header>
+        <h4>Параметры занятия</h4>
+        <button type="button" data-column-close aria-label="Закрыть">&times;</button>
+      </header>
+      <div class="popover-content">
+        <div class="column-field">
+          <span class="column-field-label">Тип занятия</span>
+          <div class="custom-select column-custom-select" data-placeholder="Тип занятия" data-grade-select>
+            <select data-field="grade_type">
+              {% for value, label in grade_type_choices %}
+              <option value="{{ value }}">{{ label }}</option>
+              {% endfor %}
+            </select>
+            <div class="select-trigger placeholder" data-placeholder="Тип занятия">
+              <span class="select-text">Тип занятия</span>
+              <span class="select-arrow"><i class="bi bi-chevron-down"></i></span>
+            </div>
+            <div class="select-dropdown">
+              {% for value, label in grade_type_choices %}
+              <div class="select-option{% if not value %} selected{% endif %}" data-value="{{ value }}">
+                <div class="select-option-text">{{ label }}</div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        <div class="column-field">
+          <span class="column-field-label">Тема занятия</span>
+          <input type="text"
+                 class="column-topic-input"
+                 data-field="lesson_topic"
+                 autocomplete="off">
+        </div>
+      </div>
+      <div class="popover-actions">
+        <button type="button" class="popover-clear-btn" data-column-clear>Очистить</button>
+        <button type="button" class="popover-save-btn" data-column-save>Сохранить</button>
+      </div>
+    </div>
+  </template>
 </div>
 
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/custom_select.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const gradeWrapper = document.querySelector('[data-grade-table]');
   const gradeTable = document.querySelector('.grades-table');
   const saveBtn = document.getElementById('gradeSaveBtn');
   const saveStatus = document.getElementById('gradeSaveStatus');
+  const commentTemplate = document.getElementById('gradeCommentTemplate');
+  const columnTemplate = document.getElementById('gradeColumnTemplate');
 
   if (!gradeWrapper || !gradeTable) {
     if (saveBtn) {
@@ -655,8 +991,36 @@ document.addEventListener('DOMContentLoaded', function () {
   const scrollContainer = gradeWrapper.querySelector('.grade-table-scroll');
   const studentColumnHeader = gradeTable.querySelector('.student-column-header');
   const columnHeaders = Array.from(gradeTable.querySelectorAll('.grade-column-header'));
+  const columnMeta = new Map();
+  columnHeaders.forEach(header => {
+    const columnKey = header.dataset.columnKey;
+    if (!columnKey) return;
+    columnMeta.set(columnKey, {
+      date: header.dataset.columnDate || '',
+      slotId: header.dataset.slotId || '',
+    });
+  });
   const dirtyEntries = new Map();
+  const metaDirtyKeys = new Set();
+  const columnDirtyKeys = new Set();
+  const entryInputs = new Map();
+  const entryComments = new Map();
+  const commentTriggers = new Map();
+  const columnTriggers = new Map();
+  const columnContexts = new Map();
+  const columnInitialContexts = new Map();
+  const autoPromptColumns = new Set();
   let isSaving = false;
+  let activePopover = null;
+  let activePopoverTrigger = null;
+  let activePopoverType = null;
+
+  const gradeTypeLabels = {};
+  if (columnTemplate && columnTemplate.content) {
+    columnTemplate.content.querySelectorAll('option').forEach(option => {
+      gradeTypeLabels[option.value] = option.textContent.trim();
+    });
+  }
 
   const getCsrfToken = () => {
     const match = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
@@ -674,13 +1038,15 @@ document.addEventListener('DOMContentLoaded', function () {
     }
   };
 
-  const formatAverage = (value) => {
-    if (!Number.isFinite(value)) return '—';
+  const formatAverage = value => {
+    if (!Number.isFinite(value)) {
+      return '—';
+    }
     const rounded = Math.round(value * 100) / 100;
     return Number.isInteger(rounded) ? rounded.toString() : rounded.toFixed(2).replace(/\.?0+$/, '');
   };
 
-  const updateRowAverage = (row) => {
+  const updateRowAverage = row => {
     if (!row) return;
     const inputs = Array.from(row.querySelectorAll('.grade-input'));
     let sum = 0;
@@ -692,21 +1058,53 @@ document.addEventListener('DOMContentLoaded', function () {
         count += 1;
       }
     });
-    const avgCell = row.querySelector('.student-average');
-    if (!avgCell) return;
-    if (!count) {
-      avgCell.textContent = '—';
-      return;
-    }
-    avgCell.textContent = formatAverage(sum / count);
+    const averageCell = row.querySelector('.student-average');
+    if (!averageCell) return;
+    averageCell.textContent = count ? formatAverage(sum / count) : '—';
   };
 
   const updateSaveState = () => {
     if (!saveBtn) return;
-    saveBtn.disabled = isSaving || dirtyEntries.size === 0;
+    const hasDirty = dirtyEntries.size > 0 || metaDirtyKeys.size > 0 || columnDirtyKeys.size > 0;
+    saveBtn.disabled = isSaving || !hasDirty;
   };
 
-  const markDirty = (input) => {
+  const getComment = key => entryComments.get(key) || '';
+
+  const refreshCommentIndicator = key => {
+    const button = commentTriggers.get(key);
+    const input = entryInputs.get(key);
+    if (!button || !input) return;
+    const hasValue = Boolean((input.value || '').trim());
+    button.classList.toggle('is-hidden', !hasValue);
+    const comment = (getComment(key) || '').trim();
+    if (hasValue && comment) {
+      button.classList.add('has-comment');
+      button.title = comment;
+    } else {
+      button.classList.remove('has-comment');
+      if (hasValue) {
+        button.title = 'Добавить комментарий';
+      } else {
+        button.removeAttribute('title');
+      }
+    }
+  };
+
+  const updateCommentDirtyState = key => {
+    const input = entryInputs.get(key);
+    if (!input) return;
+    const initial = (input.dataset.initialComment || '').trim();
+    const current = (getComment(key) || '').trim();
+    if (current !== initial) {
+      metaDirtyKeys.add(key);
+    } else {
+      metaDirtyKeys.delete(key);
+    }
+    updateSaveState();
+  };
+
+  const markDirty = input => {
     if (!input || input.disabled) return;
     const key = input.dataset.entryKey;
     if (!key) return;
@@ -722,29 +1120,232 @@ document.addEventListener('DOMContentLoaded', function () {
     updateSaveState();
   };
 
-  const lockInput = (input) => {
-    input.disabled = true;
-    input.classList.add('grade-input--locked');
+  const markColumnContextDirty = columnKey => {
+    if (!columnKey) return;
+    const current = columnContexts.get(columnKey) || { lesson_topic: '', grade_type: '' };
+    const initial = columnInitialContexts.get(columnKey) || { lesson_topic: '', grade_type: '' };
+    const normalize = value => (value || '').trim();
+    const isDifferent = normalize(current.lesson_topic) !== normalize(initial.lesson_topic) ||
+      normalize(current.grade_type) !== normalize(initial.grade_type);
+    if (isDifferent) {
+      columnDirtyKeys.add(columnKey);
+    } else {
+      columnDirtyKeys.delete(columnKey);
+    }
+    updateSaveState();
+  };
+
+  const updateColumnIndicator = columnKey => {
+    const trigger = columnTriggers.get(columnKey);
+    if (!trigger) return;
+    const context = columnContexts.get(columnKey) || { lesson_topic: '', grade_type: '' };
+    const hasContext = Boolean((context.lesson_topic || '').trim() || (context.grade_type || '').trim());
+    trigger.classList.toggle('is-configured', hasContext);
+    trigger.classList.toggle('is-missing', !hasContext);
+    if (hasContext) {
+      const parts = [];
+      if (context.lesson_topic) parts.push(context.lesson_topic);
+      if (context.grade_type && gradeTypeLabels[context.grade_type]) parts.push(gradeTypeLabels[context.grade_type]);
+      trigger.title = parts.join(' • ') || 'Параметры занятия';
+    } else {
+      trigger.title = 'Укажите тему занятия';
+    }
+  };
+
+  const placePopover = (node, anchorRect) => {
+    const viewportWidth = document.documentElement.clientWidth;
+    const viewportHeight = document.documentElement.clientHeight;
+    let left = anchorRect.left + window.scrollX;
+    let top = anchorRect.bottom + window.scrollY + 8;
+    const rect = node.getBoundingClientRect();
+    if (left + rect.width > viewportWidth + window.scrollX - 16) {
+      left = viewportWidth + window.scrollX - rect.width - 16;
+    }
+    if (left < 16) {
+      left = 16;
+    }
+    if (top + rect.height > viewportHeight + window.scrollY - 16) {
+      top = anchorRect.top + window.scrollY - rect.height - 12;
+    }
+    node.style.left = `${left}px`;
+    node.style.top = `${top}px`;
+  };
+
+  const closePopover = () => {
+    if (!activePopover) return;
+    activePopover.remove();
+    activePopover = null;
+    document.removeEventListener('mousedown', handleOutsideClick);
+    document.removeEventListener('keydown', handleEscape);
+    if (activePopoverTrigger) {
+      activePopoverTrigger.focus();
+    }
+    activePopoverTrigger = null;
+    activePopoverType = null;
+  };
+
+  const handleOutsideClick = event => {
+    if (!activePopover) return;
+    if (activePopover.contains(event.target)) return;
+    if (event.target.closest('.grade-comment-trigger')) return;
+    if (event.target.closest('[data-column-trigger]')) return;
+    closePopover();
+  };
+
+  const handleEscape = event => {
+    if (event.key === 'Escape') {
+      closePopover();
+    }
+  };
+
+  const openCommentPopover = trigger => {
+    const entryKey = trigger?.dataset.entryKey;
+    if (!entryKey || !commentTemplate) return;
+    closePopover();
+    const node = commentTemplate.content.firstElementChild.cloneNode(true);
+    document.body.appendChild(node);
+    activePopover = node;
+    activePopoverTrigger = trigger;
+    activePopoverType = 'comment';
+    const textarea = node.querySelector('textarea[data-field="comment"]');
+    textarea.value = getComment(entryKey);
+    textarea.focus();
+    textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    node.querySelector('[data-comment-close]')?.addEventListener('click', closePopover);
+    node.querySelector('[data-comment-clear]')?.addEventListener('click', () => {
+      entryComments.set(entryKey, '');
+      updateCommentDirtyState(entryKey);
+      refreshCommentIndicator(entryKey);
+      setStatus('Комментарий очищен. Не забудьте сохранить.', 'neutral');
+      closePopover();
+    });
+    node.querySelector('[data-comment-save]')?.addEventListener('click', () => {
+      entryComments.set(entryKey, textarea.value.trim());
+      updateCommentDirtyState(entryKey);
+      refreshCommentIndicator(entryKey);
+      setStatus('Комментарий обновлён. Сохраните изменения.', 'neutral');
+      closePopover();
+    });
+    placePopover(node, trigger.getBoundingClientRect());
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+  };
+
+  const openColumnPopover = (columnKey, trigger) => {
+    const columnTrigger = trigger || columnTriggers.get(columnKey);
+    if (!columnTrigger || !columnTemplate) return;
+    closePopover();
+    const node = columnTemplate.content.firstElementChild.cloneNode(true);
+    document.body.appendChild(node);
+    activePopover = node;
+    activePopoverTrigger = columnTrigger;
+    activePopoverType = 'column';
+    const typeField = node.querySelector('select[data-field="grade_type"]');
+    const topicField = node.querySelector('[data-field="lesson_topic"]');
+    const currentContext = columnContexts.get(columnKey) || { lesson_topic: '', grade_type: '' };
+    if (typeField) {
+      typeField.value = currentContext.grade_type || '';
+    }
+    if (topicField) {
+      topicField.value = currentContext.lesson_topic || '';
+    }
+    if (window.CustomSelect?.init) {
+      window.CustomSelect.init(node);
+    }
+    if (typeField) {
+      typeField.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    if (topicField) {
+      topicField.focus();
+      topicField.setSelectionRange(topicField.value.length, topicField.value.length);
+    }
+    node.querySelector('[data-column-close]')?.addEventListener('click', closePopover);
+    node.querySelector('[data-column-clear]')?.addEventListener('click', () => {
+      columnContexts.set(columnKey, { lesson_topic: '', grade_type: '' });
+      updateColumnIndicator(columnKey);
+      markColumnContextDirty(columnKey);
+      setStatus('Параметры занятия очищены. Сохраните изменения.', 'neutral');
+      closePopover();
+    });
+    node.querySelector('[data-column-save]')?.addEventListener('click', () => {
+      const nextContext = {
+        grade_type: typeField ? typeField.value : '',
+        lesson_topic: topicField ? topicField.value.trim() : '',
+      };
+      columnContexts.set(columnKey, nextContext);
+      updateColumnIndicator(columnKey);
+      markColumnContextDirty(columnKey);
+      setStatus('Параметры занятия обновлены. Нажмите «Сохранить».', 'neutral');
+      autoPromptColumns.delete(columnKey);
+      closePopover();
+    });
+    placePopover(node, columnTrigger.getBoundingClientRect());
+    document.addEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('keydown', handleEscape);
+  };
+
+  gradeWrapper.querySelectorAll('[data-column-trigger]').forEach(trigger => {
+    const columnKey = trigger.dataset.columnKey;
+    if (!columnKey) return;
+    columnTriggers.set(columnKey, trigger);
+    const context = {
+      lesson_topic: (trigger.dataset.columnTopic || '').trim(),
+      grade_type: (trigger.dataset.columnGradeType || '').trim(),
+    };
+    columnContexts.set(columnKey, { ...context });
+    columnInitialContexts.set(columnKey, { ...context });
+    updateColumnIndicator(columnKey);
+    trigger.addEventListener('click', () => openColumnPopover(columnKey, trigger));
+  });
+
+  const ensureColumnContext = columnKey => {
+    const context = columnContexts.get(columnKey);
+    return Boolean(context && ((context.lesson_topic || '').trim() || (context.grade_type || '').trim()));
   };
 
   gradeTable.querySelectorAll('.grade-input').forEach(input => {
-    if ((input.dataset.initialValue || '').trim() !== '' && !input.disabled) {
-      lockInput(input);
-      return;
-    }
-
+    const key = input.dataset.entryKey;
+    if (!key) return;
+    entryInputs.set(key, input);
+    entryComments.set(key, input.dataset.comment || '');
+    input.dataset.initialComment = input.dataset.initialComment || input.dataset.comment || '';
     if (input.disabled) return;
+
     input.addEventListener('input', function () {
+      const trigger = commentTriggers.get(key);
+      const wasVisible = trigger && !trigger.classList.contains('is-hidden');
       const sanitized = this.value.replace(/[^1-5]/g, '').slice(0, 1);
       if (sanitized !== this.value) {
         this.value = sanitized;
       }
       updateRowAverage(this.closest('tr'));
       markDirty(this);
+      refreshCommentIndicator(key);
+      const nowHasValue = Boolean(sanitized);
+      if (!wasVisible && nowHasValue && !(getComment(key) || '').trim() && trigger) {
+        openCommentPopover(trigger);
+      }
+      const columnKey = input.dataset.columnKey;
+      if (nowHasValue && columnKey && !ensureColumnContext(columnKey) && !autoPromptColumns.has(columnKey)) {
+        autoPromptColumns.add(columnKey);
+        setStatus('Укажите тему занятия для выбранной даты.', 'error');
+        openColumnPopover(columnKey);
+      }
     });
 
     input.addEventListener('blur', function () {
       markDirty(this);
+    });
+  });
+
+  gradeWrapper.querySelectorAll('.grade-comment-trigger').forEach(button => {
+    const entryKey = button.dataset.entryKey;
+    if (!entryKey) return;
+    commentTriggers.set(entryKey, button);
+    refreshCommentIndicator(entryKey);
+    button.addEventListener('click', event => {
+      event.preventDefault();
+      openCommentPopover(button);
     });
   });
 
@@ -753,13 +1354,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const scrollToNearestColumn = () => {
     if (!scrollContainer || !columnHeaders.length) return;
-
-    let target = columnHeaders.find(header => header.classList.contains('grade-column-header--today'));
-    if (!target) {
-      target = columnHeaders.find(header => !header.classList.contains('grade-column-header--past')) ||
-        columnHeaders[columnHeaders.length - 1];
-    }
-
+    const lastCompleted = [...columnHeaders]
+      .reverse()
+      .find(header => !header.classList.contains('grade-column-header--future'));
+    const target = lastCompleted || columnHeaders[columnHeaders.length - 1];
     if (!target) return;
     const fixedLeft = studentColumnHeader ? studentColumnHeader.offsetWidth : 0;
     const offset = Math.max(0, target.offsetLeft - fixedLeft - 24);
@@ -768,8 +1366,11 @@ document.addEventListener('DOMContentLoaded', function () {
   scrollToNearestColumn();
 
   const collectPayload = () => {
+    const keys = new Set([...dirtyEntries.keys(), ...metaDirtyKeys]);
     const grades = [];
-    dirtyEntries.forEach((input, key) => {
+    keys.forEach(key => {
+      const input = entryInputs.get(key);
+      if (!input) return;
       const [studentPart, columnKey] = key.split('::');
       if (!columnKey) return;
       const studentId = Number(studentPart);
@@ -789,11 +1390,31 @@ document.addEventListener('DOMContentLoaded', function () {
       }
       const trimmedValue = (input.value || '').trim();
       entry.value = trimmedValue === '' ? '' : Number(trimmedValue);
+      entry.comment = getComment(key) || '';
+      const columnContext = columnContexts.get(columnKey) || { lesson_topic: '', grade_type: '' };
+      entry.lesson_topic = columnContext.lesson_topic || '';
+      entry.grade_type = columnContext.grade_type || '';
       if (entry.date && entry.slot_id) {
         grades.push(entry);
       }
     });
-    return grades;
+
+    const columns = [];
+    columnDirtyKeys.forEach(columnKey => {
+      const meta = columnMeta.get(columnKey);
+      if (!meta || !meta.date || !meta.slotId) {
+        return;
+      }
+      const context = columnContexts.get(columnKey) || { lesson_topic: '', grade_type: '' };
+      columns.push({
+        column_key: columnKey,
+        date: meta.date,
+        slot_id: meta.slotId,
+        lesson_topic: context.lesson_topic || '',
+        grade_type: context.grade_type || '',
+      });
+    });
+    return { grades, keys, columns };
   };
 
   const handleSave = () => {
@@ -803,8 +1424,8 @@ document.addEventListener('DOMContentLoaded', function () {
       setStatus('Недоступно сохранение оценок', 'error');
       return;
     }
-    const grades = collectPayload();
-    if (!grades.length) {
+    const payload = collectPayload();
+    if (!payload.grades.length && !payload.columns.length) {
       return;
     }
     isSaving = true;
@@ -817,7 +1438,7 @@ document.addEventListener('DOMContentLoaded', function () {
         'Content-Type': 'application/json',
         'X-CSRFToken': getCsrfToken(),
       },
-      body: JSON.stringify({ grades }),
+      body: JSON.stringify({ grades: payload.grades, columns: payload.columns }),
     })
       .then(async response => {
         const data = await response.json().catch(() => ({}));
@@ -832,15 +1453,36 @@ document.addEventListener('DOMContentLoaded', function () {
           setStatus(data.errors.join('; '), 'error');
           return;
         }
-        dirtyEntries.forEach(input => {
+        payload.keys.forEach(key => {
+          const input = entryInputs.get(key);
+          if (!input) return;
+          const comment = getComment(key);
           const trimmedValue = (input.value || '').trim();
+          dirtyEntries.delete(key);
+          metaDirtyKeys.delete(key);
           input.dataset.initialValue = trimmedValue;
+          input.dataset.initialComment = comment || '';
           input.classList.remove('grade-input--dirty');
-          if (trimmedValue !== '') {
-            lockInput(input);
-          }
+          refreshCommentIndicator(key);
         });
-        dirtyEntries.clear();
+        payload.columns.forEach(columnEntry => {
+          const columnKey = columnEntry.column_key;
+          if (!columnKey) return;
+          const normalized = {
+            lesson_topic: (columnEntry.lesson_topic || '').trim(),
+            grade_type: (columnEntry.grade_type || '').trim(),
+          };
+          columnDirtyKeys.delete(columnKey);
+          columnInitialContexts.set(columnKey, { ...normalized });
+          columnContexts.set(columnKey, { ...normalized });
+          const trigger = columnTriggers.get(columnKey);
+          if (trigger) {
+            trigger.dataset.columnTopic = normalized.lesson_topic;
+            trigger.dataset.columnGradeType = normalized.grade_type;
+          }
+          updateColumnIndicator(columnKey);
+        });
+        updateSaveState();
         setStatus('Оценки сохранены', 'success');
       })
       .catch(error => {

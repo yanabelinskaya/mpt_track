@@ -678,6 +678,16 @@ class Teacher(models.Model):
 
 class GradeRecord(models.Model):
     """Фиксация оценок преподавателя по датам"""
+
+    GRADE_TYPE_CHOICES = [
+        ('', 'Без типа'),
+        ('lecture', 'Лекция'),
+        ('practice', 'Практическая работа'),
+        ('test', 'Тест'),
+        ('oral', 'Устный опрос'),
+        ('project', 'Проект'),
+    ]
+
     teacher = models.ForeignKey(
         Teacher,
         on_delete=models.CASCADE,
@@ -710,6 +720,17 @@ class GradeRecord(models.Model):
         'Оценка',
         validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
+    grade_type = models.CharField(
+        'Тип оценки',
+        max_length=50,
+        blank=True,
+        choices=GRADE_TYPE_CHOICES,
+    )
+    lesson_topic = models.CharField(
+        'Тема занятия',
+        max_length=255,
+        blank=True,
+    )
     comment = models.CharField('Комментарий', max_length=255, blank=True)
     created_at = models.DateTimeField('Создано', auto_now_add=True)
     updated_at = models.DateTimeField('Обновлено', auto_now=True)
@@ -735,6 +756,51 @@ class GradeRecord(models.Model):
 
     def __str__(self):
         return f'{self.lesson_date} • {self.student.get_full_name()} → {self.value}'
+
+
+class GradeColumnContext(models.Model):
+    """Темы и типы занятий для выбранной даты"""
+
+    teacher = models.ForeignKey(
+        Teacher,
+        on_delete=models.CASCADE,
+        related_name='grade_column_contexts',
+        verbose_name='Преподаватель',
+    )
+    group = models.ForeignKey(
+        'Group',
+        on_delete=models.CASCADE,
+        related_name='grade_column_contexts',
+        verbose_name='Группа',
+    )
+    lesson_date = models.DateField('Дата занятия')
+    slot_id = models.CharField('Пара', max_length=20, blank=True, default='')
+    grade_type = models.CharField(
+        'Тип оценки',
+        max_length=50,
+        blank=True,
+        choices=GradeRecord.GRADE_TYPE_CHOICES,
+    )
+    lesson_topic = models.CharField('Тема занятия', max_length=255, blank=True)
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_grade_column_contexts',
+        verbose_name='Кем обновлено',
+    )
+    created_at = models.DateTimeField('Создано', auto_now_add=True)
+    updated_at = models.DateTimeField('Обновлено', auto_now=True)
+
+    class Meta:
+        verbose_name = 'Контекст колонки журнала'
+        verbose_name_plural = 'Контексты колонок журнала'
+        unique_together = ('teacher', 'group', 'lesson_date', 'slot_id')
+        ordering = ['lesson_date', 'slot_id']
+
+    def __str__(self):
+        return f'{self.lesson_date} • {self.group.code} • {self.slot_id}'
 
 
 class PasswordResetRequest(models.Model):

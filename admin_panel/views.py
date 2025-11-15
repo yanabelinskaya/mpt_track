@@ -46,6 +46,7 @@ try:
         ScheduleTeacherSlot,
         PasswordResetRequest,
         GradeRecord,
+        GradeColumnContext,
     )
     MODELS_AVAILABLE = True
 except:
@@ -3363,20 +3364,52 @@ def _build_teacher_group_detail_context(teacher, group):
     students = Student.objects.filter(group=group).order_by('last_name', 'first_name')
     grade_columns = _build_grade_columns_for_group(teacher, group)
     grade_values_map = {}
+    column_context_map = {}
 
     if grade_columns:
         column_dates = {column['date'] for column in grade_columns}
+        slot_ids = {str(column['slot_id'] or '') for column in grade_columns}
         grade_records = GradeRecord.objects.filter(
             group=group,
             teacher=teacher,
             lesson_date__in=column_dates,
             student__in=students,
-        ).only('student_id', 'lesson_date', 'slot_id', 'value')
+        ).only('student_id', 'lesson_date', 'slot_id', 'value', 'comment', 'grade_type', 'lesson_topic')
 
         for record in grade_records:
             student_map = grade_values_map.setdefault(record.student_id, {})
             key = f"{record.lesson_date.isoformat()}|{record.slot_id or ''}"
-            student_map[key] = record.value
+            student_map[key] = {
+                'value': record.value,
+                'comment': record.comment or '',
+                'grade_type': record.grade_type or '',
+                'lesson_topic': record.lesson_topic or '',
+            }
+            column_context = column_context_map.setdefault(key, {
+                'lesson_topic': '',
+                'grade_type': '',
+            })
+            if not column_context['lesson_topic'] and record.lesson_topic:
+                column_context['lesson_topic'] = record.lesson_topic
+            if not column_context['grade_type'] and record.grade_type:
+                column_context['grade_type'] = record.grade_type
+
+        column_meta = GradeColumnContext.objects.filter(
+            teacher=teacher,
+            group=group,
+            lesson_date__in=column_dates,
+            slot_id__in=slot_ids,
+        )
+        for meta in column_meta:
+            key = f"{meta.lesson_date.isoformat()}|{meta.slot_id or ''}"
+            column_context = column_context_map.setdefault(key, {
+                'lesson_topic': '',
+                'grade_type': '',
+            })
+            if meta.lesson_topic:
+                column_context['lesson_topic'] = meta.lesson_topic
+            if meta.grade_type:
+                column_context['grade_type'] = meta.grade_type
 
     for student in students:
         grade_values_map.setdefault(student.id, {})
@@ -3388,6 +3421,8 @@ def _build_teacher_group_detail_context(teacher, group):
         'grade_columns': grade_columns,
         'grade_today': timezone.localdate(),
         'grade_values_map': grade_values_map,
+        'grade_type_choices': GradeRecord.GRADE_TYPE_CHOICES,
+        'column_context_map': column_context_map,
     }
 
 
@@ -3445,13 +3480,28 @@ def teacher_journal_save_api(request, group_id):
         return JsonResponse({'success': False, 'error': 'Некорректный формат данных'}, status=400)
 
     entries = payload.get('grades') if isinstance(payload, dict) else payload
+    column_entries = payload.get('columns', []) if isinstance(payload, dict) else []
     if not isinstance(entries, list):
         return JsonResponse({'success': False, 'error': 'Некорректный список оценок'}, status=400)
+    if not isinstance(column_entries, list):
+        return JsonResponse({'success': False, 'error': 'Некорректные параметры занятия'}, status=400)
 
     saved = 0
     deleted = 0
     errors = []
     students_cache = {}
+    valid_grade_types = {choice[0] for choice in GradeRecord.GRADE_TYPE_CHOICES}
+    column_updates = {}
+
+    def set_column_update(lesson_date_value, slot_value, topic_value, grade_type_value, force=False):
+        if not isinstance(lesson_date_value, date):
+            return
+        normalized_slot = str(slot_value or '')[:20]
+        column_updates[(lesson_date_value, normalized_slot)] = {
+            'lesson_topic': topic_value,
+            'grade_type': grade_type_value,
+            'force': force,
+        }
 
     for index, entry in enumerate(entries):
         student_raw = entry.get('student_id') or entry.get('student')
@@ -3459,6 +3509,9 @@ def teacher_journal_save_api(request, group_id):
         slot_id = (entry.get('slot_id') or '').strip()
         subject_raw = entry.get('subject_id') or entry.get('subject')
         value_raw = entry.get('value')
+        comment_raw = entry.get('comment') or ''
+        grade_type_raw = (entry.get('grade_type') or '').strip()
+        lesson_topic_raw = entry.get('lesson_topic') or ''
 
         try:
             student_id = int(student_raw)
@@ -3514,6 +3567,14 @@ def teacher_journal_save_api(request, group_id):
             errors.append(f'#{index + 1}: оценка вне диапазона 1-5')
             continue
 
+        if grade_type_raw and grade_type_raw not in valid_grade_types:
+            errors.append(f'#{index + 1}: неизвестный тип оценки')
+            continue
+
+        comment_value = comment_raw.strip()[:255]
+        lesson_topic_value = lesson_topic_raw.strip()[:255]
+        grade_type_value = grade_type_raw if grade_type_raw in valid_grade_types else ''
+
         GradeRecord.objects.update_or_create(
             student=student,
             group=group,
@@ -3524,9 +3585,60 @@ def teacher_journal_save_api(request, group_id):
                 'value': value_int,
                 'subject_id': subject_id,
                 'updated_by': request.user,
+                'comment': comment_value,
+                'grade_type': grade_type_value,
+                'lesson_topic': lesson_topic_value,
             }
         )
         saved += 1
+        if lesson_topic_value or grade_type_value:
+            set_column_update(lesson_date, slot_id, lesson_topic_value, grade_type_value)
+
+    for index, entry in enumerate(column_entries):
+        date_str = entry.get('date') or entry.get('column_date')
+        slot_id = (entry.get('slot_id') or '').strip()
+        grade_type_raw = (entry.get('grade_type') or '').strip()
+        lesson_topic_raw = entry.get('lesson_topic') or ''
+
+        if not date_str or not slot_id:
+            errors.append(f'Контекст #{index + 1}: не указаны дата или слот')
+            continue
+
+        try:
+            lesson_date = date.fromisoformat(date_str)
+        except ValueError:
+            errors.append(f'Контекст #{index + 1}: неверный формат даты')
+            continue
+
+        if grade_type_raw and grade_type_raw not in valid_grade_types:
+            errors.append(f'Контекст #{index + 1}: неизвестный тип оценки')
+            continue
+
+        topic_value = lesson_topic_raw.strip()[:255]
+        grade_type_value = grade_type_raw if grade_type_raw in valid_grade_types else ''
+        set_column_update(lesson_date, slot_id, topic_value, grade_type_value, force=True)
+
+    for (lesson_date, slot_id), meta in column_updates.items():
+        topic_value = (meta.get('lesson_topic') or '').strip()[:255]
+        grade_type_value = meta.get('grade_type') if meta.get('grade_type') in valid_grade_types else ''
+        force_update = meta.get('force', False)
+        filters = {
+            'teacher': teacher,
+            'group': group,
+            'lesson_date': lesson_date,
+            'slot_id': slot_id,
+        }
+        if topic_value or grade_type_value:
+            GradeColumnContext.objects.update_or_create(
+                defaults={
+                    'lesson_topic': topic_value,
+                    'grade_type': grade_type_value,
+                    'updated_by': request.user,
+                },
+                **filters,
+            )
+        elif force_update:
+            GradeColumnContext.objects.filter(**filters).delete()
 
     status_code = 200 if not errors else 207
     return JsonResponse({

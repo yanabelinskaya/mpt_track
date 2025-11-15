@@ -7,5 +7,5 @@ register = template.Library()
 def dict_get(value, key):
     """Безопасное получение значения из словаря по ключу"""
     if isinstance(value, dict):
-        return value.get(key, '')
-    return ''
+        return value.get(key, {})
+    return {}
