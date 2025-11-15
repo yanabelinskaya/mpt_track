@@ -12,6 +12,17 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <!-- Inter Font -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        (function() {
+            try {
+                const storageKey = 'sidebarCollapsed';
+                const prefersDesktop = window.matchMedia('(min-width: 992px)').matches;
+                if (prefersDesktop && localStorage.getItem(storageKey) === 'true') {
+                    document.documentElement.classList.add('sidebar-prefers-collapsed');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <!-- Наши кастомные стили -->
     <link rel="stylesheet" href="{% static 'css/admin_panel.css' %}">
     
@@ -21,6 +32,9 @@
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
+            <button class="sidebar-toggle" type="button" aria-label="Скрыть боковую панель" data-sidebar-toggle>
+                <i class="bi bi-list"></i>
+            </button>
             <a href="{% url 'admin_dashboard' %}" class="logo">
                 <i class="bi bi-journal-bookmark-fill me-2"></i>
                 <span class="logo-text">МПТ Журнал</span>
@@ -162,14 +176,9 @@
     
     <!-- Main Content -->
     <div class="main-content">
-        <!-- Header (упрощенный как был у вас) -->
+        <!-- Header -->
         <header class="main-header">
-            <div class="d-flex align-items-center">
-                <button class="btn btn-link d-lg-none me-3" id="sidebarToggle">
-                    <i class="bi bi-list fs-5"></i>
-                </button>
-                <h5 class="mb-0">{% block page_title %}Административная панель{% endblock %}</h5>
-            </div>
+            <div class="main-header-left"></div>
             
             <div class="d-flex align-items-center gap-3">
                 <!-- Theme Toggle -->
@@ -222,20 +231,6 @@
             }
         });
         
-        // Сворачивание сайдбара на мобильных устройствах
-        document.getElementById('sidebarToggle')?.addEventListener('click', function() {
-            document.getElementById('sidebar').classList.toggle('show');
-        });
-        
-        // Закрытие сайдбара при клике вне его на мобильных
-        document.addEventListener('click', function(e) {
-            const sidebar = document.getElementById('sidebar');
-            const toggle = document.getElementById('sidebarToggle');
-            
-            if (window.innerWidth < 992 && !sidebar.contains(e.target) && !toggle.contains(e.target)) {
-                sidebar.classList.remove('show');
-            }
-        });
     </script>
     
     {% block extra_js %}{% endblock %}

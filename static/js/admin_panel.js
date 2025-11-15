@@ -40,19 +40,6 @@
     }
 })();
 
-// Sidebar toggle for mobile
-document.addEventListener('DOMContentLoaded', function() {
-    const sidebarToggle = document.getElementById('sidebarToggle');
-    const sidebar = document.getElementById('sidebar');
-    
-    if (sidebarToggle && sidebar) {
-        sidebarToggle.addEventListener('click', function() {
-            sidebar.classList.toggle('show');
-        });
-    }
-});
-
-
 document.addEventListener('DOMContentLoaded', function() {
     const sidebarNav = document.querySelector('.sidebar-nav');
     let scrollTimeout;
@@ -112,17 +99,55 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Остальной код остается прежним...
-    document.getElementById('sidebarToggle')?.addEventListener('click', function() {
-        document.getElementById('sidebar').classList.toggle('show');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarToggleButtons = document.querySelectorAll('[data-sidebar-toggle]');
+    const SIDEBAR_COLLAPSED_KEY = 'sidebarCollapsed';
+    const rootElement = document.documentElement;
+    
+    function applyStoredSidebarState() {
+        if (!sidebar) {
+            return;
+        }
+        if (window.innerWidth < 992) {
+            document.body.classList.remove('sidebar-collapsed');
+            rootElement.classList.remove('sidebar-prefers-collapsed');
+            return;
+        }
+        const shouldCollapse = localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'true';
+        document.body.classList.toggle('sidebar-collapsed', shouldCollapse);
+        rootElement.classList.toggle('sidebar-prefers-collapsed', shouldCollapse);
+    }
+    
+    applyStoredSidebarState();
+    
+    function toggleSidebar() {
+        if (!sidebar) {
+            return;
+        }
+        if (window.innerWidth < 992) {
+            sidebar.classList.toggle('show');
+        } else {
+            const willCollapse = !document.body.classList.contains('sidebar-collapsed');
+            document.body.classList.toggle('sidebar-collapsed', willCollapse);
+            rootElement.classList.toggle('sidebar-prefers-collapsed', willCollapse);
+            localStorage.setItem(SIDEBAR_COLLAPSED_KEY, willCollapse ? 'true' : 'false');
+        }
+    }
+    
+    sidebarToggleButtons.forEach(button => {
+        button.addEventListener('click', toggleSidebar);
     });
     
-    document.addEventListener('click', function(e) {
-        const sidebar = document.getElementById('sidebar');
-        const toggle = document.getElementById('sidebarToggle');
-        
-        if (window.innerWidth < 992 && !sidebar.contains(e.target) && !toggle.contains(e.target)) {
+    window.addEventListener('resize', function() {
+        if (!sidebar) {
+            return;
+        }
+        if (window.innerWidth < 992) {
+            document.body.classList.remove('sidebar-collapsed');
+            rootElement.classList.remove('sidebar-prefers-collapsed');
+        } else {
             sidebar.classList.remove('show');
+            applyStoredSidebarState();
         }
     });
 });

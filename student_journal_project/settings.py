@@ -49,8 +49,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'admin_panel.middleware.RoleBasedRedirectMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
+    'admin_panel.middleware.RoleBasedRedirectMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
@@ -202,7 +202,6 @@ SWAGGER_SETTINGS = {
         'patch'
     ],
 }
-
 
 
 
