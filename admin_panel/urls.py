@@ -93,6 +93,8 @@ urlpatterns = [
     path('teacher-groups/', views.teacher_groups_view, name='teacher_groups'),
     path('teacher-groups/<int:group_id>/', views.teacher_group_detail_view, name='teacher_group_detail'),
     path('teacher-attendance/', views.teacher_attendance_view, name='teacher_attendance'),
+    path('teacher-attendance/<int:group_id>/', views.teacher_attendance_detail_view, name='teacher_attendance_detail'),
+    path('teacher-attendance/<int:group_id>/save/', views.teacher_attendance_save_api, name='teacher_attendance_save_api'),
 
     # Предметы
     path('subjects/', views.subjects_main_view, name='admin_subjects'),

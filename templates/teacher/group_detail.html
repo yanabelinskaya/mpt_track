@@ -6,737 +6,8 @@
 {% block extra_css %}
 <link rel="stylesheet" href="{% static 'css/teacher_week_adminlook.css' %}">
 <link rel="stylesheet" href="{% static 'css/custom_select.css' %}">
-<style>
-.teacher-group-detail__header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
+<link rel="stylesheet" href="{% static 'css/teacher_grades.css' %}">
 
-.journal-back-link {
-    margin-bottom: 1rem;
-    display: inline-flex;
-}
-
-.teacher-group-detail__badge {
-    font-size: 0.75rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--schedule-accent);
-    background: rgba(99, 102, 241, 0.12);
-    padding: 0.4rem 0.8rem;
-    border-radius: 999px;
-}
-
-.teacher-group-detail__stats {
-    display: flex;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    margin-top: 0.85rem;
-}
-
-.teacher-group-detail__stat-card {
-    padding: 0.65rem 0.9rem;
-    border-radius: 0.85rem;
-    border: 1px solid var(--border);
-    background: var(--schedule-surface-subtle);
-    text-align: center;
-    min-width: 120px;
-}
-
-.teacher-group-detail__stat-card strong {
-    display: block;
-    font-size: 1.4rem;
-    font-weight: 600;
-    color: var(--bs-body-color);
-}
-
-.teacher-group-detail__summary {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 1rem;
-    margin-top: 1.25rem;
-}
-
-.teacher-group-detail__summary dl {
-    padding: 1rem;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 0.35rem;
-}
-
-.teacher-group-detail__summary dt {
-    font-size: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--schedule-muted);
-}
-
-.teacher-group-detail__summary dd {
-    margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--bs-body-color);
-}
-
-.teacher-group-detail__students {
-    margin-top: 1.5rem;
-}
-
-.teacher-group-detail__students h3 {
-    margin-bottom: 0.5rem;
-}
-
-.teacher-group-detail__students-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 0.75rem;
-}
-
-.teacher-student-item {
-    border: 1px solid var(--border);
-    border-radius: 0.9rem;
-    padding: 0.85rem 1rem;
-    display: flex;
-    justify-content: space-between;
-    gap: 1rem;
-    background: var(--schedule-surface);
-}
-
-.teacher-student-item__info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-}
-
-.teacher-student-item__name {
-    margin: 0;
-    font-weight: 600;
-    font-size: 0.95rem;
-}
-
-.teacher-student-item__meta {
-    font-size: 0.85rem;
-    color: var(--schedule-muted);
-}
-
-.action-link {
-    border-radius: 0.85rem;
-    border: 1px solid var(--border);
-    padding: 0.55rem 0.9rem;
-    background: var(--schedule-surface);
-    color: var(--bs-body-color);
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.action-link--primary {
-    background: var(--schedule-accent);
-    border-color: transparent;
-    color: #fff;
-}
-
-.teacher-grade-panel {
-    margin-top: 1.5rem;
-}
-
-.grade-panel-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.grade-panel-header h3 {
-    margin: 0;
-}
-
-.grade-panel-meta {
-    font-size: 0.85rem;
-    color: var(--text-muted);
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-}
-
-.grade-day-chip {
-    border: none;
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.2);
-    border: 1px solid rgba(148, 163, 184, 0.35);
-    padding: 0.25rem 0.85rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    color: var(--bs-body-color);
-}
-
-.grade-day-chip .chip-status {
-    width: 8px;
-    height: 8px;
-    border-radius: 999px;
-    background: rgba(148, 163, 184, 0.65);
-    display: inline-block;
-}
-
-.grade-day-chip.is-configured {
-    background: rgba(99, 102, 241, 0.12);
-    border-color: rgba(99, 102, 241, 0.4);
-}
-
-.grade-day-chip.is-configured .chip-status {
-    background: rgba(99, 102, 241, 0.95);
-}
-
-.grade-day-chip.is-missing {
-    border-color: rgba(249, 115, 22, 0.6);
-    background: rgba(249, 115, 22, 0.12);
-}
-
-.grade-day-chip.is-missing .chip-status {
-    background: rgba(249, 115, 22, 0.9);
-}
-
-.grade-day-chip:focus-visible {
-    outline: 3px solid rgba(99, 102, 241, 0.35);
-    outline-offset: 2px;
-}
-
-.grade-table-wrapper {
-    margin-top: 1rem;
-    border: 1px solid var(--border);
-    border-radius: 18px;
-    background: var(--surface);
-    padding: 0.75rem;
-    box-shadow: var(--shadow);
-}
-
-.grade-table-scroll {
-    overflow-x: auto;
-    overflow-y: auto;
-    max-height: 520px;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(99, 102, 241, 0.35) transparent;
-    overscroll-behavior: contain;
-    cursor: grab;
-}
-
-.grade-table-scroll::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-}
-
-.grade-table-scroll::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, rgba(99, 102, 241, 0.8), rgba(129, 140, 248, 0.6));
-    border-radius: 999px;
-    border: 1px solid rgba(255, 255, 255, 0.5);
-}
-
-.grade-table-scroll::-webkit-scrollbar-track {
-    background: transparent;
-}
-
-.grade-table-scroll.is-dragging {
-    cursor: grabbing;
-}
-
-.grades-table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 840px;
-}
-
-.grades-table th,
-.grades-table td {
-    border: 1px solid var(--border);
-    padding: 0.65rem 0.5rem;
-    font-size: 0.85rem;
-    text-align: center;
-}
-
-.grades-table thead th {
-    background: var(--surface);
-    position: sticky;
-    top: 0;
-    bottom: auto;
-    z-index: 5;
-    font-size: 0.7rem;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
-}
-
-.student-column,
-.student-column-header {
-    position: sticky;
-    left: 0;
-    background: var(--surface);
-    z-index: 5;
-    min-width: 300px;
-    text-align: left;
-}
-
-.average-column,
-.average-column-header {
-    position: sticky;
-    right: 0;
-    background: var(--surface);
-    z-index: 5;
-    min-width: 110px;
-    box-shadow: -6px 0 16px rgba(15, 23, 42, 0.08);
-}
-
-.grade-column-header {
-    padding: 0.75rem 0.5rem;
-    vertical-align: bottom;
-    min-height: 140px;
-}
-
-.grade-column-label {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 0.35rem;
-    font-size: 0.9rem;
-    color: var(--bs-body-color);
-    text-align: center;
-}
-
-.grade-column-date {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-weight: 600;
-    flex-direction: column;
-}
-
-.grade-day-chip {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    height: 32px;
-    border-radius: 999px;
-    background: var(--schedule-surface-subtle);
-    border: 1px solid var(--border);
-    font-size: 0.8rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.grade-date {
-    font-size: 0.85em;
-    font-weight: 600;
-}
-
-.grade-slot-label {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-
-.grade-time-range {
-    font-size: 0.7rem;
-    color: var(--text-muted);
-}
-
-.grade-column-header--today {
-    background: linear-gradient(160deg, rgba(99, 102, 241, 0.15), rgba(99, 102, 241, 0.05));
-    border-bottom: 2px solid rgba(99, 102, 241, 0.5);
-    box-shadow: inset 0 -6px 12px rgba(99, 102, 241, 0.08);
-}
-
-.grade-column-header--future {
-    background: rgba(15, 23, 42, 0.02);
-    color: var(--schedule-muted);
-}
-
-.grade-column-header--past {
-    background: var(--surface);
-}
-
-.grade-cell {
-    padding: 0.35rem;
-    position: relative;
-    padding-right: 2rem;
-}
-
-.grade-cell--today {
-    background: rgba(99, 102, 241, 0.08);
-}
-
-.grade-cell--future {
-    background: rgba(148, 163, 184, 0.12);
-}
-
-.grade-input {
-    width: 52px;
-    height: 40px;
-    border-radius: 10px;
-    border: 1px solid var(--border);
-    background: var(--muted-bg);
-    font-weight: 600;
-    text-align: center;
-}
-
-.grade-input--today {
-    border-color: rgba(99, 102, 241, 0.8);
-    background: #fff;
-}
-
-.grade-input--dirty {
-    border-color: rgba(99, 102, 241, 0.9);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
-    background: rgba(99, 102, 241, 0.05);
-}
-
-.grade-input:focus {
-    outline: none;
-    border-color: var(--bs-primary);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-}
-
-.grade-input:disabled {
-    background: rgba(148, 163, 184, 0.15);
-    color: var(--text-muted);
-    cursor: not-allowed;
-}
-
-.grade-comment-trigger {
-    position: absolute;
-    right: 0.35rem;
-    bottom: 0.35rem;
-    border: none;
-    background: transparent;
-    color: var(--text-muted);
-    padding: 0.15rem;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: color 0.2s ease, background 0.2s ease;
-}
-
-.grade-comment-trigger:hover,
-.grade-comment-trigger:focus-visible {
-    color: var(--bs-primary);
-    background: rgba(99, 102, 241, 0.12);
-    outline: none;
-}
-
-.grade-comment-trigger.has-comment {
-    color: var(--bs-primary);
-}
-
-.grade-comment-trigger.is-hidden {
-    display: none !important;
-}
-
-.grade-comment-popover {
-    position: absolute;
-    min-width: 260px;
-    max-width: 320px;
-    background: var(--surface);
-    border-radius: 1rem;
-    border: 1px solid var(--border);
-    box-shadow: 0 18px 40px rgba(15, 23, 42, 0.3);
-    padding: 1rem;
-    z-index: 1200;
-}
-
-.grade-comment-popover header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.75rem;
-}
-
-.grade-comment-popover header h4 {
-    margin: 0;
-    font-size: 0.95rem;
-}
-
-.grade-comment-popover header button {
-    border: none;
-    background: transparent;
-    font-size: 1.25rem;
-    cursor: pointer;
-    color: var(--text-muted);
-}
-
-.grade-comment-popover label {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    margin-bottom: 0.75rem;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-.grade-comment-popover input,
-.grade-comment-popover select,
-.grade-comment-popover textarea {
-    border-radius: 0.65rem;
-    border: 1px solid var(--border);
-    padding: 0.45rem 0.65rem;
-    background: var(--schedule-surface);
-    font-size: 0.9rem;
-    resize: vertical;
-}
-
-.grade-comment-popover textarea {
-    min-height: 80px;
-}
-
-.grade-comment-popover .popover-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-}
-
-.grade-comment-popover .popover-actions button {
-    border: none;
-    border-radius: 0.65rem;
-    padding: 0.45rem 0.85rem;
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.popover-save-btn {
-    background: var(--bs-primary);
-    color: #fff;
-}
-
-.popover-clear-btn {
-    background: rgba(148, 163, 184, 0.2);
-    color: var(--text-muted);
-}
-
-.column-context-popover {
-    position: absolute;
-    min-width: 280px;
-    max-width: 340px;
-    background: var(--surface);
-    border-radius: 1rem;
-    border: 1px solid var(--border);
-    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.3);
-    padding: 1.1rem;
-    z-index: 1250;
-}
-
-.column-context-popover header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.9rem;
-}
-
-.column-context-popover header h4 {
-    margin: 0;
-    font-size: 0.95rem;
-}
-
-.column-context-popover header button {
-    border: none;
-    background: transparent;
-    font-size: 1.25rem;
-    cursor: pointer;
-    color: var(--text-muted);
-}
-
-.column-context-popover .column-field {
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-    margin-bottom: 0.95rem;
-}
-
-.column-context-popover .column-field-label {
-    font-size: 0.78rem;
-    color: var(--schedule-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-}
-
-.column-topic-input {
-    border-radius: 0.85rem;
-    border: 1px solid var(--border);
-    padding: 0.6rem 0.85rem;
-    background: var(--schedule-surface);
-    font-weight: 500;
-    font-size: 0.92rem;
-    appearance: none;
-    -webkit-appearance: none;
-    background-image: none;
-}
-
-.column-topic-input:focus {
-    outline: none;
-    border-color: var(--bs-primary);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-}
-
-.column-custom-select .select-trigger {
-    background: var(--schedule-surface);
-    border-color: var(--border);
-    padding: 0.6rem 0.85rem;
-    min-height: 48px;
-    font-size: 0.9rem;
-}
-
-.column-custom-select .select-dropdown {
-    border-radius: 0.85rem;
-}
-
-.column-custom-select .select-option {
-    padding: 0.6rem 0.85rem;
-}
-
-.column-custom-select .select-arrow {
-    font-size: 0.85rem;
-}
-
-.column-context-popover .popover-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.5rem;
-}
-
-.column-context-popover .popover-actions button {
-    border: none;
-    border-radius: 0.65rem;
-    padding: 0.45rem 0.85rem;
-    cursor: pointer;
-    font-weight: 600;
-}
-
-.grades-table tbody tr:nth-child(odd) {
-    background: rgba(99, 102, 241, 0.04);
-}
-
-.student-row-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-    align-items:flex-start;
-}
-
-.student-name {
-    margin: 0;
-    font-weight: 600;
-}
-
-.student-meta {
-    font-size: 0.75rem;
-    color: var(--text-muted);
-}
-
-.student-average {
-    font-weight: 700;
-    font-size: 1rem;
-}
-
-.empty-table-message {
-    padding: 2rem;
-    text-align: center;
-    color: var(--text-muted);
-}
-
-.grade-calendar-toolbar {
-    margin-top: 0.75rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    flex-wrap: wrap;
-    gap: 1rem;
-}
-
-.grade-calendar-legend {
-    display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
-    font-size: 0.85rem;
-    color: var(--text-muted);
-}
-
-.legend-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-}
-
-.legend-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 999px;
-    display: inline-block;
-    border: 2px solid transparent;
-}
-
-.legend-dot--past {
-    background: rgba(15, 23, 42, 0.15);
-}
-
-.legend-dot--today {
-    background: rgba(99, 102, 241, 0.3);
-    border-color: rgba(99, 102, 241, 0.5);
-}
-
-.legend-dot--future {
-    background: rgba(148, 163, 184, 0.25);
-}
-
-.grade-save-group {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-}
-
-.grade-save-btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    border-radius: 10px;
-    padding: 0.5rem 1.1rem;
-    font-weight: 600;
-    background: var(--bs-primary);
-    border: 1px solid var(--schedule-accent);
-    color: #fff;
-}
-
-.grade-save-btn:disabled {
-    opacity: 0.65;
-    box-shadow: none;
-}
-
-.grade-save-status {
-    font-size: 0.85rem;
-    color: var(--schedule-muted);
-    min-height: 1.25rem;
-}
-
-.grade-save-status.is-success {
-    color: var(--schedule-success, #22c55e);
-}
-
-.grade-save-status.is-error {
-    color: var(--schedule-danger, #ef4444);
-}
-</style>
 {% endblock %}
 
 {% block content %}
@@ -774,25 +45,45 @@
     <div class="teacher-grade-panel">
       <div class="grade-panel-header">
         <div>
-          <h3>Оценочная таблица</h3>
-          <p class="text-muted">Выставляйте оценки по датам из расписания — будущие ячейки заблокированы.</p>
+          <h3 data-mode-title
+              data-title-grades="Оценочная таблица"
+              data-title-attendance="Таблица посещаемости">
+            Оценочная таблица
+          </h3>
+          <p class="text-muted"
+             data-mode-subtitle
+             data-text-grades="Выставляйте оценки по датам из расписания — будущие ячейки заблокированы."
+             data-text-attendance="Отмечайте посещаемость по расписанию: пустая ячейка → Н → О → У.">
+            Выставляйте оценки по датам из расписания — будущие ячейки заблокированы.
+          </p>
         </div>
-        <div class="grade-panel-meta">
+        <div class="grade-panel-meta" data-mode-meta="grades">
           <span>Запланировано занятий: {{ grade_columns|length }}</span>
           <span>Сегодня: {{ grade_today|date:"d.m.Y" }}</span>
         </div>
+        <div class="grade-panel-meta attendance-panel-meta" data-mode-meta="attendance" hidden>
+          <span>Запланировано занятий: {{ attendance_columns|length }}</span>
+          <span>Сегодня: {{ attendance_today|date:"d.m.Y" }}</span>
+        </div>
       </div>
       <div class="grade-calendar-toolbar">
-        <div class="grade-calendar-legend" aria-hidden="true">
-          <span class="legend-item">
-            <span class="legend-dot legend-dot--today"></span> Сегодня
-          </span>
-          <span class="legend-item">
-            <span class="legend-dot legend-dot--past"></span> Прошедшие занятия
-          </span>
-          <span class="legend-item">
-            <span class="legend-dot legend-dot--future"></span> Будущие даты
-          </span>
+        <div class="mode-toggle" role="radiogroup" aria-label="Режим журнала">
+          <button type="button"
+                  class="mode-toggle__btn is-active"
+                  data-mode="grades"
+                  role="radio"
+                  aria-checked="true"
+                  aria-label="Оценки">
+            Оценки
+          </button>
+          <button type="button"
+                  class="mode-toggle__btn"
+                  data-mode="attendance"
+                  role="radio"
+                  aria-checked="false"
+                  aria-label="Посещаемость">
+            Посещаемость
+          </button>
         </div>
         <div class="grade-save-group">
           <button type="button"
@@ -806,102 +97,210 @@
           <span class="grade-save-status" id="gradeSaveStatus" role="status" aria-live="polite"></span>
         </div>
       </div>
-      <div class="grade-table-wrapper"
-           data-grade-table
-           data-save-url="{% url 'teacher_journal_save_api' group.id %}">
-        {% if grade_columns %}
-        <div class="grade-table-scroll">
-          <table class="grades-table">
-            <thead>
-              <tr>
-                <th class="student-column-header" style="z-index:50">Студент</th>
-                {% for column in grade_columns %}
-                {% with column_context=column_context_map|dict_get:column.column_key %}
-                <th class="grade-column-header {% if column.is_today %}grade-column-header--today{% elif column.is_future %}grade-column-header--future{% else %}grade-column-header--past{% endif %}"
-                    data-column-date="{{ column.date_iso }}"
-                    data-slot-id="{{ column.slot_id }}"
-                    data-column-key="{{ column.column_key }}">
-                  <div class="grade-column-label">
-                    <div class="grade-column-date">
-                      <button type="button"
-                              class="grade-day-chip {% if column_context.lesson_topic or column_context.grade_type %}is-configured{% else %}is-missing{% endif %}"
-                              data-column-trigger
-                              data-column-key="{{ column.column_key }}"
-                              data-column-topic="{{ column_context.lesson_topic|default:'' }}"
-                              data-column-grade-type="{{ column_context.grade_type|default:'' }}"
-                              aria-label="Настроить занятие на {{ column.date|date:'d.m.Y' }}">
-                        <span class="chip-status" aria-hidden="true"></span>
-                        <span>{{ column.day_short }}</span>
-                      </button>
-                      <span class="grade-date">{{ column.date|date:"d.m" }}</span>
-                    </div>
-                  </div>
-                </th>
-                {% endwith %}
-                {% endfor %}
-                <th class="average-column-header"  style="z-index:50">Средний балл</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for student in students %}
-              <tr data-student-id="{{ student.id }}">
-                <td class="student-column">
-                  <div class="student-row-info">
-                    <p class="student-name">{{ student.get_full_name }}</p>
-                  </div>
-                </td>
-                {% with student_grades=grade_values_map|dict_get:student.id %}
-                  {% for column in grade_columns %}
-                  {% with cell_entry=student_grades|dict_get:column.column_key %}
-                  {% with cell_value=cell_entry.value|default_if_none:'' cell_comment=cell_entry.comment|default:'' %}
-                  <td class="grade-cell {% if column.is_today %}grade-cell--today{% elif column.is_future %}grade-cell--future{% endif %}">
-                    <input
-                      type="text"
-                      inputmode="numeric"
-                      maxlength="1"
-                      class="grade-input shadow-none {% if column.is_today %}grade-input--today{% endif %}"
-                      pattern="[1-5]"
-                      data-column-date="{{ column.date_iso }}"
-                      data-slot-id="{{ column.slot_id }}"
-                      data-subject-id="{{ column.subject_id|default:'' }}"
-                      data-entry-key="{{ student.id }}::{{ column.column_key }}"
-                      data-column-key="{{ column.column_key }}"
-                      data-initial-value="{{ cell_value|default:'' }}"
-                      data-comment="{{ cell_comment }}"
-                      data-initial-comment="{{ cell_comment }}"
-                      {% if column.is_future %}disabled aria-label="Будущая дата"{% endif %}
-                      placeholder="–"
-                      value="{{ cell_value|default:'' }}"
-                      autocomplete="off"
-                    >
-                    <button type="button"
-                            class="grade-comment-trigger {% if not cell_value %}is-hidden{% endif %} {% if cell_comment %}has-comment{% endif %}"
-                            data-entry-key="{{ student.id }}::{{ column.column_key }}"
-                            aria-label="{% if cell_comment %}Изменить комментарий{% else %}Добавить комментарий{% endif %}">
-                      <i class="bi bi-chat-dots"></i>
-                    </button>
-                  </td>
-                  {% endwith %}
-                  {% endwith %}
+
+      <div class="mode-panels">
+        <div class="mode-panel is-active" data-mode-panel="grades">
+          <div class="grade-table-wrapper"
+               data-grade-table
+               data-save-url="{% url 'teacher_journal_save_api' group.id %}">
+            {% if grade_columns %}
+            <div class="grade-table-scroll">
+              <table class="grades-table">
+                <thead>
+                  <tr>
+                    <th class="student-column-header" style="z-index:50">Студент</th>
+                    {% for column in grade_columns %}
+                    {% with column_context=column_context_map|dict_get:column.column_key %}
+                    <th class="grade-column-header {% if column.is_today %}grade-column-header--today{% elif column.is_future %}grade-column-header--future{% else %}grade-column-header--past{% endif %}"
+                        data-column-date="{{ column.date_iso }}"
+                        data-slot-id="{{ column.slot_id }}"
+                        data-column-key="{{ column.column_key }}"
+                        data-is-future="{{ column.is_future|yesno:'true,false' }}"
+                        data-is-today="{{ column.is_today|yesno:'true,false' }}">
+                      <div class="grade-column-label">
+                        <div class="grade-column-date">
+                          <button type="button"
+                                  class="grade-day-chip {% if column_context.lesson_topic or column_context.grade_type %}is-configured{% else %}is-missing{% endif %}"
+                                  data-column-trigger
+                                  data-column-key="{{ column.column_key }}"
+                                  data-column-topic="{{ column_context.lesson_topic|default:'' }}"
+                                  data-column-grade-type="{{ column_context.grade_type|default:'' }}"
+                                  aria-label="Настроить занятие на {{ column.date|date:'d.m.Y' }}">
+                            <span class="chip-status" aria-hidden="true"></span>
+                            <span>{{ column.day_short }}</span>
+                          </button>
+                          <span class="grade-date">{{ column.date|date:"d.m" }}</span>
+                        </div>
+                      </div>
+                    </th>
+                    {% endwith %}
+                    {% endfor %}
+                    <th class="average-column-header"  style="z-index:50">Средний балл</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for student in students %}
+                  <tr data-student-id="{{ student.id }}">
+                    <td class="student-column">
+                      <div class="student-row-info">
+                        <p class="student-name">{{ student.get_full_name }}</p>
+                      </div>
+                    </td>
+                    {% with student_grades=grade_values_map|dict_get:student.id %}
+                      {% for column in grade_columns %}
+                      {% with cell_entry=student_grades|dict_get:column.column_key %}
+                      {% with cell_value=cell_entry.value|default_if_none:'' cell_comment=cell_entry.comment|default:'' %}
+                      <td class="grade-cell {% if column.is_today %}grade-cell--today{% elif column.is_future %}grade-cell--future{% endif %}">
+                        <input
+                          type="text"
+                          inputmode="numeric"
+                          maxlength="1"
+                          class="grade-input shadow-none {% if column.is_today %}grade-input--today{% endif %}"
+                          pattern="[1-5]"
+                          data-column-date="{{ column.date_iso }}"
+                          data-slot-id="{{ column.slot_id }}"
+                          data-subject-id="{{ column.subject_id|default:'' }}"
+                          data-entry-key="{{ student.id }}::{{ column.column_key }}"
+                          data-column-key="{{ column.column_key }}"
+                          data-initial-value="{{ cell_value|default:'' }}"
+                          data-comment="{{ cell_comment }}"
+                          data-initial-comment="{{ cell_comment }}"
+                          {% if column.is_future %}disabled aria-label="Будущая дата"{% endif %}
+                          placeholder="–"
+                          value="{{ cell_value|default:'' }}"
+                          autocomplete="off"
+                        >
+                        <button type="button"
+                                class="grade-comment-trigger {% if not cell_value %}is-hidden{% endif %} {% if cell_comment %}has-comment{% endif %}"
+                                data-entry-key="{{ student.id }}::{{ column.column_key }}"
+                                aria-label="{% if cell_comment %}Изменить комментарий{% else %}Добавить комментарий{% endif %}">
+                          <i class="bi bi-chat-dots"></i>
+                        </button>
+                      </td>
+                      {% endwith %}
+                      {% endwith %}
+                      {% endfor %}
+                    {% endwith %}
+                    <td class="average-column">
+                      <span class="student-average">—</span>
+                    </td>
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td class="student-column" colspan="{{ grade_columns|length|add:2 }}">
+                      Нет студентов.
+                    </td>
+                  </tr>
                   {% endfor %}
-                {% endwith %}
-                <td class="average-column">
-                  <span class="student-average">—</span>
-                </td>
-              </tr>
-              {% empty %}
-              <tr>
-                <td class="student-column" colspan="{{ grade_columns|length|add:2 }}">
-                  Нет студентов.
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <p class="empty-table-message">Нет запланированных занятий для этой группы. Проверьте расписание.</p>
+            {% endif %}
+          </div>
         </div>
-        {% else %}
-        <p class="empty-table-message">Нет запланированных занятий для этой группы. Проверьте расписание.</p>
-        {% endif %}
+
+        <div class="mode-panel" data-mode-panel="attendance">
+          <div class="grade-table-wrapper"
+               data-attendance-table
+               data-save-url="{% url 'teacher_attendance_save_api' group.id %}">
+            {% if attendance_columns %}
+            <div class="grade-table-scroll">
+              <table class="grades-table attendance-table">
+                <thead>
+                  <tr>
+                    <th class="student-column-header" style="z-index:50">Студент</th>
+                    {% for column in attendance_columns %}
+                    {% with column_context=column_context_map|dict_get:column.column_key %}
+                    <th class="grade-column-header {% if column.is_today %}grade-column-header--today{% elif column.is_future %}grade-column-header--future{% else %}grade-column-header--past{% endif %}"
+                        data-column-date="{{ column.date_iso }}"
+                        data-column-key="{{ column.column_key }}"
+                        data-is-future="{{ column.is_future|yesno:'true,false' }}"
+                        data-is-today="{{ column.is_today|yesno:'true,false' }}">
+                      <div class="grade-column-label">
+                        <div class="grade-column-date">
+                          <div class="grade-day-chip {% if column_context.lesson_topic or column_context.grade_type %}is-configured{% else %}is-missing{% endif %}">
+                            <span class="chip-status" aria-hidden="true"></span>
+                            <span>{{ column.day_short }}</span>
+                          </div>
+                          <span class="grade-date">{{ column.date|date:"d.m" }}</span>
+                        </div>
+                      </div>
+                    </th>
+                    {% endwith %}
+                    {% endfor %}
+                    <th class="average-column-header" style="z-index:50">Кол-во пропусков</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for student in students %}
+                  <tr data-student-id="{{ student.id }}">
+                    <td class="student-column">
+                      <div class="student-row-info">
+                        <p class="student-name">{{ student.get_full_name }}</p>
+                      </div>
+                    </td>
+                    {% with student_attendance=attendance_values_map|dict_get:student.id %}
+                      {% for column in attendance_columns %}
+                      {% with cell_status=student_attendance|dict_get:column.column_key|dict_get:"status"|default:'' %}
+                      {% with status_meta=attendance_status_meta.map|dict_get:cell_status %}
+                      <td class="grade-cell attendance-cell {% if column.is_today %}grade-cell--today{% elif column.is_future %}grade-cell--future{% endif %}">
+                        <button type="button"
+                                class="attendance-status-btn {% if cell_status %}status-{{ status_meta.class|default:'' }}{% else %}is-empty{% endif %}"
+                                data-entry-key="{{ student.id }}::{{ column.column_key }}"
+                                data-column-key="{{ column.column_key }}"
+                                data-column-date="{{ column.date_iso }}"
+                                data-slot-id="{{ column.slot_id }}"
+                                data-subject-id="{{ column.subject_id|default:'' }}"
+                                data-initial-status="{{ cell_status }}"
+                                data-status="{{ cell_status }}"
+                                aria-label="Отметить посещаемость за {{ column.date|date:'d.m.Y' }}"
+                                {% if column.is_future %}disabled aria-disabled="true"{% endif %}>
+                          <span class="attendance-status-label">{{ status_meta.short|default:'' }}</span>
+                        </button>
+                      </td>
+                      {% endwith %}
+                      {% endwith %}
+                      {% endfor %}
+                    {% endwith %}
+                    {% with total_absent=absence_totals|dict_get:student.id|default:0 %}
+                    <td class="average-column">
+                      <span class="absence-count" data-absence-count>{{ total_absent|default:0 }}</span>
+                    </td>
+                    {% endwith %}
+                  </tr>
+                  {% empty %}
+                  <tr>
+                    <td class="student-column" colspan="{{ attendance_columns|length|add:2 }}">
+                      Нет студентов.
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+            {% else %}
+            <p class="empty-table-message">Нет запланированных занятий для этой группы. Проверьте расписание.</p>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="unsaved-modal" data-unsaved-modal hidden>
+      <div class="unsaved-modal__dialog" role="dialog" aria-modal="true">
+        <div class="unsaved-modal__icon">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+        </div>
+        <div class="unsaved-modal__body">
+          <h4>Есть несохранённые изменения</h4>
+          <p>Сохраните текущие правки, иначе они будут потеряны.</p>
+        </div>
+        <div class="unsaved-modal__actions">
+          <button type="button" class="unsaved-modal__btn secondary" data-unsaved-cancel>Остаться</button>
+          <button type="button" class="unsaved-modal__btn primary" data-unsaved-continue>Перейти без сохранения</button>
+        </div>
       </div>
     </div>
 
@@ -971,26 +370,42 @@
 {% endblock %}
 
 {% block extra_js %}
+{{ attendance_status_meta|json_script:"attendanceStatusMeta" }}
 <script src="{% static 'js/custom_select.js' %}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
   const gradeWrapper = document.querySelector('[data-grade-table]');
-  const gradeTable = document.querySelector('.grades-table');
+  const attendanceWrapper = document.querySelector('[data-attendance-table]');
+  const gradeTable = gradeWrapper ? gradeWrapper.querySelector('.grades-table') : null;
+  const attendanceTable = attendanceWrapper ? attendanceWrapper.querySelector('.attendance-table') : null;
+  const modeToggleButtons = document.querySelectorAll('.mode-toggle__btn');
+  const modePanels = document.querySelectorAll('[data-mode-panel]');
+  const modeTitle = document.querySelector('[data-mode-title]');
+  const modeSubtitle = document.querySelector('[data-mode-subtitle]');
+  const metaBlocks = {
+    grades: document.querySelector('[data-mode-meta="grades"]'),
+    attendance: document.querySelector('[data-mode-meta="attendance"]'),
+  };
   const saveBtn = document.getElementById('gradeSaveBtn');
   const saveStatus = document.getElementById('gradeSaveStatus');
   const commentTemplate = document.getElementById('gradeCommentTemplate');
   const columnTemplate = document.getElementById('gradeColumnTemplate');
+  const attendanceMetaScript = document.getElementById('attendanceStatusMeta');
+  const attendanceMeta = attendanceMetaScript ? JSON.parse(attendanceMetaScript.textContent || '{}') : null;
 
-  if (!gradeWrapper || !gradeTable) {
+  if (!gradeWrapper && !attendanceWrapper) {
     if (saveBtn) {
       saveBtn.disabled = true;
     }
     return;
   }
 
-  const scrollContainer = gradeWrapper.querySelector('.grade-table-scroll');
-  const studentColumnHeader = gradeTable.querySelector('.student-column-header');
-  const columnHeaders = Array.from(gradeTable.querySelectorAll('.grade-column-header'));
+  const scrollContainer = gradeWrapper ? gradeWrapper.querySelector('.grade-table-scroll') : null;
+  const attendanceScrollContainer = attendanceWrapper ? attendanceWrapper.querySelector('.grade-table-scroll') : null;
+  const studentColumnHeader = gradeTable ? gradeTable.querySelector('.student-column-header') : null;
+  const attendanceStudentHeader = attendanceTable ? attendanceTable.querySelector('.student-column-header') : null;
+  const columnHeaders = gradeTable ? Array.from(gradeTable.querySelectorAll('.grade-column-header')) : [];
+  const attendanceHeaders = attendanceTable ? Array.from(attendanceTable.querySelectorAll('.grade-column-header')) : [];
   const columnMeta = new Map();
   columnHeaders.forEach(header => {
     const columnKey = header.dataset.columnKey;
@@ -1010,7 +425,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const columnContexts = new Map();
   const columnInitialContexts = new Map();
   const autoPromptColumns = new Set();
-  let isSaving = false;
+  const attendanceEntryButtons = new Map();
+  const attendanceDirtyKeys = new Set();
+  let activeMode = 'grades';
+  let isGradeSaving = false;
+  let isAttendanceSaving = false;
   let activePopover = null;
   let activePopoverTrigger = null;
   let activePopoverType = null;
@@ -1021,6 +440,11 @@ document.addEventListener('DOMContentLoaded', function () {
       gradeTypeLabels[option.value] = option.textContent.trim();
     });
   }
+
+  const unsavedModal = document.querySelector('[data-unsaved-modal]');
+  const unsavedCancel = unsavedModal?.querySelector('[data-unsaved-cancel]');
+  const unsavedContinue = unsavedModal?.querySelector('[data-unsaved-continue]');
+  let pendingMode = null;
 
   const getCsrfToken = () => {
     const match = document.cookie.match(/(^|;)\s*csrftoken=([^;]+)/);
@@ -1063,11 +487,134 @@ document.addEventListener('DOMContentLoaded', function () {
     averageCell.textContent = count ? formatAverage(sum / count) : '—';
   };
 
+  const hasGradeDirty = () => dirtyEntries.size > 0 || metaDirtyKeys.size > 0 || columnDirtyKeys.size > 0;
+  const hasAttendanceDirty = () => attendanceDirtyKeys.size > 0;
+
   const updateSaveState = () => {
     if (!saveBtn) return;
-    const hasDirty = dirtyEntries.size > 0 || metaDirtyKeys.size > 0 || columnDirtyKeys.size > 0;
+    const isSaving = activeMode === 'attendance' ? isAttendanceSaving : isGradeSaving;
+    const hasDirty = activeMode === 'attendance' ? hasAttendanceDirty() : hasGradeDirty();
     saveBtn.disabled = isSaving || !hasDirty;
   };
+
+  const hasDirtyForMode = mode => {
+    if (mode === 'attendance') return hasAttendanceDirty();
+    return hasGradeDirty();
+  };
+
+  const openUnsavedModal = (nextMode) => {
+    pendingMode = nextMode || null;
+    if (!unsavedModal) return;
+    unsavedModal.hidden = false;
+  };
+
+  const closeUnsavedModal = () => {
+    if (!unsavedModal) return;
+    unsavedModal.hidden = true;
+    pendingMode = null;
+  };
+
+  unsavedCancel?.addEventListener('click', () => {
+    closeUnsavedModal();
+  });
+
+  unsavedContinue?.addEventListener('click', () => {
+    if (pendingMode) {
+      applyModeImmediate(pendingMode);
+    }
+    closeUnsavedModal();
+  });
+
+  const applyModeImmediate = targetMode => {
+    activeMode = targetMode;
+    modeToggleButtons.forEach(button => {
+      const isTarget = button.dataset.mode === targetMode;
+      button.classList.toggle('is-active', isTarget);
+      button.setAttribute('aria-checked', isTarget ? 'true' : 'false');
+    });
+    modePanels.forEach(panel => {
+      const isTarget = panel.dataset.modePanel === targetMode;
+      panel.classList.toggle('is-active', isTarget);
+      panel.hidden = !isTarget;
+    });
+    if (modeTitle) {
+      modeTitle.textContent = targetMode === 'attendance'
+        ? (modeTitle.dataset.titleAttendance || modeTitle.textContent)
+        : (modeTitle.dataset.titleGrades || modeTitle.textContent);
+    }
+    if (modeSubtitle) {
+      modeSubtitle.textContent = targetMode === 'attendance'
+        ? (modeSubtitle.dataset.textAttendance || modeSubtitle.textContent)
+        : (modeSubtitle.dataset.textGrades || modeSubtitle.textContent);
+    }
+    if (metaBlocks.grades) {
+      metaBlocks.grades.hidden = targetMode !== 'grades';
+    }
+    if (metaBlocks.attendance) {
+      metaBlocks.attendance.hidden = targetMode !== 'attendance';
+    }
+    if (targetMode === 'attendance') {
+      scrollToNearestColumn(attendanceHeaders, attendanceScrollContainer, attendanceStudentHeader ? attendanceStudentHeader.offsetWidth : 0);
+    } else {
+      scrollToNearestColumn(columnHeaders, scrollContainer, studentColumnHeader ? studentColumnHeader.offsetWidth : 0);
+    }
+    updateSaveState();
+    setStatus('');
+  };
+
+  function scrollToNearestColumn(headers, container, stickyOffset = 0) {
+    if (!container || !headers || !headers.length) return;
+    const today = new Date();
+    const parseDate = header => {
+      const iso = header.dataset.columnDate;
+      return iso ? new Date(iso) : null;
+    };
+    const exactToday = headers.find(header => header.dataset.isToday === 'true');
+    const targetFromToday = () => {
+      if (!exactToday) return null;
+      return headers.findIndex(item => item === exactToday);
+    };
+    const pastHeaders = headers.filter(header => {
+      const dateValue = parseDate(header);
+      return dateValue && dateValue <= today;
+    });
+    const targetIndex = (() => {
+      const todayIndex = targetFromToday();
+      if (todayIndex !== null && todayIndex >= 0) return todayIndex;
+      return pastHeaders.length ? headers.indexOf(pastHeaders[pastHeaders.length - 1]) : 0;
+    })();
+    const visibleIndex = Math.max(0, targetIndex - 5); // показываем чуть больше контекста слева
+    const target = headers[visibleIndex] || headers[0];
+    const offset = Math.max(0, target.offsetLeft - stickyOffset - 24);
+    container.scrollLeft = offset;
+  }
+
+  const switchMode = mode => {
+    const targetMode = mode === 'attendance' ? 'attendance' : 'grades';
+    if (targetMode === activeMode) return;
+    const hasUnsaved = hasGradeDirty() || hasAttendanceDirty();
+    if (hasUnsaved) {
+      openUnsavedModal(targetMode);
+    } else {
+      applyModeImmediate(targetMode);
+    }
+  };
+
+  const initialModeButton = Array.from(modeToggleButtons).find(button => button.classList.contains('is-active')) || modeToggleButtons[0];
+  if (initialModeButton) {
+    applyModeImmediate(initialModeButton.dataset.mode || 'grades');
+  }
+
+  window.addEventListener('beforeunload', event => {
+    if (hasGradeDirty() || hasAttendanceDirty()) {
+      event.preventDefault();
+      event.returnValue = '';
+    }
+  });
+
+  modeToggleButtons.forEach(button => {
+    button.addEventListener('click', () => switchMode(button.dataset.mode || 'grades'));
+  });
 
   const getComment = key => entryComments.get(key) || '';
 
@@ -1105,7 +652,7 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
   const markDirty = input => {
-    if (!input || input.disabled) return;
+    if (!input || input.disabled || input.readOnly) return;
     const key = input.dataset.entryKey;
     if (!key) return;
     const initial = (input.dataset.initialValue || '').trim();
@@ -1303,40 +850,49 @@ document.addEventListener('DOMContentLoaded', function () {
     return Boolean(context && ((context.lesson_topic || '').trim() || (context.grade_type || '').trim()));
   };
 
-  gradeTable.querySelectorAll('.grade-input').forEach(input => {
-    const key = input.dataset.entryKey;
-    if (!key) return;
-    entryInputs.set(key, input);
-    entryComments.set(key, input.dataset.comment || '');
-    input.dataset.initialComment = input.dataset.initialComment || input.dataset.comment || '';
-    if (input.disabled) return;
+  if (gradeTable) {
+    gradeTable.querySelectorAll('.grade-input').forEach(input => {
+      const key = input.dataset.entryKey;
+      if (!key) return;
+      entryInputs.set(key, input);
+      entryComments.set(key, input.dataset.comment || '');
+      input.dataset.initialComment = input.dataset.initialComment || input.dataset.comment || '';
+      const initialVal = (input.dataset.initialValue || '').trim();
+      if (initialVal) {
+        input.readOnly = true;
+        input.classList.add('grade-input--locked');
+        input.title = 'Редактирование оценки запрещено. Доступны только комментарии.';
+      }
+      if (input.disabled) return;
 
-    input.addEventListener('input', function () {
-      const trigger = commentTriggers.get(key);
-      const wasVisible = trigger && !trigger.classList.contains('is-hidden');
-      const sanitized = this.value.replace(/[^1-5]/g, '').slice(0, 1);
-      if (sanitized !== this.value) {
-        this.value = sanitized;
-      }
-      updateRowAverage(this.closest('tr'));
-      markDirty(this);
-      refreshCommentIndicator(key);
-      const nowHasValue = Boolean(sanitized);
-      if (!wasVisible && nowHasValue && !(getComment(key) || '').trim() && trigger) {
-        openCommentPopover(trigger);
-      }
-      const columnKey = input.dataset.columnKey;
-      if (nowHasValue && columnKey && !ensureColumnContext(columnKey) && !autoPromptColumns.has(columnKey)) {
-        autoPromptColumns.add(columnKey);
-        setStatus('Укажите тему занятия для выбранной даты.', 'error');
-        openColumnPopover(columnKey);
-      }
-    });
+      input.addEventListener('input', function () {
+        if (this.readOnly) return;
+        const trigger = commentTriggers.get(key);
+        const wasVisible = trigger && !trigger.classList.contains('is-hidden');
+        const sanitized = this.value.replace(/[^1-5]/g, '').slice(0, 1);
+        if (sanitized !== this.value) {
+          this.value = sanitized;
+        }
+        updateRowAverage(this.closest('tr'));
+        markDirty(this);
+        refreshCommentIndicator(key);
+        const nowHasValue = Boolean(sanitized);
+        if (!wasVisible && nowHasValue && !(getComment(key) || '').trim() && trigger) {
+          openCommentPopover(trigger);
+        }
+        const columnKey = input.dataset.columnKey;
+        if (nowHasValue && columnKey && !ensureColumnContext(columnKey) && !autoPromptColumns.has(columnKey)) {
+          autoPromptColumns.add(columnKey);
+          setStatus('Укажите тему занятия для выбранной даты.', 'error');
+          openColumnPopover(columnKey);
+        }
+      });
 
-    input.addEventListener('blur', function () {
-      markDirty(this);
+      input.addEventListener('blur', function () {
+        markDirty(this);
+      });
     });
-  });
+  }
 
   gradeWrapper.querySelectorAll('.grade-comment-trigger').forEach(button => {
     const entryKey = button.dataset.entryKey;
@@ -1349,23 +905,181 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  gradeTable.querySelectorAll('tbody tr[data-student-id]').forEach(updateRowAverage);
+  gradeTable?.querySelectorAll('tbody tr[data-student-id]').forEach(updateRowAverage);
   updateSaveState();
 
-  const scrollToNearestColumn = () => {
-    if (!scrollContainer || !columnHeaders.length) return;
-    const lastCompleted = [...columnHeaders]
-      .reverse()
-      .find(header => !header.classList.contains('grade-column-header--future'));
-    const target = lastCompleted || columnHeaders[columnHeaders.length - 1];
-    if (!target) return;
-    const fixedLeft = studentColumnHeader ? studentColumnHeader.offsetWidth : 0;
-    const offset = Math.max(0, target.offsetLeft - fixedLeft - 24);
-    scrollContainer.scrollLeft = offset;
-  };
-  scrollToNearestColumn();
+  scrollToNearestColumn(columnHeaders, scrollContainer, studentColumnHeader ? studentColumnHeader.offsetWidth : 0);
 
-  const collectPayload = () => {
+  const attendanceStatusOrder = Array.isArray(attendanceMeta?.order) && attendanceMeta.order.length
+    ? attendanceMeta.order
+    : ['', 'absent', 'late', 'excused'];
+  const attendanceStatusMap = attendanceMeta?.map || {};
+
+  const getNextAttendanceStatus = current => {
+    const order = attendanceStatusOrder.length ? attendanceStatusOrder : ['', 'absent', 'late', 'excused'];
+    const index = order.indexOf(current);
+    if (index === -1) {
+      return order[1] || order[0] || '';
+    }
+    const nextIndex = (index + 1) % order.length;
+    return order[nextIndex] || '';
+  };
+
+  const updateAttendanceButtonView = button => {
+    if (!button) return;
+    const status = button.dataset.status || '';
+    const meta = attendanceStatusMap[status] || {};
+    button.classList.remove('status-absent', 'status-late', 'status-excused', 'is-empty', 'status-present');
+    if (!status) {
+      button.classList.add('is-empty');
+    } else if (meta.class) {
+      button.classList.add(meta.class);
+    }
+    const labelNode = button.querySelector('.attendance-status-label');
+    if (labelNode) {
+      const shortLabel = (meta.short || '').trim();
+      labelNode.textContent = shortLabel || '';
+    }
+  };
+
+  const updateAbsenceCount = row => {
+    if (!row) return;
+    const buttons = row.querySelectorAll('.attendance-status-btn');
+    let total = 0;
+    buttons.forEach(button => {
+      if ((button.dataset.status || '') === 'absent') {
+        total += 1;
+      }
+    });
+    const target = row.querySelector('[data-absence-count]');
+    if (target) {
+      target.textContent = total;
+    }
+  };
+
+  const markAttendanceDirty = button => {
+    if (!button) return;
+    const entryKey = button.dataset.entryKey;
+    if (!entryKey) return;
+    const initial = button.dataset.initialStatus || '';
+    const current = button.dataset.status || '';
+    if (initial !== current) {
+      attendanceDirtyKeys.add(entryKey);
+      button.classList.add('attendance-status-btn--dirty');
+    } else {
+      attendanceDirtyKeys.delete(entryKey);
+      button.classList.remove('attendance-status-btn--dirty');
+    }
+    updateSaveState();
+  };
+
+  const collectAttendancePayload = () => {
+    const entries = [];
+    attendanceDirtyKeys.forEach(key => {
+      const button = attendanceEntryButtons.get(key);
+      if (!button) return;
+      const [studentPart, columnKey] = key.split('::');
+      if (!columnKey) return;
+      const studentId = Number(studentPart);
+      if (Number.isNaN(studentId)) return;
+      const [dateIso, slotFromKey] = columnKey.split('|');
+      const entry = {
+        student_id: studentId,
+        date: button.dataset.columnDate || dateIso || '',
+        slot_id: button.dataset.slotId || slotFromKey || '',
+        status: button.dataset.status || '',
+      };
+      const subjectRaw = button.dataset.subjectId;
+      if (subjectRaw) {
+        const parsed = Number(subjectRaw);
+        if (!Number.isNaN(parsed)) {
+          entry.subject_id = parsed;
+        }
+      }
+      entries.push(entry);
+    });
+    return { entries, keys: Array.from(attendanceDirtyKeys) };
+  };
+
+  const handleAttendanceSave = () => {
+    if (!attendanceWrapper || !saveBtn || isAttendanceSaving) return;
+    const saveUrl = attendanceWrapper.dataset.saveUrl;
+    if (!saveUrl) {
+      setStatus('Недоступно сохранение посещаемости', 'error');
+      return;
+    }
+    const payload = collectAttendancePayload();
+    if (!payload.entries.length) {
+      return;
+    }
+    isAttendanceSaving = true;
+    updateSaveState();
+    setStatus('Сохраняем посещаемость…');
+
+    fetch(saveUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken(),
+      },
+      body: JSON.stringify({ entries: payload.entries }),
+    })
+      .then(async response => {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+          const errorMessage = (data && data.errors && data.errors.join('; ')) || 'Ошибка сохранения посещаемости';
+          throw new Error(errorMessage);
+        }
+        return data;
+      })
+      .then(data => {
+        if (Array.isArray(data.errors) && data.errors.length) {
+          setStatus(data.errors.join('; '), 'error');
+          return;
+        }
+        payload.keys.forEach(key => {
+          const button = attendanceEntryButtons.get(key);
+          if (!button) return;
+          const currentStatus = button.dataset.status || '';
+          attendanceDirtyKeys.delete(key);
+          button.dataset.initialStatus = currentStatus;
+          button.classList.remove('attendance-status-btn--dirty');
+        });
+        attendanceTable?.querySelectorAll('tbody tr[data-student-id]').forEach(updateAbsenceCount);
+        updateSaveState();
+        setStatus('Посещаемость сохранена', 'success');
+      })
+      .catch(error => {
+        console.error(error);
+        setStatus(error.message || 'Не удалось сохранить посещаемость', 'error');
+      })
+      .finally(() => {
+        isAttendanceSaving = false;
+        updateSaveState();
+      });
+  };
+
+  if (attendanceTable) {
+    attendanceTable.querySelectorAll('.attendance-status-btn').forEach(button => {
+      const entryKey = button.dataset.entryKey;
+      if (!entryKey) return;
+      attendanceEntryButtons.set(entryKey, button);
+      updateAttendanceButtonView(button);
+      if (!button.disabled) {
+        button.addEventListener('click', () => {
+          const nextStatus = getNextAttendanceStatus(button.dataset.status || '');
+          button.dataset.status = nextStatus;
+          updateAttendanceButtonView(button);
+          markAttendanceDirty(button);
+          updateAbsenceCount(button.closest('tr'));
+          setStatus('Обновите посещаемость и сохраните изменения.', 'neutral');
+        });
+      }
+    });
+    attendanceTable.querySelectorAll('tbody tr[data-student-id]').forEach(updateAbsenceCount);
+  }
+
+  const collectGradePayload = () => {
     const keys = new Set([...dirtyEntries.keys(), ...metaDirtyKeys]);
     const grades = [];
     keys.forEach(key => {
@@ -1417,20 +1131,20 @@ document.addEventListener('DOMContentLoaded', function () {
     return { grades, keys, columns };
   };
 
-  const handleSave = () => {
-    if (!saveBtn || isSaving) return;
+  const handleGradeSave = () => {
+    if (!saveBtn || isGradeSaving || !gradeWrapper) return;
     const saveUrl = gradeWrapper.dataset.saveUrl;
     if (!saveUrl) {
       setStatus('Недоступно сохранение оценок', 'error');
       return;
     }
-    const payload = collectPayload();
+    const payload = collectGradePayload();
     if (!payload.grades.length && !payload.columns.length) {
       return;
     }
-    isSaving = true;
+    isGradeSaving = true;
     updateSaveState();
-    setStatus('Сохраняем изменения…');
+    setStatus('Сохраняем оценки…');
 
     fetch(saveUrl, {
       method: 'POST',
@@ -1490,12 +1204,20 @@ document.addEventListener('DOMContentLoaded', function () {
         setStatus(error.message || 'Не удалось сохранить оценки', 'error');
       })
       .finally(() => {
-        isSaving = false;
+        isGradeSaving = false;
         updateSaveState();
       });
   };
 
-  saveBtn?.addEventListener('click', handleSave);
+  const handleSaveClick = () => {
+    if (activeMode === 'attendance') {
+      handleAttendanceSave();
+    } else {
+      handleGradeSave();
+    }
+  };
+
+  saveBtn?.addEventListener('click', handleSaveClick);
 });
 </script>
 {% endblock %}

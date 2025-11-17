@@ -82,6 +82,7 @@
       {% for card in group_cards %}
       <article
         class="group-card"
+        onclick="window.location.href='{% url 'teacher_journal_detail' card.group.id %}'"
         data-group-card
         data-group-name="{{ card.group.code|lower }} {{ card.subject_name|lower }}"
         data-subject-id="{{ card.subject_id|default:'' }}"

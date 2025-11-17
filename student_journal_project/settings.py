@@ -162,8 +162,8 @@ LOGIN_REDIRECT_URL = '/'  # или '/admin-panel/' если у вас так н�
 LOGOUT_REDIRECT_URL = '/accounts/login/'
 
 # Если нужно, добавьте настройки сессий
-SESSION_EXPIRE_AT_BROWSER_CLOSE = True
-SESSION_COOKIE_AGE = 3600  # 1 час
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 30  # 30 дней
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
@@ -202,7 +202,6 @@ SWAGGER_SETTINGS = {
         'patch'
     ],
 }
-
 
 
 

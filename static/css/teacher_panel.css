@@ -9,6 +9,7 @@
     --surface: #f8fafc;
     --muted: #eef2ff;
     --muted-bg: #f8fafc;
+    --muted-bg2: #f8fafc;
     --text: #0f172a;
     --text-muted: #475569;
     --border: #e2e8f0;
@@ -32,6 +33,7 @@
     --text: #0f172a;
     --text-muted: #64748b;
     --muted-bg: #f8fafc;
+    --muted-bg2: #f8fafc;
     --border: #e2e8f0;
     --border-color: var(--border);
     --shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
@@ -52,6 +54,7 @@
     --text: #f1f5f9;
     --text-muted: #94a3b8;
     --muted-bg: #1e2937;
+    --muted-bg2: #303665;
     --border: #1e293b;
     --border-color: var(--border);
     --shadow: 0 25px 60px rgba(2, 6, 23, 0.5);
@@ -71,4 +74,14 @@
 .main-header {
     background-color: transparent;
     color: var(--bs-body-color);
+}
+
+/* Компактнее отступы между блоками навигации в кабинете преподавателя */
+.teacher-sidebar .sidebar-nav {
+    padding-top: 0.7rem;
+    row-gap: 0;
+}
+
+.teacher-sidebar .nav-item {
+    margin: 4px 0px;
 }

@@ -31,6 +31,32 @@ from django.views.decorators.http import require_POST
 from django.contrib.sessions.models import Session
 from collections import defaultdict
 
+ATTENDANCE_STATUS_META = {
+    'order': ['', 'absent', 'late', 'excused'],
+    'map': {
+        '': {
+            'label': 'Присутствие',
+            'short': '',
+            'class': 'status-present',
+        },
+        'absent': {
+            'label': 'Отсутствовал',
+            'short': 'Н',
+            'class': 'status-absent',
+        },
+        'late': {
+            'label': 'Опоздал',
+            'short': 'О',
+            'class': 'status-late',
+        },
+        'excused': {
+            'label': 'Уважительная причина',
+            'short': 'У',
+            'class': 'status-excused',
+        },
+    },
+}
+
 
 # Безопасная проверка импорта моделей
 try:
@@ -47,6 +73,7 @@ try:
         PasswordResetRequest,
         GradeRecord,
         GradeColumnContext,
+        AttendanceRecord,
     )
     MODELS_AVAILABLE = True
 except:
@@ -3361,7 +3388,7 @@ def _build_grade_columns_for_group(teacher, group, lookahead_weeks=4):
 
 
 def _build_teacher_group_detail_context(teacher, group):
-    students = Student.objects.filter(group=group).order_by('last_name', 'first_name')
+    students = list(Student.objects.filter(group=group).order_by('last_name', 'first_name'))
     grade_columns = _build_grade_columns_for_group(teacher, group)
     grade_values_map = {}
     column_context_map = {}
@@ -3414,6 +3441,13 @@ def _build_teacher_group_detail_context(teacher, group):
     for student in students:
         grade_values_map.setdefault(student.id, {})
 
+    attendance_context = _build_attendance_group_detail_context(
+        teacher,
+        group,
+        students=students,
+        columns=grade_columns,
+    )
+
     return {
         'teacher': teacher,
         'group': group,
@@ -3423,6 +3457,55 @@ def _build_teacher_group_detail_context(teacher, group):
         'grade_values_map': grade_values_map,
         'grade_type_choices': GradeRecord.GRADE_TYPE_CHOICES,
         'column_context_map': column_context_map,
+        'attendance_columns': attendance_context.get('attendance_columns', []),
+        'attendance_values_map': attendance_context.get('attendance_values_map', {}),
+        'attendance_today': attendance_context.get('attendance_today'),
+        'absence_totals': attendance_context.get('absence_totals', {}),
+        'attendance_status_meta': attendance_context.get('attendance_status_meta', ATTENDANCE_STATUS_META),
+    }
+
+
+def _build_attendance_group_detail_context(teacher, group, students=None, columns=None):
+    students_qs = students if students is not None else Student.objects.filter(group=group).order_by('last_name', 'first_name')
+    students_list = list(students_qs)
+    attendance_columns = columns if columns is not None else _build_grade_columns_for_group(teacher, group)
+    attendance_values_map = {}
+    absence_totals = {student.id: 0 for student in students_list}
+
+    if attendance_columns:
+        column_dates = {column['date'] for column in attendance_columns}
+        slot_ids = {str(column['slot_id'] or '') for column in attendance_columns}
+        attendance_records = AttendanceRecord.objects.filter(
+            group=group,
+            teacher=teacher,
+            lesson_date__in=column_dates,
+            slot_id__in=slot_ids,
+            student__in=students_list,
+        ).only('student_id', 'lesson_date', 'slot_id', 'status', 'comment')
+
+        for record in attendance_records:
+            student_map = attendance_values_map.setdefault(record.student_id, {})
+            key = f"{record.lesson_date.isoformat()}|{record.slot_id or ''}"
+            student_map[key] = {
+                'status': record.status or '',
+                'comment': record.comment or '',
+            }
+            if record.status == AttendanceRecord.STATUS_ABSENT:
+                absence_totals[record.student_id] = absence_totals.get(record.student_id, 0) + 1
+
+    for student in students_list:
+        attendance_values_map.setdefault(student.id, {})
+        absence_totals.setdefault(student.id, 0)
+
+    return {
+        'teacher': teacher,
+        'group': group,
+        'students': students_list,
+        'attendance_columns': attendance_columns,
+        'attendance_values_map': attendance_values_map,
+        'attendance_today': timezone.localdate(),
+        'absence_totals': absence_totals,
+        'attendance_status_meta': ATTENDANCE_STATUS_META,
     }
 
 
@@ -3460,6 +3543,28 @@ def teacher_journal_detail_view(request, group_id):
         'detail_view_mode': 'journal',
     })
     return render(request, 'teacher/group_detail.html', context)
+
+
+@login_required
+def teacher_attendance_detail_view(request, group_id):
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к кабинету преподавателя')
+        return redirect('login')
+
+    group = get_object_or_404(Group, id=group_id)
+    if not teacher.groups.filter(id=group.id).exists():
+        messages.error(request, 'У вас нет доступа к этой группе')
+        return redirect('teacher_attendance')
+
+    context = _build_attendance_group_detail_context(teacher, group)
+    context.update({
+        'active_nav': 'teacher_attendance',
+        'back_link_url': reverse('teacher_attendance'),
+        'back_link_label': 'Назад к списку посещаемости',
+    })
+    return render(request, 'teacher/attendance_detail.html', context)
 
 
 @login_required
@@ -3588,6 +3693,7 @@ def teacher_journal_save_api(request, group_id):
                 'comment': comment_value,
                 'grade_type': grade_type_value,
                 'lesson_topic': lesson_topic_value,
+                'work_type': grade_type_value or '',
             }
         )
         saved += 1
@@ -3639,6 +3745,115 @@ def teacher_journal_save_api(request, group_id):
             )
         elif force_update:
             GradeColumnContext.objects.filter(**filters).delete()
+
+    status_code = 200 if not errors else 207
+    return JsonResponse({
+        'success': not errors,
+        'saved': saved,
+        'deleted': deleted,
+        'errors': errors,
+    }, status=status_code)
+
+
+@login_required
+@require_POST
+def teacher_attendance_save_api(request, group_id):
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        return JsonResponse({'success': False, 'error': 'У вас нет доступа к кабинету преподавателя'}, status=403)
+
+    group = get_object_or_404(Group, id=group_id)
+    if not teacher.groups.filter(id=group.id).exists():
+        return JsonResponse({'success': False, 'error': 'У вас нет доступа к этой группе'}, status=403)
+
+    try:
+        payload = json.loads(request.body or '{}')
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Некорректный формат данных'}, status=400)
+
+    entries = payload.get('entries', []) if isinstance(payload, dict) else []
+    if not isinstance(entries, list):
+        return JsonResponse({'success': False, 'error': 'Некорректный список посещаемости'}, status=400)
+
+    valid_statuses = {choice[0] for choice in AttendanceRecord.STATUS_CHOICES}
+    saved = 0
+    deleted = 0
+    errors = []
+    students_cache = {}
+
+    for index, entry in enumerate(entries):
+        student_raw = entry.get('student_id') or entry.get('student')
+        date_str = entry.get('date') or entry.get('lesson_date')
+        slot_id = (entry.get('slot_id') or '').strip()
+        status_raw = (entry.get('status') or '').strip()
+        comment_raw = (entry.get('comment') or '').strip()
+        subject_raw = entry.get('subject_id') or entry.get('subject')
+
+        try:
+            student_id = int(student_raw)
+        except (TypeError, ValueError):
+            errors.append(f'#{index + 1}: некорректный студент')
+            continue
+
+        if not date_str or not slot_id:
+            errors.append(f'#{index + 1}: не указаны дата или слот')
+            continue
+
+        student = students_cache.get(student_id)
+        if not student:
+            student = Student.objects.filter(id=student_id, group=group).first()
+            if not student:
+                errors.append(f'#{index + 1}: студент не найден в группе')
+                continue
+            students_cache[student_id] = student
+
+        try:
+            lesson_date = date.fromisoformat(date_str)
+        except ValueError:
+            errors.append(f'#{index + 1}: неверный формат даты')
+            continue
+
+        if status_raw not in valid_statuses:
+            errors.append(f'#{index + 1}: неизвестный статус посещаемости')
+            continue
+
+        subject_id = None
+        if subject_raw:
+            try:
+                subject_id = int(subject_raw)
+            except (TypeError, ValueError):
+                errors.append(f'#{index + 1}: некорректный предмет')
+                continue
+
+        if not status_raw:
+            deleted_count, _ = AttendanceRecord.objects.filter(
+                student=student,
+                group=group,
+                teacher=teacher,
+                lesson_date=lesson_date,
+                slot_id=slot_id,
+            ).delete()
+            if deleted_count:
+                deleted += deleted_count
+            continue
+
+        comment_value = comment_raw[:255]
+
+        AttendanceRecord.objects.update_or_create(
+            student=student,
+            group=group,
+            teacher=teacher,
+            lesson_date=lesson_date,
+            slot_id=slot_id,
+            defaults={
+                'status': status_raw,
+                'subject_id': subject_id,
+                'comment': comment_value,
+                'updated_by': request.user,
+            }
+        )
+        saved += 1
 
     status_code = 200 if not errors else 207
     return JsonResponse({

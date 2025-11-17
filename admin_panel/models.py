@@ -732,6 +732,13 @@ class GradeRecord(models.Model):
         blank=True,
     )
     comment = models.CharField('Комментарий', max_length=255, blank=True)
+    work_type = models.CharField(
+        'Тип занятия (устаревшее)',
+        max_length=50,
+        blank=True,
+        default='',
+        help_text='Поле для обратной совместимости с прежними версиями',
+    )
     created_at = models.DateTimeField('Создано', auto_now_add=True)
     updated_at = models.DateTimeField('Обновлено', auto_now=True)
     updated_by = models.ForeignKey(
@@ -801,6 +808,83 @@ class GradeColumnContext(models.Model):
 
     def __str__(self):
         return f'{self.lesson_date} • {self.group.code} • {self.slot_id}'
+
+
+class AttendanceRecord(models.Model):
+    """Посещаемость студентов по датам"""
+
+    STATUS_PRESENT = ''
+    STATUS_ABSENT = 'absent'
+    STATUS_LATE = 'late'
+    STATUS_EXCUSED = 'excused'
+
+    STATUS_CHOICES = [
+        (STATUS_PRESENT, 'Присутствовал'),
+        (STATUS_ABSENT, 'Отсутствовал'),
+        (STATUS_LATE, 'Опоздал'),
+        (STATUS_EXCUSED, 'Уважительная причина'),
+    ]
+
+    teacher = models.ForeignKey(
+        Teacher,
+        on_delete=models.CASCADE,
+        related_name='attendance_records',
+        verbose_name='Преподаватель',
+    )
+    group = models.ForeignKey(
+        'Group',
+        on_delete=models.CASCADE,
+        related_name='attendance_records',
+        verbose_name='Группа',
+    )
+    student = models.ForeignKey(
+        'Student',
+        on_delete=models.CASCADE,
+        related_name='attendance_records',
+        verbose_name='Студент',
+    )
+    subject = models.ForeignKey(
+        Subject,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='attendance_records',
+        verbose_name='Предмет',
+    )
+    lesson_date = models.DateField('Дата занятия')
+    slot_id = models.CharField('Пара', max_length=20, blank=True, default='')
+    status = models.CharField(
+        'Статус посещаемости',
+        max_length=20,
+        choices=STATUS_CHOICES,
+        blank=True,
+        default=STATUS_PRESENT,
+    )
+    comment = models.CharField('Комментарий', max_length=255, blank=True)
+    created_at = models.DateTimeField('Создано', auto_now_add=True)
+    updated_at = models.DateTimeField('Обновлено', auto_now=True)
+    updated_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='updated_attendance_records',
+        verbose_name='Кем обновлено',
+    )
+
+    class Meta:
+        verbose_name = 'Посещаемость'
+        verbose_name_plural = 'Посещаемость'
+        ordering = ['lesson_date', 'slot_id', 'student__last_name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['student', 'group', 'lesson_date', 'slot_id', 'teacher'],
+                name='unique_student_attendance_per_slot',
+            )
+        ]
+
+    def __str__(self):
+        return f'{self.lesson_date} • {self.student.get_full_name()} → {self.get_status_display() or "Присутствовал"}'
 
 
 class PasswordResetRequest(models.Model):
