@@ -243,7 +243,8 @@
                     </td>
                     {% with student_attendance=attendance_values_map|dict_get:student.id %}
                       {% for column in attendance_columns %}
-                      {% with cell_status=student_attendance|dict_get:column.column_key|dict_get:"status"|default:'' %}
+                      {% with cell_entry=student_attendance|dict_get:column.column_key %}
+                      {% with cell_status=cell_entry|dict_get:"status"|default:'' %}
                       {% with status_meta=attendance_status_meta.map|dict_get:cell_status %}
                       <td class="grade-cell attendance-cell {% if column.is_today %}grade-cell--today{% elif column.is_future %}grade-cell--future{% endif %}">
                         <button type="button"
@@ -255,11 +256,13 @@
                                 data-subject-id="{{ column.subject_id|default:'' }}"
                                 data-initial-status="{{ cell_status }}"
                                 data-status="{{ cell_status }}"
+                                data-has-record="{% if cell_entry %}1{% else %}0{% endif %}"
                                 aria-label="Отметить посещаемость за {{ column.date|date:'d.m.Y' }}"
                                 {% if column.is_future %}disabled aria-disabled="true"{% endif %}>
                           <span class="attendance-status-label">{{ status_meta.short|default:'' }}</span>
                         </button>
                       </td>
+                      {% endwith %}
                       {% endwith %}
                       {% endwith %}
                       {% endfor %}
@@ -427,6 +430,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const autoPromptColumns = new Set();
   const attendanceEntryButtons = new Map();
   const attendanceDirtyKeys = new Set();
+  let attendancePendingRecords = 0;
   let activeMode = 'grades';
   let isGradeSaving = false;
   let isAttendanceSaving = false;
@@ -488,7 +492,7 @@ document.addEventListener('DOMContentLoaded', function () {
   };
 
   const hasGradeDirty = () => dirtyEntries.size > 0 || metaDirtyKeys.size > 0 || columnDirtyKeys.size > 0;
-  const hasAttendanceDirty = () => attendanceDirtyKeys.size > 0;
+  const hasAttendanceDirty = () => attendanceDirtyKeys.size > 0 || attendancePendingRecords > 0;
 
   const updateSaveState = () => {
     if (!saveBtn) return;
@@ -975,9 +979,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const collectAttendancePayload = () => {
     const entries = [];
-    attendanceDirtyKeys.forEach(key => {
-      const button = attendanceEntryButtons.get(key);
-      if (!button) return;
+    const dirtyKeys = Array.from(attendanceDirtyKeys);
+    const autoKeys = [];
+    const processed = new Set();
+
+    const addEntry = (key, button) => {
+      if (!button || button.disabled || processed.has(key)) return;
       const [studentPart, columnKey] = key.split('::');
       if (!columnKey) return;
       const studentId = Number(studentPart);
@@ -997,8 +1004,20 @@ document.addEventListener('DOMContentLoaded', function () {
         }
       }
       entries.push(entry);
+      processed.add(key);
+    };
+
+    dirtyKeys.forEach(key => addEntry(key, attendanceEntryButtons.get(key)));
+
+    attendanceEntryButtons.forEach((button, key) => {
+      if (button.disabled) return;
+      if (button.dataset.hasRecord !== '1') {
+        addEntry(key, button);
+        autoKeys.push(key);
+      }
     });
-    return { entries, keys: Array.from(attendanceDirtyKeys) };
+
+    return { entries, dirtyKeys, autoKeys };
   };
 
   const handleAttendanceSave = () => {
@@ -1037,12 +1056,18 @@ document.addEventListener('DOMContentLoaded', function () {
           setStatus(data.errors.join('; '), 'error');
           return;
         }
-        payload.keys.forEach(key => {
+        const updatedKeys = new Set([...(payload.dirtyKeys || []), ...(payload.autoKeys || [])]);
+        updatedKeys.forEach(key => {
           const button = attendanceEntryButtons.get(key);
           if (!button) return;
           const currentStatus = button.dataset.status || '';
+          const previouslyRecorded = button.dataset.hasRecord === '1';
           attendanceDirtyKeys.delete(key);
           button.dataset.initialStatus = currentStatus;
+          button.dataset.hasRecord = '1';
+          if (!previouslyRecorded) {
+            attendancePendingRecords = Math.max(0, attendancePendingRecords - 1);
+          }
           button.classList.remove('attendance-status-btn--dirty');
         });
         attendanceTable?.querySelectorAll('tbody tr[data-student-id]').forEach(updateAbsenceCount);
@@ -1065,6 +1090,9 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!entryKey) return;
       attendanceEntryButtons.set(entryKey, button);
       updateAttendanceButtonView(button);
+      if (!button.disabled && button.dataset.hasRecord !== '1') {
+        attendancePendingRecords += 1;
+      }
       if (!button.disabled) {
         button.addEventListener('click', () => {
           const nextStatus = getNextAttendanceStatus(button.dataset.status || '');
@@ -1077,6 +1105,7 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     });
     attendanceTable.querySelectorAll('tbody tr[data-student-id]').forEach(updateAbsenceCount);
+    updateSaveState();
   }
 
   const collectGradePayload = () => {

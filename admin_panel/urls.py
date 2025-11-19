@@ -6,6 +6,10 @@ urlpatterns = [
     # === ГЛАВНАЯ СТРАНИЦА ===
     path('', views.dashboard_view, name='home'),  # Главная страница с перенаправлением
     path('admin-panel/', views.admin_dashboard_view, name='admin_dashboard'),  # Админ-панель
+    path('statistics/', views.statistics_view, name='admin_statistics'),
+    path('statistics/export/', views.statistics_export_view, name='admin_statistics_export'),
+    path('analytics/', views.analytics_view, name='admin_analytics'),
+    path('analytics/export/', views.analytics_export_view, name='admin_analytics_export'),
     path('student-cabinet/', views.student_dashboard_view, name='student_dashboard'),  # Кабинет студента
     path('teacher-cabinet/', views.teacher_dashboard_view, name='teacher_dashboard'),  # Кабинет преподавателя
     path('accounts/', include('django.contrib.auth.urls')),

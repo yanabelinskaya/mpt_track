@@ -3,7 +3,8 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib import messages
 from django.core.paginator import Paginator
-from django.db.models import Q, Count, F, Sum
+from django.db.models import Q, Count, F, Sum, Avg
+from django.db.models.functions import TruncMonth
 from django.http import JsonResponse, HttpResponse, FileResponse
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.csrf import csrf_exempt
@@ -25,6 +26,7 @@ from importlib import import_module
 from urllib.parse import urlencode
 import tempfile
 import os
+import csv
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
 from django.views.decorators.http import require_POST
@@ -80,6 +82,390 @@ except:
     MODELS_AVAILABLE = False
 
 from .activity import log_activity, serialize_activity_log
+
+
+MONTH_LABELS_RU = [
+    'Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн',
+    'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек',
+]
+
+
+def format_month_label(value):
+    """Возвращает локализованный ярлык месяца."""
+    if not value:
+        return ''
+    if isinstance(value, datetime):
+        value = value.date()
+    try:
+        return f"{MONTH_LABELS_RU[value.month - 1]} {value.year}"
+    except (AttributeError, IndexError):
+        return value.strftime('%Y-%m')
+
+
+def parse_date_param(value):
+    """Парсинг даты из строки формата YYYY-MM-DD."""
+    if not value:
+        return None
+    try:
+        return datetime.strptime(value, '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return None
+
+
+def get_period_from_request(request, default_days=180):
+    """Получает диапазон дат из GET-параметров с дефолтом."""
+    today = timezone.now().date()
+    default_start = today - timedelta(days=default_days)
+    start_date = parse_date_param(request.GET.get('start_date')) or default_start
+    end_date = parse_date_param(request.GET.get('end_date')) or today
+    if start_date > end_date:
+        start_date, end_date = end_date, start_date
+    return start_date, end_date
+
+
+def build_filter_query(params):
+    """Формирует query string с непустыми параметрами."""
+    cleaned = {key: value for key, value in params.items() if value not in [None, '', []]}
+    return urlencode(cleaned)
+
+
+def build_statistics_dataset(start_date, end_date):
+    """Формирует набор данных для страницы статистики."""
+    if not MODELS_AVAILABLE:
+        return {'available': False}
+
+    students_qs = Student.objects.all()
+    grades_qs = GradeRecord.objects.filter(
+        lesson_date__range=(start_date, end_date)
+    )
+    attendance_qs = AttendanceRecord.objects.filter(
+        lesson_date__range=(start_date, end_date)
+    )
+
+    summary = {
+        'total_students': students_qs.count(),
+        'active_students': students_qs.filter(study_status='active').count(),
+        'new_students': students_qs.filter(
+            enrollment_date__range=(start_date, end_date)
+        ).count(),
+        'groups_total': Group.objects.count(),
+        'teachers_total': Teacher.objects.count(),
+        'subjects_total': Subject.objects.count(),
+    }
+
+    avg_grade = grades_qs.aggregate(value=Avg('value'))['value'] or 0
+    grade_overview = {
+        'avg_grade': round(avg_grade, 2) if avg_grade else 0,
+        'grade_volume': grades_qs.count(),
+    }
+
+    grade_distribution_counts = {
+        row['value']: row['total']
+        for row in grades_qs.values('value').annotate(total=Count('id'))
+    }
+    grade_distribution = [
+        {
+            'grade': value,
+            'total': grade_distribution_counts.get(value, 0),
+        }
+        for value in range(1, 6)
+    ]
+
+    status_counts = {
+        row['study_status']: row['total']
+        for row in students_qs.values('study_status').annotate(total=Count('id'))
+    }
+    status_distribution = [
+        {
+            'status': key,
+            'label': label,
+            'total': status_counts.get(key, 0),
+        }
+        for key, label in Student.STUDY_STATUS_CHOICES
+    ]
+
+    faculty_distribution = []
+    faculty_rows = (
+        students_qs.filter(group__faculty__isnull=False)
+        .values('group__faculty__name', 'group__faculty__code')
+        .annotate(total=Count('id'))
+        .order_by('-total', 'group__faculty__name')
+    )
+    for row in faculty_rows:
+        faculty_distribution.append({
+            'name': row['group__faculty__name'],
+            'code': row['group__faculty__code'],
+            'total': row['total'],
+        })
+
+    enrollment_trend = []
+    enrollment_rows = (
+        Student.objects.filter(
+            enrollment_date__isnull=False,
+            enrollment_date__range=(start_date, end_date),
+        )
+        .annotate(month=TruncMonth('enrollment_date'))
+        .values('month')
+        .annotate(total=Count('id'))
+        .order_by('month')
+    )
+    for row in enrollment_rows:
+        month_dt = row['month']
+        enrollment_trend.append({
+            'month': month_dt.strftime('%Y-%m-01') if month_dt else '',
+            'label': format_month_label(month_dt),
+            'total': row['total'],
+        })
+
+    attendance_summary_values = attendance_qs.aggregate(
+        total=Count('id'),
+        present=Count('id', filter=Q(status=AttendanceRecord.STATUS_PRESENT)),
+        absences=Count('id', filter=Q(status=AttendanceRecord.STATUS_ABSENT)),
+        late=Count('id', filter=Q(status=AttendanceRecord.STATUS_LATE)),
+        excused=Count('id', filter=Q(status=AttendanceRecord.STATUS_EXCUSED)),
+    )
+    attendance_summary = {
+        'total': attendance_summary_values.get('total') or 0,
+        'present': attendance_summary_values.get('present') or 0,
+        'absent': attendance_summary_values.get('absences') or 0,
+        'late': attendance_summary_values.get('late') or 0,
+        'excused': attendance_summary_values.get('excused') or 0,
+    }
+    if attendance_summary['total']:
+        attendance_summary['rate'] = round(
+            attendance_summary['present'] / attendance_summary['total'] * 100, 2
+        )
+    else:
+        attendance_summary['rate'] = 0
+
+    attendance_trend = []
+    attendance_rows = (
+        attendance_qs.annotate(month=TruncMonth('lesson_date'))
+        .values('month')
+        .annotate(
+            total=Count('id'),
+            absent=Count('id', filter=Q(status=AttendanceRecord.STATUS_ABSENT)),
+            late=Count('id', filter=Q(status=AttendanceRecord.STATUS_LATE)),
+            excused=Count('id', filter=Q(status=AttendanceRecord.STATUS_EXCUSED)),
+        )
+        .order_by('month')
+    )
+    for row in attendance_rows:
+        month_dt = row['month']
+        attendance_trend.append({
+            'month': month_dt.strftime('%Y-%m-01') if month_dt else '',
+            'label': format_month_label(month_dt),
+            'total': row['total'],
+            'absent': row['absent'],
+            'late': row['late'],
+            'excused': row['excused'],
+        })
+
+    top_subjects = []
+    top_subject_rows = (
+        grades_qs.filter(subject__isnull=False)
+        .values('subject__name')
+        .annotate(
+            avg_value=Avg('value'),
+            total=Count('id'),
+        )
+        .order_by('-total')[:5]
+    )
+    for row in top_subject_rows:
+        top_subjects.append({
+            'subject': row['subject__name'] or 'Без названия',
+            'avg': round(row['avg_value'], 2) if row['avg_value'] else 0,
+            'total': row['total'],
+        })
+
+    return {
+        'available': True,
+        'summary': summary,
+        'grade_overview': grade_overview,
+        'grade_distribution': grade_distribution,
+        'status_distribution': status_distribution,
+        'faculty_distribution': faculty_distribution,
+        'enrollment_trend': enrollment_trend,
+        'attendance_summary': attendance_summary,
+        'attendance_trend': attendance_trend,
+        'top_subjects': top_subjects,
+    }
+
+
+def build_analytics_dataset(start_date, end_date, faculty_id=None):
+    """Формирует расширенный набор аналитики."""
+    base_result = {
+        'available': MODELS_AVAILABLE,
+        'faculty_summary': [],
+        'teacher_load': [],
+        'grade_distribution': [],
+        'overview': {},
+    }
+    if not MODELS_AVAILABLE:
+        return base_result
+
+    faculties_qs = Faculty.objects.filter(is_active=True)
+    if faculty_id:
+        faculties_qs = faculties_qs.filter(id=faculty_id)
+    faculties = list(faculties_qs)
+
+    if not faculties:
+        base_result['overview'] = {
+            'students_total': 0,
+            'active_students': 0,
+            'new_students': 0,
+            'avg_grade': 0,
+            'attendance_rate': 0,
+            'teachers_total': 0,
+            'groups_total': 0,
+        }
+        return base_result
+
+    faculty_ids = [faculty.id for faculty in faculties]
+    faculty_summary_map = {
+        faculty.id: {
+            'id': faculty.id,
+            'name': faculty.name,
+            'code': faculty.code,
+            'students_total': 0,
+            'active_students': 0,
+            'avg_grade': 0,
+            'grade_volume': 0,
+            'attendance_rate': 0,
+            'attendance_total': 0,
+            'attendance_breakdown': {
+                'absent': 0,
+                'late': 0,
+                'excused': 0,
+            },
+        }
+        for faculty in faculties
+    }
+
+    students_qs = Student.objects.filter(group__faculty_id__in=faculty_ids)
+    student_counts = (
+        students_qs
+        .values('group__faculty_id')
+        .annotate(
+            total=Count('id'),
+            active=Count('id', filter=Q(study_status='active')),
+        )
+    )
+    for row in student_counts:
+        summary = faculty_summary_map.get(row['group__faculty_id'])
+        if summary:
+            summary['students_total'] = row['total']
+            summary['active_students'] = row['active']
+
+    grade_filters = {
+        'lesson_date__range': (start_date, end_date),
+        'group__faculty_id__in': faculty_ids,
+    }
+    grades_qs = GradeRecord.objects.filter(**grade_filters)
+    grade_stats = (
+        grades_qs
+        .values('group__faculty_id')
+        .annotate(
+            avg_value=Avg('value'),
+            total=Count('id'),
+        )
+    )
+    for row in grade_stats:
+        summary = faculty_summary_map.get(row['group__faculty_id'])
+        if summary:
+            summary['avg_grade'] = round(row['avg_value'], 2) if row['avg_value'] else 0
+            summary['grade_volume'] = row['total']
+
+    attendance_filters = {
+        'lesson_date__range': (start_date, end_date),
+        'group__faculty_id__in': faculty_ids,
+    }
+    attendance_qs = AttendanceRecord.objects.filter(**attendance_filters)
+    attendance_stats = (
+        attendance_qs
+        .values('group__faculty_id')
+        .annotate(
+            total=Count('id'),
+            absent=Count('id', filter=Q(status=AttendanceRecord.STATUS_ABSENT)),
+            late=Count('id', filter=Q(status=AttendanceRecord.STATUS_LATE)),
+            excused=Count('id', filter=Q(status=AttendanceRecord.STATUS_EXCUSED)),
+        )
+    )
+    for row in attendance_stats:
+        summary = faculty_summary_map.get(row['group__faculty_id'])
+        if not summary:
+            continue
+        total = row['total'] or 0
+        summary['attendance_total'] = total
+        summary['attendance_breakdown'] = {
+            'absent': row['absent'],
+            'late': row['late'],
+            'excused': row['excused'],
+        }
+        present = max(total - row['absent'], 0)
+        summary['attendance_rate'] = round(
+            (present / total) * 100, 2
+        ) if total else 0
+
+    grade_distribution_counts = {
+        row['value']: row['total']
+        for row in grades_qs.values('value').annotate(total=Count('id'))
+    }
+    grade_distribution = [
+        {'grade': value, 'total': grade_distribution_counts.get(value, 0)}
+        for value in range(1, 6)
+    ]
+
+    teacher_qs = Teacher.objects.filter(groups__faculty_id__in=faculty_ids).distinct()
+    teacher_load = list(
+        teacher_qs.annotate(
+            groups_total=Count('groups', distinct=True),
+            subjects_total=Count('subjects', distinct=True),
+            students_total=Count('groups__students', distinct=True),
+        )
+        .order_by('-groups_total', '-students_total', 'last_name')[:8]
+    )
+
+    groups_total = Group.objects.filter(faculty_id__in=faculty_ids).count()
+    teachers_total = teacher_qs.count()
+    overall_attendance = attendance_qs.aggregate(
+        total=Count('id'),
+        absent=Count('id', filter=Q(status=AttendanceRecord.STATUS_ABSENT)),
+    )
+    total_attendance = overall_attendance.get('total') or 0
+    absences = overall_attendance.get('absent') or 0
+    attendance_rate = round(
+        (max(total_attendance - absences, 0) / total_attendance) * 100, 2
+    ) if total_attendance else 0
+
+    overall_grade_avg = grades_qs.aggregate(avg=Avg('value'))['avg']
+    overview = {
+        'students_total': students_qs.count(),
+        'active_students': students_qs.filter(study_status='active').count(),
+        'new_students': students_qs.filter(
+            enrollment_date__range=(start_date, end_date)
+        ).count(),
+        'avg_grade': round(overall_grade_avg or 0, 2) if overall_grade_avg else 0,
+        'attendance_rate': attendance_rate,
+        'teachers_total': teachers_total,
+        'groups_total': groups_total,
+    }
+
+    base_result.update({
+        'faculty_summary': list(faculty_summary_map.values()),
+        'teacher_load': [
+            {
+                'name': teacher.get_full_name(),
+                'groups_total': teacher.groups_total,
+                'subjects_total': teacher.subjects_total,
+                'students_total': teacher.students_total,
+            }
+            for teacher in teacher_load
+        ],
+        'grade_distribution': grade_distribution,
+        'overview': overview,
+    })
+    return base_result
 
 def is_admin_user(user):
     """Проверка, является ли пользователь администратором"""
@@ -151,6 +537,205 @@ def admin_dashboard_view(request):
     }
 
     return render(request, 'admin_panel/dashboard.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def statistics_view(request):
+    """Подробная статистика с графиками."""
+    start_date, end_date = get_period_from_request(request)
+    dataset = build_statistics_dataset(start_date, end_date)
+
+    filter_query = build_filter_query({
+        'start_date': start_date.isoformat(),
+        'end_date': end_date.isoformat(),
+    })
+
+    context = {
+        'filters': {
+            'start_date': start_date,
+            'end_date': end_date,
+        },
+        'filter_query': filter_query,
+        'statistics': dataset,
+    }
+    return render(request, 'admin_panel/statistics.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def statistics_export_view(request):
+    """Экспорт статистики в CSV."""
+    start_date, end_date = get_period_from_request(request)
+    dataset = build_statistics_dataset(start_date, end_date)
+    if not dataset.get('available'):
+        return HttpResponse('Данные недоступны', status=400)
+
+    response = HttpResponse(content_type='text/csv')
+    filename = f"statistics_{start_date.isoformat()}_{end_date.isoformat()}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+    writer = csv.writer(response, delimiter=';')
+    writer.writerow(['Период', start_date.isoformat(), end_date.isoformat()])
+    writer.writerow([])
+
+    summary = dataset.get('summary', {})
+    writer.writerow(['Общая сводка'])
+    writer.writerow(['Всего студентов', summary.get('total_students', 0)])
+    writer.writerow(['Активных студентов', summary.get('active_students', 0)])
+    writer.writerow(['Новых за период', summary.get('new_students', 0)])
+    writer.writerow(['Групп', summary.get('groups_total', 0)])
+    writer.writerow(['Преподавателей', summary.get('teachers_total', 0)])
+    writer.writerow(['Дисциплин', summary.get('subjects_total', 0)])
+    writer.writerow([])
+
+    grade_data = dataset.get('grade_overview', {})
+    writer.writerow(['Оценки'])
+    writer.writerow(['Средний балл', grade_data.get('avg_grade', 0)])
+    writer.writerow(['Количество оценок', grade_data.get('grade_volume', 0)])
+    writer.writerow([])
+
+    writer.writerow(['Динамика поступлений'])
+    writer.writerow(['Месяц', 'Студентов'])
+    for row in dataset.get('enrollment_trend', []):
+        writer.writerow([row.get('label', ''), row.get('total', 0)])
+    writer.writerow([])
+
+    writer.writerow(['Посещаемость по месяцам'])
+    writer.writerow(['Месяц', 'Всего отметок', 'Отсутствий', 'Опозданий', 'Уважительных'])
+    for row in dataset.get('attendance_trend', []):
+        writer.writerow([
+            row.get('label', ''),
+            row.get('total', 0),
+            row.get('absent', 0),
+            row.get('late', 0),
+            row.get('excused', 0),
+        ])
+    writer.writerow([])
+
+    writer.writerow(['Распределение по статусам'])
+    writer.writerow(['Статус', 'Количество'])
+    for row in dataset.get('status_distribution', []):
+        writer.writerow([row.get('label', ''), row.get('total', 0)])
+    writer.writerow([])
+
+    writer.writerow(['Распределение по специальностям'])
+    writer.writerow(['Специальность', 'Код', 'Студентов'])
+    for row in dataset.get('faculty_distribution', []):
+        writer.writerow([row.get('name', ''), row.get('code', ''), row.get('total', 0)])
+    writer.writerow([])
+
+    writer.writerow(['ТОП дисциплин по оценкам'])
+    writer.writerow(['Предмет', 'Средний балл', 'Количество оценок'])
+    for row in dataset.get('top_subjects', []):
+        writer.writerow([row.get('subject', ''), row.get('avg', 0), row.get('total', 0)])
+
+    return response
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def analytics_view(request):
+    """Расширенная аналитика с визуализациями и таблицами."""
+    start_date, end_date = get_period_from_request(request, default_days=365)
+    faculty_param = request.GET.get('faculty')
+    try:
+        faculty_id = int(faculty_param) if faculty_param else None
+    except (TypeError, ValueError):
+        faculty_id = None
+
+    dataset = build_analytics_dataset(start_date, end_date, faculty_id)
+    filter_query = build_filter_query({
+        'start_date': start_date.isoformat(),
+        'end_date': end_date.isoformat(),
+        'faculty': faculty_param,
+    })
+
+    faculty_options = Faculty.objects.filter(is_active=True).order_by('name') if MODELS_AVAILABLE else []
+
+    context = {
+        'filters': {
+            'start_date': start_date,
+            'end_date': end_date,
+            'faculty': faculty_param,
+        },
+        'filter_query': filter_query,
+        'analytics': dataset,
+        'faculty_options': faculty_options,
+        'selected_faculty': faculty_param,
+    }
+    return render(request, 'admin_panel/analytics.html', context)
+
+
+@login_required
+@user_passes_test(is_admin_user, login_url='/accounts/login/')
+def analytics_export_view(request):
+    """Экспорт расширенной аналитики в CSV."""
+    start_date, end_date = get_period_from_request(request, default_days=365)
+    faculty_param = request.GET.get('faculty')
+    try:
+        faculty_id = int(faculty_param) if faculty_param else None
+    except (TypeError, ValueError):
+        faculty_id = None
+
+    dataset = build_analytics_dataset(start_date, end_date, faculty_id)
+    if not dataset.get('available'):
+        return HttpResponse('Данные недоступны', status=400)
+
+    response = HttpResponse(content_type='text/csv')
+    filename = f"analytics_{start_date.isoformat()}_{end_date.isoformat()}.csv"
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    writer = csv.writer(response, delimiter=';')
+
+    writer.writerow(['Период', start_date.isoformat(), end_date.isoformat()])
+    if faculty_param:
+        writer.writerow(['Фильтр по специальности', faculty_param])
+    writer.writerow([])
+
+    overview = dataset.get('overview', {})
+    writer.writerow(['Сводные показатели'])
+    writer.writerow(['Студентов', overview.get('students_total', 0)])
+    writer.writerow(['Активных студентов', overview.get('active_students', 0)])
+    writer.writerow(['Новых студентов', overview.get('new_students', 0)])
+    writer.writerow(['Средний балл', overview.get('avg_grade', 0)])
+    writer.writerow(['Посещаемость %', overview.get('attendance_rate', 0)])
+    writer.writerow(['Преподавателей', overview.get('teachers_total', 0)])
+    writer.writerow(['Групп', overview.get('groups_total', 0)])
+    writer.writerow([])
+
+    writer.writerow(['Показатели по специальностям'])
+    writer.writerow(['Специальность', 'Код', 'Студентов', 'Активных', 'Средний балл', 'Посещаемость %'])
+    for row in dataset.get('faculty_summary', []):
+        writer.writerow([
+            row.get('name', ''),
+            row.get('code', ''),
+            row.get('students_total', 0),
+            row.get('active_students', 0),
+            row.get('avg_grade', 0),
+            row.get('attendance_rate', 0),
+        ])
+    writer.writerow([])
+
+    writer.writerow(['Нагрузка преподавателей'])
+    writer.writerow(['Преподаватель', 'Групп', 'Предметов', 'Студентов'])
+    for row in dataset.get('teacher_load', []):
+        writer.writerow([
+            row.get('name', ''),
+            row.get('groups_total', 0),
+            row.get('subjects_total', 0),
+            row.get('students_total', 0),
+        ])
+    writer.writerow([])
+
+    writer.writerow(['Распределение оценок'])
+    writer.writerow(['Оценка', 'Количество'])
+    for row in dataset.get('grade_distribution', []):
+        writer.writerow([
+            row.get('grade', ''),
+            row.get('total', 0),
+        ])
+
+    return response
 
 
 @login_required
@@ -3826,19 +4411,24 @@ def teacher_attendance_save_api(request, group_id):
                 errors.append(f'#{index + 1}: некорректный предмет')
                 continue
 
+        comment_value = comment_raw[:255]
+
         if not status_raw:
-            deleted_count, _ = AttendanceRecord.objects.filter(
+            AttendanceRecord.objects.update_or_create(
                 student=student,
                 group=group,
                 teacher=teacher,
                 lesson_date=lesson_date,
                 slot_id=slot_id,
-            ).delete()
-            if deleted_count:
-                deleted += deleted_count
+                defaults={
+                    'status': AttendanceRecord.STATUS_PRESENT,
+                    'subject_id': subject_id,
+                    'comment': '',
+                    'updated_by': request.user,
+                }
+            )
+            saved += 1
             continue
-
-        comment_value = comment_raw[:255]
 
         AttendanceRecord.objects.update_or_create(
             student=student,

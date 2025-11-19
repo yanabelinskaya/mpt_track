@@ -1,0 +1,28 @@
+@import url('statistics.css');
+
+.analytics-page {
+    display: flex;
+    flex-direction: column;
+    gap: var(--stats-spacing, 24px);
+}
+
+.analytics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: var(--stats-spacing, 24px);
+}
+
+.analytics-columns {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: var(--stats-spacing, 24px);
+}
+
+.table-line {
+    display: flex;
+    flex-direction: column;
+}
+
+.table-line .muted {
+    font-size: 0.85rem;
+}

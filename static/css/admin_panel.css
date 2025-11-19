@@ -90,7 +90,7 @@ body {
 }
 
 .nav-item {
-    margin: 12px 4px;
+    margin: 4px 0px;
 }
 
 .nav-link {
@@ -102,6 +102,11 @@ body {
     border-radius: 8px;
     font-weight: 500;
     transition: all 0.2s ease;
+}
+
+.sidebar-nav {
+    padding-top: 0.7rem;
+    row-gap: 0;
 }
 
 .bi-list::before {

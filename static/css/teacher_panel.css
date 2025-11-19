@@ -77,11 +77,11 @@
 }
 
 /* Компактнее отступы между блоками навигации в кабинете преподавателя */
-.teacher-sidebar .sidebar-nav {
+ .sidebar-nav  {
     padding-top: 0.7rem;
     row-gap: 0;
 }
 
-.teacher-sidebar .nav-item {
+.nav-item {
     margin: 4px 0px;
 }

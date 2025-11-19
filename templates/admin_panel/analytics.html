@@ -1,0 +1,209 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Подсистема аналитики{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/analytics.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="analytics-page">
+    <div class="stats-header">
+        <div>
+            <p class="eyebrow">Подсистема аналитики</p>
+            <h1>Сводные отчёты и визуализации</h1>
+            <p class="subtitle">Сравнение специальностей, преподавателей и результатов</p>
+        </div>
+        <div class="stats-header-actions">
+            <a class="btn btn-outline-primary export-btn" href="{% url 'admin_analytics_export' %}{% if filter_query %}?{{ filter_query }}{% endif %}">
+                <i class="bi bi-download"></i>
+                <span>Экспорт CSV</span>
+            </a>
+        </div>
+    </div>
+
+    <form method="get" class="stats-filters card-panel">
+        <div class="filter-fields">
+            <div class="filter-field">
+                <label for="analytics_start_date">С</label>
+                <input type="date" id="analytics_start_date" name="start_date" value="{{ filters.start_date|date:'Y-m-d' }}">
+            </div>
+            <div class="filter-field">
+                <label for="analytics_end_date">По</label>
+                <input type="date" id="analytics_end_date" name="end_date" value="{{ filters.end_date|date:'Y-m-d' }}">
+            </div>
+            <div class="filter-field">
+                <label for="analytics_faculty">Специальность</label>
+                <select id="analytics_faculty" name="faculty">
+                    <option value="">Все специальности</option>
+                    {% for faculty in faculty_options %}
+                    <option value="{{ faculty.id }}" {% if selected_faculty|default:'' == faculty.id|stringformat:'s' %}selected{% endif %}>{{ faculty.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i>Применить</button>
+            <a href="{% url 'admin_analytics' %}" class="btn btn-ghost">Сбросить</a>
+        </div>
+    </form>
+
+    {% if not analytics.available %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span>Аналитика недоступна.</span>
+        </div>
+    {% else %}
+        {% with overview=analytics.overview %}
+        <div class="stats-cards">
+            <div class="stats-card accent-primary">
+                <p>Студентов</p>
+                <h2>{{ overview.students_total|default:0 }}</h2>
+                <span class="muted">Активных: {{ overview.active_students|default:0 }}</span>
+            </div>
+            <div class="stats-card accent-success">
+                <p>Новых за период</p>
+                <h2>{{ overview.new_students|default:0 }}</h2>
+            </div>
+            <div class="stats-card accent-warning">
+                <p>Средний балл</p>
+                <h2>{{ overview.avg_grade|default:0 }}</h2>
+            </div>
+            <div class="stats-card accent-attendance">
+                <p>Посещаемость</p>
+                <h2>{{ overview.attendance_rate|default:0 }}%</h2>
+            </div>
+            <div class="stats-card accent-info">
+                <p>Преподавателей</p>
+                <h2>{{ overview.teachers_total|default:0 }}</h2>
+                <span class="muted">Групп: {{ overview.groups_total|default:0 }}</span>
+            </div>
+        </div>
+        {% endwith %}
+
+        <div class="analytics-grid">
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Студенты по специальностям</h3>
+                    <button type="button" class="export-chart-btn" data-chart="facultyStudentsChart" title="Скачать график">
+                        <i class="bi bi-image"></i>
+                    </button>
+                </div>
+                <canvas id="facultyStudentsChart" height="240"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Посещаемость по специальностям</h3>
+                    <button type="button" class="export-chart-btn" data-chart="attendanceRateChart" title="Скачать график">
+                        <i class="bi bi-image"></i>
+                    </button>
+                </div>
+                <canvas id="attendanceRateChart" height="240"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Распределение оценок</h3>
+                    <button type="button" class="export-chart-btn" data-chart="gradeDistributionChart" title="Скачать график">
+                        <i class="bi bi-image"></i>
+                    </button>
+                </div>
+                <canvas id="gradeDistributionChart" height="240"></canvas>
+            </div>
+            <div class="chart-card">
+                <div class="chart-header">
+                    <h3>Нагрузка преподавателей</h3>
+                    <button type="button" class="export-chart-btn" data-chart="teacherLoadChart" title="Скачать график">
+                        <i class="bi bi-image"></i>
+                    </button>
+                </div>
+                <canvas id="teacherLoadChart" height="240"></canvas>
+            </div>
+        </div>
+
+        <div class="analytics-columns">
+            <div class="table-card">
+                <div class="card-header">
+                    <h3>Сводная таблица по специальностям</h3>
+                </div>
+                <div class="table-wrapper">
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Специальность</th>
+                                <th>Студентов</th>
+                                <th>Активных</th>
+                                <th>Средний балл</th>
+                                <th>Посещаемость %</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in analytics.faculty_summary %}
+                            <tr>
+                                <td>
+                                    <div class="table-line">
+                                        <strong>{{ row.name }}</strong>
+                                        <span class="muted">{{ row.code }}</span>
+                                    </div>
+                                </td>
+                                <td>{{ row.students_total }}</td>
+                                <td>{{ row.active_students }}</td>
+                                <td>{{ row.avg_grade }}</td>
+                                <td>{{ row.attendance_rate }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="5" class="muted text-center">Нет данных для выбранных фильтров.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <div class="card-header">
+                    <h3>ТОП преподавателей по нагрузке</h3>
+                </div>
+                <div class="table-wrapper">
+                    <table class="stats-table">
+                        <thead>
+                            <tr>
+                                <th>Преподаватель</th>
+                                <th>Групп</th>
+                                <th>Предметов</th>
+                                <th>Студентов</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in analytics.teacher_load %}
+                            <tr>
+                                <td>{{ row.name }}</td>
+                                <td>{{ row.groups_total }}</td>
+                                <td>{{ row.subjects_total }}</td>
+                                <td>{{ row.students_total }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4" class="muted text-center">Недостаточно данных.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        {{ analytics.faculty_summary|json_script:"analyticsFacultyData" }}
+        {{ analytics.grade_distribution|json_script:"analyticsGradeDistributionData" }}
+        {{ analytics.teacher_load|json_script:"analyticsTeacherLoadData" }}
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if analytics.available %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/analytics.js' %}"></script>
+{% endif %}
+{% endblock %}

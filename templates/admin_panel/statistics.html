@@ -1,0 +1,238 @@
+{% extends 'admin_panel/base.html' %}
+{% load static %}
+
+{% block title %}Расширенная статистика{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/statistics.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="stats-page">
+    <div class="stats-header">
+        <div>
+            <p class="eyebrow">Аналитика</p>
+            <h1>Статистика учебного процесса</h1>
+            <p class="subtitle">Живые показатели по студентам, оценкам и посещаемости</p>
+        </div>
+    </div>
+
+    <form method="get" class="stats-filters card-panel">
+        <div class="filter-fields">
+            <div class="filter-field">
+                <label for="id_start_date">С</label>
+                <input id="id_start_date" type="date" name="start_date" value="{{ filters.start_date|date:'Y-m-d' }}">
+            </div>
+            <div class="filter-field">
+                <label for="id_end_date">По</label>
+                <input id="id_end_date" type="date" name="end_date" value="{{ filters.end_date|date:'Y-m-d' }}">
+            </div>
+        </div>
+        <div class="filter-actions">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i>Применить</button>
+            <a href="{% url 'admin_statistics' %}" class="btn btn-ghost">Сбросить</a>
+        </div>
+    </form>
+
+    {% if not statistics.available %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            <span>Данные статистики временно недоступны.</span>
+        </div>
+    {% else %}
+        {% with summary=statistics.summary grade=statistics.grade_overview attendance=statistics.attendance_summary %}
+        <div class="stats-tabs" role="tablist" aria-label="Разделы статистики">
+            <button type="button"
+                    class="stats-tab-btn is-active"
+                    data-tab="students"
+                    id="stats-tab-students"
+                    role="tab"
+                    aria-controls="stats-panel-students"
+                    aria-selected="true">
+                <i class="bi bi-mortarboard"></i>
+                <span>Студенты</span>
+            </button>
+            <button type="button"
+                    class="stats-tab-btn"
+                    data-tab="grades"
+                    id="stats-tab-grades"
+                    role="tab"
+                    aria-controls="stats-panel-grades"
+                    aria-selected="false">
+                <i class="bi bi-bar-chart-line"></i>
+                <span>Оценки</span>
+            </button>
+            <button type="button"
+                    class="stats-tab-btn"
+                    data-tab="attendance"
+                    id="stats-tab-attendance"
+                    role="tab"
+                    aria-controls="stats-panel-attendance"
+                    aria-selected="false">
+                <i class="bi bi-check2-circle"></i>
+                <span>Посещаемость</span>
+            </button>
+        </div>
+
+        <div class="stats-tab-panels">
+            <!-- Студенты -->
+            <section class="stats-tab-panel is-active"
+                     data-tab-panel="students"
+                     id="stats-panel-students"
+                     role="tabpanel"
+                     aria-labelledby="stats-tab-students">
+                <div class="stats-cards">
+                    <div class="stats-card accent-primary">
+                        <p>Всего студентов</p>
+                        <h2>{{ summary.total_students|default:0 }}</h2>
+                    </div>
+                    <div class="stats-card accent-success">
+                        <p>Активных</p>
+                        <h2>{{ summary.active_students|default:0 }}</h2>
+                    </div>
+                    <div class="stats-card accent-info">
+                        <p>Новых за период</p>
+                        <h2>{{ summary.new_students|default:0 }}</h2>
+                    </div>
+                    <div class="stats-card accent-neutral">
+                        <p>Групп</p>
+                        <h2>{{ summary.groups_total|default:0 }}</h2>
+                        <span class="muted">Преподавателей: {{ summary.teachers_total|default:0 }}</span>
+                    </div>
+                </div>
+
+                <div class="stats-charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Коды специальностей</h3>
+                            <button type="button" class="export-chart-btn" data-chart="facultyDistributionChart" title="Скачать график">
+                                <i class="bi bi-image"></i>
+                            </button>
+                        </div>
+                        <canvas id="facultyDistributionChart" height="260"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Статусы обучения</h3>
+                            <button type="button" class="export-chart-btn" data-chart="statusDistributionChart" title="Скачать график">
+                                <i class="bi bi-image"></i>
+                            </button>
+                        </div>
+                        <canvas id="statusDistributionChart" height="220"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Оценки -->
+            <section class="stats-tab-panel"
+                     data-tab-panel="grades"
+                     id="stats-panel-grades"
+                     role="tabpanel"
+                     aria-labelledby="stats-tab-grades"
+                     hidden>
+                <div class="stats-cards">
+                    <div class="stats-card accent-warning">
+                        <p>Средний балл</p>
+                        <h2>{{ grade.avg_grade|default:0 }}</h2>
+                        <span class="muted">По всем дисциплинам</span>
+                    </div>
+                    <div class="stats-card accent-primary">
+                        <p>Оценок за период</p>
+                        <h2>{{ grade.grade_volume|default:0 }}</h2>
+                    </div>
+                    <div class="stats-card accent-neutral">
+                        <p>Предметов</p>
+                        <h2>{{ summary.subjects_total|default:0 }}</h2>
+                        <span class="muted">Преподавателей: {{ summary.teachers_total|default:0 }}</span>
+                    </div>
+                </div>
+
+                <div class="stats-charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Распределение оценок</h3>
+                            <button type="button" class="export-chart-btn" data-chart="gradeDistributionChart" title="Скачать график">
+                                <i class="bi bi-image"></i>
+                            </button>
+                        </div>
+                        <canvas id="gradeDistributionChart" height="260"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>ТОП дисциплин</h3>
+                            <button type="button" class="export-chart-btn" data-chart="topSubjectsChart" title="Скачать график">
+                                <i class="bi bi-image"></i>
+                            </button>
+                        </div>
+                        <canvas id="topSubjectsChart" height="260"></canvas>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Посещаемость -->
+            <section class="stats-tab-panel"
+                     data-tab-panel="attendance"
+                     id="stats-panel-attendance"
+                     role="tabpanel"
+                     aria-labelledby="stats-tab-attendance"
+                     hidden>
+                <div class="stats-cards">
+                    <div class="stats-card accent-attendance">
+                        <p>Посещаемость</p>
+                        <h2>{{ attendance.rate|default:0 }}%</h2>
+                        <span class="muted">В среднем за выбранный период</span>
+                    </div>
+                    <div class="stats-card accent-primary">
+                        <p>Отметок всего</p>
+                        <h2>{{ attendance.total|default:0 }}</h2>
+                    </div>
+                    <div class="stats-card accent-warning">
+                        <p>Отсутствий</p>
+                        <h2>{{ attendance.absent|default:0 }}</h2>
+                    </div>
+                    <div class="stats-card accent-info">
+                        <p>Опозданий</p>
+                        <h2>{{ attendance.late|default:0 }}</h2>
+                    </div>
+                </div>
+
+                <div class="stats-charts-grid">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Посещаемость по месяцам</h3>
+                            <button type="button" class="export-chart-btn" data-chart="attendanceTrendChart" title="Скачать график">
+                                <i class="bi bi-image"></i>
+                            </button>
+                        </div>
+                        <canvas id="attendanceTrendChart" height="260"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <h3>Распределение статусов</h3>
+                            <button type="button" class="export-chart-btn" data-chart="attendanceStatusChart" title="Скачать график">
+                                <i class="bi bi-image"></i>
+                            </button>
+                        </div>
+                        <canvas id="attendanceStatusChart" height="220"></canvas>
+                    </div>
+                </div>
+            </section>
+        </div>
+        {% endwith %}
+
+        {{ statistics.attendance_trend|json_script:"attendanceTrendData" }}
+        {{ statistics.faculty_distribution|json_script:"facultyDistributionData" }}
+        {{ statistics.status_distribution|json_script:"statusDistributionData" }}
+        {{ statistics.grade_distribution|json_script:"gradeDistributionData" }}
+        {{ statistics.top_subjects|json_script:"topSubjectsData" }}
+        {{ statistics.attendance_summary|json_script:"attendanceSummaryData" }}
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{% if statistics.available %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{% static 'js/statistics.js' %}"></script>
+{% endif %}
+{% endblock %}
