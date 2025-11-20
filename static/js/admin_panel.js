@@ -164,6 +164,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     initHotkeys();
 
+    const hotkeyGuideButton = document.getElementById('hotkeyGuideButton');
+    if (hotkeyGuideButton) {
+        hotkeyGuideButton.addEventListener('click', () => {
+            if (window.studentJournalUI.showHotkeySheet) {
+                window.studentJournalUI.showHotkeySheet();
+            }
+        });
+    }
+
     function initHotkeys() {
         if (!document.body.dataset.hotkeys) {
             return;
@@ -543,6 +552,9 @@ document.addEventListener('DOMContentLoaded', function() {
             });
             return overlay;
         }
+
+        window.studentJournalUI.showHotkeySheet = () => toggleCheatSheet(true);
+        window.studentJournalUI.hideHotkeySheet = () => toggleCheatSheet(false);
 
         function parseCombo(combo) {
             const parts = combo.split('+').map(part => part.trim()).filter(Boolean);

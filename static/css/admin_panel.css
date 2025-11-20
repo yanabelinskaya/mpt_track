@@ -817,6 +817,35 @@ html.sidebar-prefers-collapsed body .nav-item {
     transition: outline 0.2s ease;
 }
 
+.hotkey-guide {
+    border: 1px solid var(--sidebar-border);
+    border-radius: 12px;
+    padding: 8px 14px;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: var(--nav-link-color);
+    font-weight: 500;
+    line-height: 1;
+    transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.hotkey-guide i {
+    font-size: 1rem;
+    color: var(--bs-primary);
+}
+
+.hotkey-guide:hover {
+    background: var(--nav-link-hover);
+    color: var(--bs-body-color);
+    border-color: rgba(99, 102, 241, 0.6);
+}
+
+.hotkey-guide__label {
+    white-space: nowrap;
+}
+
 @media (max-width: 576px) {
     .hotkey-overlay {
         padding: 12px;
@@ -833,5 +862,9 @@ html.sidebar-prefers-collapsed body .nav-item {
 
     .hotkey-badges {
         justify-content: flex-start;
+    }
+
+    .hotkey-guide__label {
+        display: none;
     }
 }
