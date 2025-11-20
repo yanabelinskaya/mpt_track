@@ -1037,6 +1037,7 @@ class ScheduleWeek(models.Model):
     week_start = models.DateField('Начало недели')
     lessons = models.JSONField('Занятия', default=dict, blank=True)
     day_buildings = models.JSONField('Корпуса по дням', default=dict, blank=True)
+    change_markers = models.JSONField('Маркеры изменений', default=list, blank=True)
     created_by = models.ForeignKey(
         User,
         on_delete=models.SET_NULL,

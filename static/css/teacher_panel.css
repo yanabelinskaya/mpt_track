@@ -70,10 +70,7 @@
     background: var(--surface);
 }
 
-.main-header {
-    background-color: transparent;
-    color: var(--bs-body-color);
-}
+
 
 /* Компактнее отступы между блоками навигации в кабинете преподавателя */
  .sidebar-nav  {

@@ -60,6 +60,35 @@
     </article>
   </section>
 
+  <!-- История изменений -->
+  <section class="panel schedule-updates-panel">
+    <header class="panel-header">
+      <div>
+        <h2>Изменения расписания</h2>
+        <p class="calendar-subtitle">последние обновления, касающиеся ваших пар</p>
+      </div>
+    </header>
+    <ul class="schedule-updates__list">
+      {% for change in schedule_updates %}
+      <li class="schedule-updates__item schedule-updates__item--{{ change.type }}">
+        <div class="schedule-updates__meta">
+          <span class="schedule-updates__badge">{{ change.type_label }}</span>
+          <time>{{ change.timestamp_display }}</time>
+        </div>
+        <p class="schedule-updates__text">{{ change.description|default:"Изменение расписания" }}</p>
+        <div class="schedule-updates__footer">
+          <span class="schedule-updates__group">{{ change.group_code }}</span>
+        </div>
+      </li>
+      {% empty %}
+      <li class="schedule-updates__item schedule-updates__item--empty">
+        <p>Новых изменений нет.</p>
+      </li>
+      {% endfor %}
+    </ul>
+  </section>
+
+
   <!-- Календарь текущей недели -->
   <section class="panel calendar-panel calendar-full adminlook teacher-calendar-panel">
     <div class="panel-header">
@@ -91,7 +120,7 @@
           </div>
 
           {% for cell in row.cells %}
-          <div class="grid-cell grid-cell--droppable{% if cell.lesson %} has-lesson{% endif %}"
+          <div class="grid-cell grid-cell--droppable{% if cell.lesson %} has-lesson{% endif %}{% if cell.change %} grid-cell--changed-{{ cell.change.type }}{% endif %}"
                data-day="{{ cell.day_key }}"
                data-slot="{{ cell.slot_id }}">
             {% if cell.lesson %}
@@ -104,6 +133,9 @@
                   <span class="lesson-line">{{ cell.lesson.lesson_type }}</span>
                 </div>
               </div>
+              {% if cell.change %}
+              <span class="grid-cell__change">{{ cell.change.label }}</span>
+              {% endif %}
             {% else %}
               <div class="grid-cell__placeholder">
                 <i class="bi bi-dash-lg"></i>
@@ -115,42 +147,6 @@
         </div>
         {% endfor %}
       </div>
-    </div>
-  </section>
-
-  <!-- Группы: карточки -->
-  <section class="panel groups-panel">
-    <div class="panel-header">
-      <div>
-        <h2>Группы</h2>
-        <p>ваши предметы и курсы</p>
-      </div>
-    </div>
-    <div class="groups-grid">
-      {% for card in group_cards %}
-      <article class="group-card">
-        <div class="group-card-top">
-          <div class="group-chip">{{ card.group.code }}</div>
-          <div class="group-stats">
-            <span class="group-count"><i class="bi bi-people"></i> {{ card.group.student_total|default:"0" }}</span>
-            {% if card.course %}<span class="group-course"><i class="bi bi-mortarboard"></i> {{ card.course }} курс</span>{% endif %}
-          </div>
-        </div>
-        <h3 class="group-title">{{ card.subject_name|default:"Предмет не указан" }}</h3>
-        <p class="group-submeta">
-          {% if card.group.faculty %}
-            {{ card.group.faculty.name }}
-          {% else %}
-            Специальность не указана
-          {% endif %}
-        </p>
-        <a href="{% url 'group_detail' card.group.id %}" class="btn-link">
-          Перейти к группе <i class="bi bi-arrow-right-short"></i>
-        </a>
-      </article>
-      {% empty %}
-      <p class="empty">Группы пока не закреплены.</p>
-      {% endfor %}
     </div>
   </section>
 

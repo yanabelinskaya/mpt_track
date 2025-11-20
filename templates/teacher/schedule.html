@@ -11,6 +11,58 @@
 
 {% block content %}
 <div class="teacher-dashboard">
+  <section class="panel today-schedule-panel adminlook">
+    <div class="panel-header">
+      <div>
+        <h2>Пары сегодня</h2>
+        <p class="calendar-subtitle">{{ today_label }} • Корпус: {{ today_building_label }}</p>
+      </div>
+    </div>
+    <div class="schedule-day-board schedule-day-board--single">
+      <section class="day-board day-board--single" data-day="{{ today_day_key }}">
+        <header class="day-board__header">
+          <span class="day-board__name">{{ today_label }}</span>
+          <span class="day-building-badge day-building-badge--compact">{{ today_building_label }}</span>
+        </header>
+        <div class="day-board__body">
+          {% for slot in today_slots %}
+          <article class="day-slot" data-day="{{ today_day_key }}" data-slot="{{ slot.slot.id }}">
+            <div class="day-slot__time">
+              <span class="day-slot__order">{{ slot.slot.order }} пара</span>
+              <span class="day-slot__range">{{ slot.slot.start }} – {{ slot.slot.end }}</span>
+            </div>
+            <div class="day-slot__content">
+              {% if slot.lesson_details %}
+                {% for detail in slot.lesson_details %}
+                <div class="schedule-lesson">
+                  <div class="schedule-lesson__title">{{ detail.subject }}</div>
+                  <div class="schedule-lesson__meta">
+                    <span class="lesson-line">{{ detail.group_code }}</span>
+                    <span class="lesson-line">{{ detail.lesson_type }}</span>
+                  </div>
+                  <div class="schedule-lesson__tags">
+                    <span class="schedule-tag">{{ detail.building_label }}</span>
+                    <span class="schedule-tag">{{ detail.parity_label }}</span>
+                  </div>
+                </div>
+                {% endfor %}
+                {% if slot.change %}
+                <span class="grid-cell__change">{{ slot.change.label }}</span>
+                {% endif %}
+              {% else %}
+                <div class="day-slot__empty">
+                  <i class="bi bi-calendar2-plus"></i>
+                  <span>Свободно</span>
+                </div>
+              {% endif %}
+            </div>
+          </article>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+  </section>
+
   <section class="panel teacher-calendar-panel calendar-full adminlook">
     <div class="panel-header">
       <div>
@@ -64,7 +116,7 @@
           </div>
 
           {% for cell in row.cells %}
-          <div class="grid-cell grid-cell--droppable{% if cell.lesson_details %} has-lesson{% endif %}"
+          <div class="grid-cell grid-cell--droppable{% if cell.lesson_details %} has-lesson{% endif %}{% if cell.change %} grid-cell--changed-{{ cell.change.type }}{% endif %}"
                data-day="{{ cell.day_key }}"
                data-slot="{{ cell.slot_id }}">
             {% if cell.lesson_details %}
@@ -77,6 +129,9 @@
                 </div>
               </div>
               {% endfor %}
+              {% if cell.change %}
+              <span class="grid-cell__change">{{ cell.change.label }}</span>
+              {% endif %}
             {% else %}
               <div class="grid-cell__placeholder">
                 <i class="bi bi-dash-lg"></i>

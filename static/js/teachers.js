@@ -2,8 +2,11 @@ const selectedTeacherIds = new Set();
 let teacherToDeleteId = null;
 
 function closeDropdownMenus() {
-    document.querySelectorAll('.dropdown-menu.active').forEach(menu => {
+    document.querySelectorAll('.dropdown-menu.active, .filter-menu.active').forEach(menu => {
         menu.classList.remove('active');
+    });
+    document.querySelectorAll('.action-btn.is-open, .filter-trigger.is-open').forEach(trigger => {
+        trigger.classList.remove('is-open');
     });
 }
 
@@ -21,6 +24,7 @@ function initDropdown(triggerId, menuId, onToggle) {
         closeDropdownMenus();
         if (willOpen) {
             menu.classList.add('active');
+            trigger.classList.add('is-open');
             if (typeof onToggle === 'function') {
                 onToggle();
             }
@@ -330,7 +334,7 @@ window.addEventListener('DOMContentLoaded', () => {
     initDropdown('addTeacherTrigger', 'addTeacherMenu');
     initDropdown('exportTrigger', 'exportMenu', updateSelectionState);
     initDropdown('filterTrigger', 'filterMenu');
-    document.addEventListener('click', closeDropdownMenus);
+    document.addEventListener('click', () => closeDropdownMenus());
 
     const searchForm = document.querySelector('.search-form');
     const searchField = document.querySelector('.search-field');

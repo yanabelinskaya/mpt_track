@@ -176,11 +176,11 @@
 /* Основной контент */
 .content-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: var(--spacing);
 }
 
-.quick-actions, .recent-activity {
+.quick-actions, .recent-activity, .schedule-updates {
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: var(--radius);
@@ -188,7 +188,7 @@
     box-shadow: var(--shadow);
 }
 
-.quick-actions h3, .recent-activity h3 {
+.quick-actions h3, .recent-activity h3, .schedule-updates__header h3 {
     margin: 0 0 var(--spacing-sm) 0;
     font-size: 1.1rem;
     font-weight: 600;
@@ -199,6 +199,75 @@
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: var(--spacing-xs);
+}
+
+.schedule-updates__header p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.schedule-updates__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-xs);
+}
+
+.schedule-updates__item {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: var(--spacing-xs);
+    background: var(--surface);
+    box-shadow: inset 0 0 0 1px rgba(99,102,241,0.04);
+}
+
+.schedule-updates__item--added {
+    border-color: rgba(34, 197, 94, 0.35);
+    box-shadow: inset 0 0 0 1px rgba(34,197,94,0.15);
+}
+
+.schedule-updates__item--removed {
+    border-color: rgba(239, 68, 68, 0.35);
+    box-shadow: inset 0 0 0 1px rgba(239,68,68,0.15);
+}
+
+.schedule-updates__meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.schedule-updates__badge {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: var(--surface-hover);
+}
+
+.schedule-updates__text {
+    margin: 0 0 6px 0;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.schedule-updates__footer {
+    display: flex;
+    gap: 8px;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.schedule-updates__item--empty {
+    text-align: center;
+    color: var(--text-muted);
 }
 
 .action-btn {

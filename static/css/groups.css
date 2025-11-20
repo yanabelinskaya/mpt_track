@@ -877,7 +877,7 @@
     
     .group-row {
         grid-template-columns: 1fr;
-        gap: 12px;
+        gap: 0px;
         padding: 16px;
         border: 1px solid var(--sidebar-border);
         border-radius: 8px;

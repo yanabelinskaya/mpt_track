@@ -39,15 +39,14 @@ function initializeFilters() {
     const filterTrigger = document.getElementById('filterTrigger');
     const filterMenu = document.getElementById('filterMenu');
     
-    console.log('Инициализация фильтров:', filterTrigger, filterMenu); // Для отладки
-    
     if (filterTrigger && filterMenu) {
+        if (filterTrigger.dataset.dropdownManaged === 'true') {
+            return;
+        }
         // Обработчик клика по кнопке фильтров
         filterTrigger.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
-            console.log('Клик по фильтрам'); // Для отладки
             
             // Переключаем видимость меню
             const isActive = filterMenu.classList.contains('active');
@@ -66,14 +65,6 @@ function initializeFilters() {
                 filterMenu.classList.add('active');
             }
         });
-        
-        // Закрытие при клике вне меню
-        document.addEventListener('click', function(e) {
-            if (!filterTrigger.contains(e.target) && !filterMenu.contains(e.target)) {
-                filterMenu.classList.remove('active');
-            }
-        });
-        
         // Предотвращаем закрытие при клике внутри меню
         filterMenu.addEventListener('click', function(e) {
             e.stopPropagation();
@@ -88,15 +79,14 @@ function initializeExport() {
     const exportTrigger = document.getElementById('exportTrigger');
     const exportMenu = document.getElementById('exportMenu');
     
-    console.log('Инициализация экспорта:', exportTrigger, exportMenu); // Для отладки
-    
     if (exportTrigger && exportMenu) {
+        if (exportTrigger.dataset.dropdownManaged === 'true') {
+            return;
+        }
         // Обработчик клика по кнопке экспорта
         exportTrigger.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            
-            console.log('Клик по экспорту'); // Для отладки
             
             // Переключаем видимость меню
             const isActive = exportMenu.classList.contains('active');
@@ -115,20 +105,30 @@ function initializeExport() {
                 exportMenu.classList.add('active');
             }
         });
-        
-        // Закрытие при клике вне меню
-        document.addEventListener('click', function(e) {
-            if (!exportTrigger.contains(e.target) && !exportMenu.contains(e.target)) {
-                exportMenu.classList.remove('active');
-            }
-        });
-        
         // Предотвращаем закрытие при клике внутри меню
         exportMenu.addEventListener('click', function(e) {
             e.stopPropagation();
         });
     }
 }
+
+document.addEventListener('click', function(e) {
+    const filterTrigger = document.getElementById('filterTrigger');
+    const filterMenu = document.getElementById('filterMenu');
+    if (filterTrigger && filterMenu && filterTrigger.dataset.dropdownManaged !== 'true') {
+        if (!filterTrigger.contains(e.target) && !filterMenu.contains(e.target)) {
+            filterMenu.classList.remove('active');
+        }
+    }
+
+    const exportTrigger = document.getElementById('exportTrigger');
+    const exportMenu = document.getElementById('exportMenu');
+    if (exportTrigger && exportMenu && exportTrigger.dataset.dropdownManaged !== 'true') {
+        if (!exportTrigger.contains(e.target) && !exportMenu.contains(e.target)) {
+            exportMenu.classList.remove('active');
+        }
+    }
+});
 
 // Массовые действия
 function initializeBulkActions() {

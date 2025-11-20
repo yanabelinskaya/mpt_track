@@ -334,7 +334,7 @@
             </div>
             
             <div class="filter-dropdown">
-                <button type="button" class="filter-trigger" id="filterTrigger">
+                <button type="button" class="filter-trigger" id="filterTrigger" data-dropdown-managed="true">
                     <i class="bi bi-funnel"></i>
                     <span>Фильтры</span>
                     {% if group_filter %}
@@ -495,7 +495,7 @@
             <div class="table-actions">
                 <!-- Экспорт -->
                 <div class="dropdown-action">
-                    <button class="action-btn secondary" id="exportTrigger" title="Экспорт">
+                    <button class="action-btn secondary" id="exportTrigger" title="Экспорт" data-dropdown-managed="true">
                         <i class="bi bi-download"></i>
                         Экспорт
                         <i class="bi bi-chevron-down ms-1"></i>
@@ -954,6 +954,7 @@ let studentIdToDelete = null;
 let bulkOperationData = null;
 let selectedStudentsIds = new Set();
 let allStudentsSelected = false;  // Флаг "выбрать все"
+const dropdownConfigs = [];
 
 const csrftoken = getCookie('csrftoken');
 
@@ -1048,107 +1049,85 @@ function getSelectedStudentsData() {
 
 // === ОБРАБОТЧИКИ DROPDOWN МЕНЮ ===
 
+function registerDropdown(trigger, menu) {
+    if (!trigger || !menu) {
+        return false;
+    }
+    dropdownConfigs.push({ trigger, menu });
+    return true;
+}
+
 function initializeDropdowns() {
-    console.log('Инициализация dropdown меню...');
-    
-    // Обработчик для кнопки "Добавить"
     const addStudentTrigger = document.getElementById('addStudentTrigger');
     const addStudentMenu = document.getElementById('addStudentMenu');
     
-    if (addStudentTrigger && addStudentMenu) {
-        console.log('Найдены элементы для dropdown "Добавить"');
-        
+    if (registerDropdown(addStudentTrigger, addStudentMenu)) {
         addStudentTrigger.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Клик по кнопке "Добавить"');
-            
-            // Закрываем все остальные dropdown
+            const willOpen = !addStudentMenu.classList.contains('active');
             closeAllDropdowns();
-            
-            // Переключаем состояние текущего dropdown (используем класс active)
-            addStudentMenu.classList.toggle('active');
-            
-            console.log('Dropdown "Добавить" теперь:', addStudentMenu.classList.contains('active') ? 'показан' : 'скрыт');
+            if (willOpen) {
+                addStudentMenu.classList.add('active');
+                addStudentTrigger.classList.add('is-open');
+            }
         });
-    } else {
-        console.error('Не найдены элементы для dropdown "Добавить"');
-        console.error('addStudentTrigger:', addStudentTrigger);
-        console.error('addStudentMenu:', addStudentMenu);
+        addStudentMenu.addEventListener('click', e => e.stopPropagation());
     }
     
-    // Обработчик для кнопки "Экспорт"
     const exportTrigger = document.getElementById('exportTrigger');
     const exportMenu = document.getElementById('exportMenu');
     
-    if (exportTrigger && exportMenu) {
-        console.log('Найдены элементы для dropdown "Экспорт"');
-        
+    if (registerDropdown(exportTrigger, exportMenu)) {
         exportTrigger.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Клик по кнопке "Экспорт"');
-            
-            // Закрываем все остальные dropdown
+            const willOpen = !exportMenu.classList.contains('active');
             closeAllDropdowns();
-            
-            // Переключаем состояние текущего dropdown (используем класс active)
-            exportMenu.classList.toggle('active');
-            
-            // Обновляем содержимое меню экспорта
-            updateExportMenu();
-            
-            console.log('Dropdown "Экспорт" теперь:', exportMenu.classList.contains('active') ? 'показан' : 'скрыт');
+            if (willOpen) {
+                exportMenu.classList.add('active');
+                exportTrigger.classList.add('is-open');
+                updateExportMenu();
+            }
         });
-    } else {
-        console.error('Не найдены элементы для dropdown "Экспорт"');
-        console.error('exportTrigger:', exportTrigger);
-        console.error('exportMenu:', exportMenu);
+        exportMenu.addEventListener('click', e => e.stopPropagation());
     }
     
-    // Обработчик для кнопки фильтров
     const filterTrigger = document.getElementById('filterTrigger');
     const filterMenu = document.getElementById('filterMenu');
     
-    if (filterTrigger && filterMenu) {
-        console.log('Найдены элементы для dropdown "Фильтры"');
-        
+    if (registerDropdown(filterTrigger, filterMenu)) {
         filterTrigger.addEventListener('click', function(e) {
             e.preventDefault();
             e.stopPropagation();
-            console.log('Клик по кнопке "Фильтры"');
-            
-            // Закрываем все остальные dropdown
+            const willOpen = !filterMenu.classList.contains('active');
             closeAllDropdowns();
-            
-            // Переключаем состояние текущего dropdown (используем класс active)
-            filterMenu.classList.toggle('active');
-            
-            console.log('Dropdown "Фильтры" теперь:', filterMenu.classList.contains('active') ? 'показан' : 'скрыт');
+            if (willOpen) {
+                filterMenu.classList.add('active');
+                filterTrigger.classList.add('is-open');
+            }
         });
+        filterMenu.addEventListener('click', e => e.stopPropagation());
     }
     
-    // Закрытие dropdown при клике вне их
     document.addEventListener('click', function(e) {
-        // Проверяем, что клик не по dropdown элементам
         if (!e.target.closest('.dropdown-action') && !e.target.closest('.filter-dropdown')) {
             closeAllDropdowns();
         }
     });
-    
-    console.log('Dropdown меню инициализированы');
 }
 
-function closeAllDropdowns() {
-    const dropdowns = [
-        document.getElementById('addStudentMenu'),
-        document.getElementById('exportMenu'),
-        document.getElementById('filterMenu')
-    ];
-    
-    dropdowns.forEach(dropdown => {
-        if (dropdown) {
-            dropdown.classList.remove('active'); // Используем класс active
+function closeAllDropdowns(exceptMenu = null) {
+    dropdownConfigs.forEach(({ trigger, menu }) => {
+        if (!menu) {
+            return;
+        }
+        if (exceptMenu && menu === exceptMenu) {
+            return;
+        }
+        menu.classList.remove('active');
+        if (trigger) {
+            trigger.classList.remove('is-open');
         }
     });
 }

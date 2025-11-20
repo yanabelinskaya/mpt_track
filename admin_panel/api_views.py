@@ -1192,7 +1192,7 @@ def student_export_view(request):
                 'Отчество': student_data['middle_name'] or '',
                 'Email': student_data['email'],
                 'Телефон': student_data.get('phone', '') or '',
-                'Группа': student_data['group']['name'] if student_data['group'] else '',
+                'Группа': student_data['group']['code'] if student_data['group'] and student_data['group'].get('code') else (student_data['group']['name'] if student_data['group'] else ''),
                 'Факультет': student_data['group']['faculty']['name'] if student_data['group'] and student_data['group']['faculty'] else '',
                 'Статус': 'Активен' if student_data['is_active_account'] else 'Неактивен',
                 'Логин': student_data['username'] or '',

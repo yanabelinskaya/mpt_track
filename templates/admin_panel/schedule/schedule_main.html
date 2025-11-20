@@ -76,7 +76,22 @@
                 </div>
             </div>
             <div class="schedule-card__body">
-                <ul class="change-log__list" id="scheduleChangeLogList"></ul>
+                <ul class="change-log__list" id="scheduleChangeLogList">
+                    {% for change in current_week_changes %}
+                    <li class="change-log__item change-log__item--{{ change.type|default:'updated' }}">
+                        <div class="change-log__head">
+                            <span class="change-log__type">{{ change.typeLabel|default:'Изменение' }}</span>
+                            <time>{{ change.display_time }}</time>
+                        </div>
+                        <p class="change-log__context">{{ change.dayLabel|default:change.day }} • {{ change.slotLabel|default:change.slot }} • {{ change.parityLabel|default:change.parity }}</p>
+                        <div class="change-log__value">{{ change.description|default:change.subject }}</div>
+                    </li>
+                    {% empty %}
+                    <li class="change-log__item change-log__item--empty">
+                        <p class="change-log__context">Нет изменений для выбранной недели</p>
+                    </li>
+                    {% endfor %}
+                </ul>
             </div>
         </article>
     </section>
@@ -222,6 +237,7 @@
                                 {% for day in weekday_order %}
                                 <div class="grid-cell grid-cell--day" data-day="{{ day.key }}">
                                     <span class="day-name">{{ day.short }}</span>
+                                    <span class="day-date">{{ day.date_label }}</span>
                                     <span class="day-building-badge" data-building-badge="{{ day.key }}"></span>
                                 </div>
                                 {% endfor %}
@@ -392,6 +408,7 @@
         weekLessons: {{ week_lessons_json|safe }},
         dayBuildings: {{ day_buildings_json|safe }},
         weekBuildings: {{ week_buildings_json|safe }},
+        weekChanges: {{ week_changes_json|safe }},
         activeGroup: {{ active_group_json|safe }},
         endpoints: {
             save: '{{ schedule_save_url|escapejs }}',

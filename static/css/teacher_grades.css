@@ -277,7 +277,7 @@
 }
 
 .grades-table thead th {
-    background: var(--surface);
+    background: var(--surface, var(--bs-body-bg, #fff));
     position: sticky;
     top: 0;
     bottom: auto;
@@ -292,9 +292,9 @@
 .student-column-header {
     position: sticky;
     left: 0;
-    background: var(--surface);
+    background: var(--surface, var(--bs-body-bg, #fff));
     z-index: 5;
-    min-width: 300px;
+    min-width: clamp(190px, 32vw, 300px);
     text-align: left;
 }
 
@@ -302,9 +302,9 @@
 .average-column-header {
     position: sticky;
     right: 0;
-    background: var(--surface);
+    background: var(--surface, var(--bs-body-bg, #fff));
     z-index: 5;
-    min-width: 110px;
+    min-width: clamp(80px, 16vw, 130px);
     box-shadow: -6px 0 16px rgba(15, 23, 42, 0.08);
 }
 

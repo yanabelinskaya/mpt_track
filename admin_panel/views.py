@@ -22,6 +22,8 @@ import io
 import re
 import uuid
 from datetime import datetime, timedelta, date
+import threading
+import logging
 from importlib import import_module
 from urllib.parse import urlencode
 import tempfile
@@ -29,9 +31,12 @@ import os
 import csv
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
 from django.contrib.sessions.models import Session
 from collections import defaultdict
+
+logger = logging.getLogger(__name__)
 
 ATTENDANCE_STATUS_META = {
     'order': ['', 'absent', 'late', 'excused'],
@@ -58,6 +63,147 @@ ATTENDANCE_STATUS_META = {
         },
     },
 }
+
+
+SCHEDULE_WEEKDAY_LABELS = {
+    'monday': 'Понедельник',
+    'tuesday': 'Вторник',
+    'wednesday': 'Среда',
+    'thursday': 'Четверг',
+    'friday': 'Пятница',
+    'saturday': 'Суббота',
+    'sunday': 'Воскресенье',
+}
+
+SCHEDULE_TIME_SLOTS = {
+    'slot1': {'order': 1, 'start': '08:30', 'end': '10:00'},
+    'slot2': {'order': 2, 'start': '10:10', 'end': '11:40'},
+    'slot3': {'order': 3, 'start': '12:00', 'end': '13:30'},
+    'slot4': {'order': 4, 'start': '13:50', 'end': '15:20'},
+    'slot5': {'order': 5, 'start': '15:30', 'end': '17:00'},
+}
+
+SCHEDULE_PARITY_LABELS = {
+    'both': 'Всегда',
+    'numerator': 'Числитель',
+    'denominator': 'Знаменатель',
+}
+
+CHANGE_TYPE_PRIORITY = {
+    'removed': 3,
+    'added': 2,
+    'updated': 1,
+}
+
+
+def get_recent_schedule_changes(limit=10):
+    """Сводка последних изменений расписания для админ-панели"""
+    if not MODELS_AVAILABLE:
+        return []
+    cutoff = timezone.now() - timedelta(days=7)
+    max_weeks = max(limit * 3, 15)
+    weeks = (
+        ScheduleWeek.objects.exclude(change_markers=[])
+        .select_related('group', 'group__faculty')
+        .order_by('-updated_at')[:max_weeks]
+    )
+    changes = []
+    for week in weeks:
+        markers = week.change_markers or []
+        for marker in markers:
+            change_time = parse_marker_timestamp(marker.get('changedAt')) or week.updated_at
+            if change_time < cutoff:
+                continue
+            changes.append({
+                'group_code': week.group.code if week.group else 'Группа',
+                'faculty': week.group.faculty.name if week.group and week.group.faculty else '',
+                'type': marker.get('type') or 'updated',
+                'type_label': marker.get('typeLabel') or 'Изменение',
+                'description': marker.get('description') or '',
+                'timestamp': change_time,
+                'timestamp_display': timezone.localtime(change_time).strftime('%d.%m %H:%M') if change_time else '',
+            })
+    changes.sort(key=lambda entry: entry['timestamp'], reverse=True)
+    return changes[:limit]
+
+
+def parse_marker_timestamp(value):
+    if not value:
+        return None
+    parsed = parse_datetime(value)
+    if parsed and timezone.is_naive(parsed):
+        parsed = timezone.make_aware(parsed, timezone.get_current_timezone())
+    return parsed
+
+
+def prune_change_markers(markers, cutoff):
+    if not markers:
+        return []
+    pruned = []
+    for marker in markers:
+        marker_time = parse_marker_timestamp(marker.get('changedAt'))
+        if marker_time and marker_time < cutoff:
+            continue
+        if not marker_time:
+            continue
+        pruned.append(marker)
+    return pruned
+
+
+def get_teacher_schedule_updates(teacher, limit=10):
+    if not MODELS_AVAILABLE or not teacher:
+        return []
+    group_ids = list(teacher.groups.values_list('id', flat=True))
+    if not group_ids:
+        return []
+    cutoff = timezone.now() - timedelta(days=7)
+    weeks = (
+        ScheduleWeek.objects.filter(group_id__in=group_ids)
+        .exclude(change_markers=[])
+        .select_related('group')
+        .order_by('-updated_at')[:max(limit * 3, 15)]
+    )
+    updates = []
+    teacher_id = teacher.id
+    for week in weeks:
+        for marker in week.change_markers or []:
+            teacher_ids = marker.get('teacherIds') or []
+            if teacher_id not in [int(tid) for tid in teacher_ids if str(tid).isdigit()]:
+                continue
+            marker_time = parse_marker_timestamp(marker.get('changedAt')) or week.updated_at
+            if marker_time < cutoff:
+                continue
+            updates.append({
+                'group_code': week.group.code if week.group else 'Группа',
+                'description': marker.get('description') or '',
+                'type': marker.get('type') or 'updated',
+                'type_label': marker.get('typeLabel') or 'Изменение',
+                'timestamp': marker_time,
+                'timestamp_display': timezone.localtime(marker_time).strftime('%d.%m %H:%M'),
+            })
+    updates.sort(key=lambda entry: entry['timestamp'], reverse=True)
+    return updates[:limit]
+
+
+def dispatch_schedule_notifications(notification_jobs, from_email):
+    """Синхронная отправка email-уведомлений о смене расписания"""
+    if not notification_jobs:
+        return []
+    results = []
+    for job in notification_jobs:
+        try:
+            send_mail(
+                job['subject'],
+                job['body'],
+                from_email,
+                [job['email']],
+                fail_silently=False,
+            )
+            results.append({'email': job['email'], 'status': 'sent'})
+        except Exception as exc:
+            logger.error('Не удалось отправить уведомление преподавателю %s: %s', job['email'], exc)
+            results.append({'email': job['email'], 'status': 'error', 'error': str(exc)})
+    return results
 
 
 # Безопасная проверка импорта моделей
@@ -572,6 +718,7 @@ def admin_dashboard_view(request):
         'groups_count': groups_count,
         'faculties_count': faculties_count,
         'recent_logs': recent_logs,
+        'schedule_changes': get_recent_schedule_changes(),
         'activity_log_add_url': reverse('activity_log_add'),
         'activity_log_remove_url': reverse('activity_log_remove'),
         'activity_log_clear_url': reverse('activity_log_clear'),
@@ -3582,6 +3729,7 @@ def teacher_dashboard_view(request):
         {'key': 'friday', 'label': 'Пятница', 'short': 'Пт'},
         {'key': 'saturday', 'label': 'Суббота', 'short': 'Сб'},
     ]
+    weekday_keys = [day['key'] for day in base_weekday_order]
 
     time_slots = [
         {'id': 'slot1', 'order': 1, 'start': '08:30', 'end': '10:00'},
@@ -3607,8 +3755,10 @@ def teacher_dashboard_view(request):
     today_label = f"{day_map.get(today_key, today.strftime('%A'))}, {today.strftime('%d.%m')}"
 
     day_buildings_map = {key: 'nakhimovsky' for key in weekday_keys}
+    change_cells_map = {}
+    change_cutoff = timezone.now() - timedelta(days=7)
     if groups:
-        schedule_weeks = ScheduleWeek.objects.filter(group__in=groups, week_start=week_start).only('day_buildings')
+        schedule_weeks = ScheduleWeek.objects.filter(group__in=groups, week_start=week_start).only('day_buildings', 'change_markers')
         for week in schedule_weeks:
             buildings = week.day_buildings or {}
             for raw_day, building_value in buildings.items():
@@ -3616,17 +3766,43 @@ def teacher_dashboard_view(request):
                 normalized_building = (building_value or '').lower()
                 if normalized_day in day_buildings_map and normalized_building in BUILDING_DISPLAY:
                     day_buildings_map[normalized_day] = normalized_building
+            for marker in week.change_markers or []:
+                marker_time = parse_marker_timestamp(marker.get('changedAt'))
+                if marker_time and marker_time < change_cutoff:
+                    continue
+                teacher_ids = marker.get('teacherIds') or []
+                try:
+                    teacher_ids_int = {int(tid) for tid in teacher_ids if str(tid).isdigit()}
+                except (TypeError, ValueError):
+                    teacher_ids_int = set()
+                if teacher.id not in teacher_ids_int:
+                    continue
+                cell_key = marker.get('cellKey')
+                if not cell_key:
+                    continue
+                change_type = (marker.get('type') or 'updated').lower()
+                prev = change_cells_map.get(cell_key)
+                prev_priority = CHANGE_TYPE_PRIORITY.get(prev['type'], 0) if prev else 0
+                current_priority = CHANGE_TYPE_PRIORITY.get(change_type, 0)
+                if not prev or current_priority >= prev_priority:
+                    change_cells_map[cell_key] = {
+                        'type': change_type,
+                        'label': marker.get('typeLabel') or 'Изменение',
+                    }
 
     day_buildings_display = {
         key: BUILDING_DISPLAY.get(day_buildings_map.get(key), BUILDING_DISPLAY['nakhimovsky'])
         for key in weekday_keys
     }
 
-    weekday_order = [
-        {**day, 'building_label': day_buildings_display.get(day['key'], BUILDING_DISPLAY['nakhimovsky'])}
-        for day in base_weekday_order
-    ]
-
+    days_with_dates = []
+    for index, day in enumerate(base_weekday_order):
+        day_date = week_start + timedelta(days=index)
+        days_with_dates.append({
+            **day,
+            'building_label': day_buildings_display.get(day['key'], BUILDING_DISPLAY['nakhimovsky']),
+            'date_label': day_date.strftime('%d.%m'),
+        })
     week_slots = list(
         teacher.schedule_slots.filter(
             week__week_start=week_start,
@@ -3652,38 +3828,24 @@ def teacher_dashboard_view(request):
             'building_label': day_buildings_display.get(day_key, BUILDING_DISPLAY['nakhimovsky']),
             'parity_label': slot.get_parity_display(),
         }
-
     week_grid_rows = []
     for slot in time_slots:
         cells = []
-        for day in weekday_order:
+        for day in days_with_dates:
             lesson = lessons_by_day_slot.get(day['key'], {}).get(slot['id'])
+            cell_key = f"{day['key']}__{slot['id']}"
             cells.append({
                 'day_key': day['key'],
                 'slot_id': slot['id'],
                 'lesson': lesson,
+                'change': change_cells_map.get(cell_key),
             })
         week_grid_rows.append({
             'slot': slot,
             'cells': cells,
         })
 
-    group_subject_map = {}
-    for slot in teacher.schedule_slots.select_related('group', 'subject'):
-        if slot.group_id and slot.subject and slot.group_id not in group_subject_map:
-            subject_name = slot.subject.short_name or slot.subject.name
-            group_subject_map[slot.group_id] = subject_name
-
-    group_cards = []
-    first_subject = teacher.subjects.first()
-    first_subject_name = (first_subject.short_name if first_subject else '') or (first_subject.name if first_subject else '')
-    for group in groups:
-        course = getattr(group, 'current_course', None) or getattr(group, 'course', None)
-        group_cards.append({
-            'group': group,
-            'subject_name': group_subject_map.get(group.id, first_subject_name),
-            'course': course
-        })
+    teacher_updates = get_teacher_schedule_updates(teacher)
 
     context = {
         'teacher': teacher,
@@ -3696,8 +3858,8 @@ def teacher_dashboard_view(request):
             'students': students_count,
             'is_curator': teacher.is_curator,
         },
-        'group_cards': group_cards,
-        'weekday_order': weekday_order,
+        'schedule_updates': teacher_updates,
+        'weekday_order': days_with_dates,
         'time_slots': time_slots,
         'week_grid_rows': week_grid_rows,
         'today_label': today_label,
@@ -3720,6 +3882,7 @@ def teacher_schedule_view(request):
 
     today = timezone.localdate()
     week_param = request.GET.get('week')
+    assigned_groups = teacher.groups.filter(is_active=True)
 
     week_start = start_of_week(today) or today
     if week_param:
@@ -3738,6 +3901,16 @@ def teacher_schedule_view(request):
     week_prev = week_start - timedelta(days=7)
     week_next = week_start + timedelta(days=7)
     share_link = request.build_absolute_uri()
+
+    day_map = {
+        'monday': 'Понедельник',
+        'tuesday': 'Вторник',
+        'wednesday': 'Среда',
+        'thursday': 'Четверг',
+        'friday': 'Пятница',
+        'saturday': 'Суббота',
+        'sunday': 'Воскресенье',
+    }
 
     base_weekday_order = [
         {'key': 'monday', 'label': 'Понедельник', 'short': 'Пн'},
@@ -3762,15 +3935,46 @@ def teacher_schedule_view(request):
     )
 
     lessons = list(lessons_qs)
-    weekday_keys = {day['key'] for day in base_weekday_order}
+    weekday_keys = [day['key'] for day in base_weekday_order]
+    weekday_key_set = set(weekday_keys)
     lessons_map = defaultdict(lambda: defaultdict(list))
     groups_set = set()
     day_building_labels = {}
+    change_cells_map = {}
+    change_cutoff = timezone.now() - timedelta(days=7)
+    if assigned_groups.exists():
+        change_weeks = ScheduleWeek.objects.filter(
+            group__in=assigned_groups, week_start=week_start
+        ).only('change_markers')
+        for week_entry in change_weeks:
+            for marker in week_entry.change_markers or []:
+                marker_time = parse_marker_timestamp(marker.get('changedAt'))
+                if marker_time and marker_time < change_cutoff:
+                    continue
+                teacher_ids = marker.get('teacherIds') or []
+                try:
+                    teacher_ids_int = {int(tid) for tid in teacher_ids if str(tid).isdigit()}
+                except (TypeError, ValueError):
+                    teacher_ids_int = set()
+                if teacher.id not in teacher_ids_int:
+                    continue
+                cell_key = marker.get('cellKey')
+                if not cell_key:
+                    continue
+                change_type = (marker.get('type') or 'updated').lower()
+                prev = change_cells_map.get(cell_key)
+                prev_priority = CHANGE_TYPE_PRIORITY.get(prev['type'], 0) if prev else 0
+                current_priority = CHANGE_TYPE_PRIORITY.get(change_type, 0)
+                if not prev or current_priority >= prev_priority:
+                    change_cells_map[cell_key] = {
+                        'type': change_type,
+                        'label': marker.get('typeLabel') or 'Изменено',
+                    }
 
     for lesson in lessons:
         day_key = (lesson.day_key or '').lower()
         slot_id = lesson.slot_id
-        if day_key not in weekday_keys or not slot_id:
+        if day_key not in weekday_key_set or not slot_id:
             continue
         group_code = lesson.group.code if lesson.group else '—'
         groups_set.add(group_code)
@@ -3809,16 +4013,36 @@ def teacher_schedule_view(request):
     for slot in time_slots:
         cells = []
         for day in base_weekday_order:
+            cell_key = f"{day['key']}__{slot['id']}"
             cells.append({
                 'day_key': day['key'],
                 'lesson_details': lessons_map.get(day['key'], {}).get(slot['id'], []),
+                'change': change_cells_map.get(cell_key),
             })
         week_grid_rows.append({'slot': slot, 'cells': cells})
 
-    weekday_order = [
-        {**day, 'building_label': day_building_labels.get(day['key'], BUILDING_DISPLAY['nakhimovsky'])}
-        for day in base_weekday_order
-    ]
+    days_with_dates = []
+    for index, day in enumerate(base_weekday_order):
+        day_date = week_start + timedelta(days=index)
+        days_with_dates.append({
+            **day,
+            'building_label': day_building_labels.get(day['key'], BUILDING_DISPLAY['nakhimovsky']),
+            'date_label': day_date.strftime('%d.%m'),
+        })
+    weekday_order = days_with_dates
+    today_index = today.weekday()
+    today_key = weekday_keys[today_index] if today_index < len(weekday_keys) else weekday_keys[0]
+    today_label = f"{day_map.get(today_key, today.strftime('%A'))}, {today.strftime('%d.%m')}"
+    today_day_lessons = lessons_map.get(today_key, {})
+    today_slots = []
+    for slot in time_slots:
+        cell_key = f"{today_key}__{slot['id']}"
+        today_slots.append({
+            'slot': slot,
+            'lesson_details': today_day_lessons.get(slot['id'], []),
+            'change': change_cells_map.get(cell_key),
+        })
+    today_building_label = day_building_labels.get(today_key, BUILDING_DISPLAY['nakhimovsky'])
 
     total_hours = len(lessons) * 2
 
@@ -3829,6 +4053,10 @@ def teacher_schedule_view(request):
         'weekday_order': weekday_order,
         'time_slots': time_slots,
         'week_grid_rows': week_grid_rows,
+        'today_slots': today_slots,
+        'today_label': today_label,
+        'today_building_label': today_building_label,
+        'today_day_key': today_key,
         'week_range_label': week_range_label,
         'week_parity_label': week_parity_label,
         'current_date': today,
@@ -6536,9 +6764,11 @@ def schedule_constructor_view(request, group_id):
         library_items = []
         teacher_subjects_map = defaultdict(set)
 
+    week_changes_payload = {}
     now = timezone.localdate()
     week_start = now - timedelta(days=now.weekday())
     week_end = week_start + timedelta(days=5)
+    current_week_key = week_start.strftime('%Y-%m-%d')
 
     weekday_order = [
         {'key': 'monday', 'label': 'Понедельник', 'short': 'Пн'},
@@ -6571,6 +6801,27 @@ def schedule_constructor_view(request, group_id):
         }
         if schedule_week.day_buildings:
             week_buildings_payload[week_key] = schedule_week.day_buildings
+        if schedule_week.change_markers:
+            week_changes_payload[week_key] = schedule_week.change_markers
+
+    days_with_dates = []
+    for index, day in enumerate(weekday_order):
+        day_date = week_start + timedelta(days=index)
+        days_with_dates.append({
+            **day,
+            'date_label': day_date.strftime('%d.%m'),
+        })
+
+    raw_current_week_changes = week_changes_payload.get(current_week_key, [])
+    current_week_changes = []
+    for entry in raw_current_week_changes:
+        parsed_ts = parse_marker_timestamp(entry.get('changedAt'))
+        display_time = timezone.localtime(parsed_ts).strftime('%d.%m %H:%M') if parsed_ts else ''
+        normalized = dict(entry)
+        normalized['display_time'] = display_time
+        current_week_changes.append(normalized)
+        if schedule_week.change_markers:
+            week_changes_payload[week_key] = schedule_week.change_markers
 
     groups_payload = [
         {
@@ -6631,7 +6882,7 @@ def schedule_constructor_view(request, group_id):
         'faculties': faculties,
         'groups': groups,
         'teachers': teachers,
-        'weekday_order': weekday_order,
+        'weekday_order': days_with_dates,
         'time_slots': time_slots,
         'week_start': week_start,
         'week_end': week_end,
@@ -6642,11 +6893,13 @@ def schedule_constructor_view(request, group_id):
         'groups_json': json.dumps(groups_payload, ensure_ascii=False),
         'teachers_json': json.dumps(teachers_payload, ensure_ascii=False),
         'subjects_json': json.dumps(subjects_payload, ensure_ascii=False),
-        'weekday_order_json': json.dumps(weekday_order, ensure_ascii=False),
+        'weekday_order_json': json.dumps(days_with_dates, ensure_ascii=False),
         'time_slots_json': json.dumps(time_slots, ensure_ascii=False),
         'week_lessons_json': json.dumps(week_lessons_payload, ensure_ascii=False),
         'day_buildings_json': json.dumps(default_day_buildings, ensure_ascii=False),
         'week_buildings_json': json.dumps(week_buildings_payload, ensure_ascii=False),
+        'week_changes_json': json.dumps(week_changes_payload, ensure_ascii=False),
+        'current_week_changes': current_week_changes,
         'active_group_json': json.dumps({
             'id': group.id,
             'code': group.code,
@@ -6770,6 +7023,164 @@ def schedule_save_api(request, group_id):
             sanitized[str(day_key)] = str(value)
         return sanitized
 
+    def split_cell_key(cell_key):
+        if not isinstance(cell_key, str) or '__' not in cell_key:
+            return (cell_key or '', '')
+        return cell_key.split('__', 1)
+
+    def normalize_entry_for_diff(raw_entry):
+        normalized = {}
+        if not isinstance(raw_entry, dict):
+            return normalized
+        for parity_key in ('both', 'numerator', 'denominator'):
+            lesson = normalize_lesson(raw_entry.get(parity_key))
+            if lesson:
+                normalized[parity_key] = lesson
+        return normalized
+
+    def classify_change(old_lesson, new_lesson):
+        if not old_lesson and not new_lesson:
+            return None
+        if not old_lesson:
+            return {'type': 'added'}
+        if not new_lesson:
+            return {'type': 'removed'}
+        changed_fields = []
+        if old_lesson.get('subjectId') != new_lesson.get('subjectId'):
+            changed_fields.append('subject')
+        if sorted(old_lesson.get('teacherIds', [])) != sorted(new_lesson.get('teacherIds', [])):
+            changed_fields.append('teachers')
+        if (old_lesson.get('type') or 'lesson') != (new_lesson.get('type') or 'lesson'):
+            changed_fields.append('type')
+        if changed_fields:
+            return {'type': 'updated', 'changed_fields': changed_fields}
+        return None
+
+    def collect_teacher_ids_from_blob(lessons_blob):
+        collected = set()
+        if not isinstance(lessons_blob, dict):
+            return collected
+        for entry in lessons_blob.values():
+            if not isinstance(entry, dict):
+                continue
+            for parity_key in ('both', 'numerator', 'denominator'):
+                lesson = entry.get(parity_key)
+                if not isinstance(lesson, dict):
+                    continue
+                for value in lesson.get('teacherIds') or lesson.get('teacher_ids') or []:
+                    try:
+                        collected.add(int(value))
+                    except (TypeError, ValueError):
+                        continue
+        return collected
+
+    def determine_impacted_teachers(event):
+        if not event:
+            return []
+        event_type = event.get('type')
+        if event_type == 'added':
+            lesson = event.get('lesson') or {}
+            return lesson.get('teacherIds', [])
+        if event_type == 'removed':
+            lesson = event.get('lesson') or {}
+            return lesson.get('teacherIds', [])
+        if event_type == 'updated':
+            impacted = set()
+            before = event.get('lesson_before') or {}
+            after = event.get('lesson_after') or {}
+            for value in before.get('teacherIds', []):
+                impacted.add(value)
+            for value in after.get('teacherIds', []):
+                impacted.add(value)
+            return list(impacted)
+        return []
+
+    def extract_subject_label(lesson):
+        if not isinstance(lesson, dict):
+            return ''
+        return (lesson.get('subjectShort') or '').strip() or (lesson.get('subjectName') or '').strip()
+
+    def format_day_label(day_key):
+        normalized = (day_key or '').lower()
+        return SCHEDULE_WEEKDAY_LABELS.get(normalized, day_key or '')
+
+    def format_slot_label(slot_key):
+        if not slot_key:
+            return ''
+        slot_meta = SCHEDULE_TIME_SLOTS.get(slot_key)
+        if not slot_meta:
+            return slot_key
+        return f"{slot_meta['order']} пара ({slot_meta['start']} – {slot_meta['end']})"
+
+    def format_parity_label(parity_key):
+        normalized = (parity_key or '').lower()
+        return SCHEDULE_PARITY_LABELS.get(normalized, SCHEDULE_PARITY_LABELS['both'])
+
+    def format_teacher_names(teacher_ids, teacher_lookup):
+        names = []
+        for teacher_id in teacher_ids or []:
+            teacher = teacher_lookup.get(int(teacher_id)) if teacher_lookup else None
+            if teacher:
+                names.append(teacher.get_short_name() or teacher.get_full_name())
+        return ', '.join(names)
+
+    def build_event_description(event, teacher_lookup, include_week=False):
+        type_labels = {
+            'added': 'Добавлено',
+            'removed': 'Удалено',
+            'updated': 'Изменено',
+        }
+        day_key, slot_key = split_cell_key(event.get('cell_key'))
+        day_label = format_day_label(day_key)
+        slot_label = format_slot_label(slot_key)
+        parity_label = format_parity_label(event.get('parity'))
+        week_label = ''
+        if include_week and event.get('week_start'):
+            week_label = event['week_start'].strftime('%d.%m.%Y')
+        prefix = f"{week_label} — " if week_label else ''
+        context = f"{prefix}{day_label}, {slot_label}, {parity_label}".strip(' ,–')
+        event_type = event.get('type')
+        status_prefix = f"[{type_labels.get(event_type, 'Изменение')}] "
+        if event_type == 'added':
+            lesson = event.get('lesson') or {}
+            subject_label = extract_subject_label(lesson) or 'Занятие'
+            teacher_names = format_teacher_names(lesson.get('teacherIds', []), teacher_lookup)
+            lesson_type_key = (lesson.get('type') or '').strip().lower()
+            lesson_type_label = LESSON_TYPE_LABELS.get(lesson_type_key, lesson.get('type') or '')
+            details = f"{status_prefix}Добавлена пара «{subject_label}»"
+            if lesson_type_label:
+                details += f" ({lesson_type_label})"
+            if teacher_names:
+                details += f". Преподаватели: {teacher_names}"
+            return f"{context}: {details}".strip()
+        if event_type == 'removed':
+            lesson = event.get('lesson') or {}
+            subject_label = extract_subject_label(lesson) or 'Занятие'
+            return f"{context}: {status_prefix}Удалена пара «{subject_label}»"
+        if event_type == 'updated':
+            lesson_after = event.get('lesson_after') or {}
+            subject_label = extract_subject_label(lesson_after) or extract_subject_label(event.get('lesson_before')) or 'Пара'
+            changes = event.get('changed_fields') or []
+            change_map = {
+                'subject': 'предмет',
+                'teachers': 'преподаватели',
+                'type': 'тип занятия',
+            }
+            change_labels = [change_map.get(field, field) for field in changes]
+            change_phrase = f"изменено: {', '.join(change_labels)}" if change_labels else 'обновлено занятие'
+            return f"{context}: {status_prefix}Обновлена пара «{subject_label}» ({change_phrase})"
+        return f"{context}: {status_prefix}Изменение расписания"
+
+    def build_teacher_notification_body(teacher, target_group, events, teacher_lookup):
+        greeting = f"Здравствуйте, {teacher.get_full_name()}!"
+        intro = f"В расписании группы {target_group.code} произошли изменения."
+        lines = [greeting, '', intro]
+        for event in events:
+            lines.append(f"- {build_event_description(event, teacher_lookup, include_week=True)}")
+        lines.append('')
+        lines.append('Пожалуйста, проверьте актуальное расписание в личном кабинете преподавателя.')
+        return '\n'.join(lines)
+
     parsed_weeks = {}
     slots_by_week = {}
     subject_ids = set()
@@ -6831,6 +7242,14 @@ def schedule_save_api(request, group_id):
     if not parsed_weeks:
         return JsonResponse({'success': False, 'error': 'Не удалось определить недели для сохранения'}, status=400)
 
+    target_weeks = list(parsed_weeks.keys())
+    existing_weeks_map = {
+        week.week_start: week
+        for week in ScheduleWeek.objects.filter(group=group, week_start__in=target_weeks)
+    }
+    for existing_week in existing_weeks_map.values():
+        teacher_ids.update(collect_teacher_ids_from_blob(existing_week.lessons or {}))
+
     subjects_map = {}
     if subject_ids:
         subjects_map = {subject.id: subject for subject in Subject.objects.filter(id__in=subject_ids)}
@@ -6851,6 +7270,49 @@ def schedule_save_api(request, group_id):
                         lesson['subjectName'] = subject.name
                     if not lesson['subjectShort']:
                         lesson['subjectShort'] = subject.short_name or subject.name
+
+    change_events = []
+    for week_start, week_data in parsed_weeks.items():
+        previous_blob = {}
+        existing_week = existing_weeks_map.get(week_start)
+        if existing_week and isinstance(existing_week.lessons, dict):
+            previous_blob = existing_week.lessons
+        new_blob = week_data['lessons'] or {}
+        cell_keys = set(previous_blob.keys()) | set(new_blob.keys())
+        for cell_key in cell_keys:
+            previous_entry = normalize_entry_for_diff(previous_blob.get(cell_key))
+            new_entry = normalize_entry_for_diff(new_blob.get(cell_key))
+            for parity_key in ('both', 'numerator', 'denominator'):
+                old_lesson = previous_entry.get(parity_key)
+                new_lesson = new_entry.get(parity_key)
+                change_info = classify_change(old_lesson, new_lesson)
+                if not change_info:
+                    continue
+                event = {
+                    'week_start': week_start,
+                    'cell_key': cell_key,
+                    'parity': parity_key,
+                    'type': change_info['type'],
+                }
+                if change_info['type'] == 'added':
+                    event['lesson'] = new_lesson
+                elif change_info['type'] == 'removed':
+                    event['lesson'] = old_lesson
+                else:
+                    event['lesson_before'] = old_lesson
+                    event['lesson_after'] = new_lesson
+                    event['changed_fields'] = change_info.get('changed_fields', [])
+                change_events.append(event)
+
+    teacher_event_map = defaultdict(list)
+    for event in change_events:
+        impacted_teachers = determine_impacted_teachers(event)
+        event['teacher_ids'] = impacted_teachers
+        for teacher_id in impacted_teachers:
+            try:
+                teacher_event_map[int(teacher_id)].append(event)
+            except (TypeError, ValueError):
+                continue
 
     conflicts_payload = []
     recorded_conflicts = set()
@@ -6946,10 +7408,103 @@ def schedule_save_api(request, group_id):
             'conflicts': conflicts_payload,
         }, status=400)
 
+    notification_summary = []
+    if teacher_event_map:
+        default_from = getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@mpt.ru')
+        notification_jobs = []
+        job_map = {}
+        for teacher_id, events in teacher_event_map.items():
+            teacher = teachers_map.get(teacher_id)
+            if not teacher:
+                teacher = Teacher.objects.filter(id=teacher_id).first()
+                if teacher:
+                    teachers_map[teacher_id] = teacher
+            if not teacher or not teacher.email:
+                continue
+            email_subject = f'Изменение расписания группы {group.code}'
+            email_body = build_teacher_notification_body(teacher, group, events, teachers_map)
+            job = {
+                'teacher_name': teacher.get_full_name(),
+                'email': teacher.email,
+                'subject': email_subject,
+                'body': email_body,
+                'events': len(events),
+            }
+            notification_jobs.append(job)
+            job_map[job['email']] = {
+                'teacher': teacher.get_full_name(),
+                'events': len(events),
+            }
+        send_results = dispatch_schedule_notifications(notification_jobs, default_from)
+        for result in send_results:
+            meta = job_map.get(result.get('email'), {})
+            notification_summary.append({
+                'teacher': meta.get('teacher', result.get('email')),
+                'email': result.get('email'),
+                'events': meta.get('events', 0),
+                'status': result.get('status', 'unknown'),
+                'error': result.get('error'),
+            })
+
+    type_label_map = {
+        'added': 'Добавлено',
+        'removed': 'Удалено',
+        'updated': 'Изменено',
+    }
+    change_summary_payload = []
+    for event in change_events:
+        week_label = event['week_start'].strftime('%Y-%m-%d') if event.get('week_start') else ''
+        day_key, slot_key = split_cell_key(event.get('cell_key'))
+        lesson_for_summary = event.get('lesson_after') or event.get('lesson') or event.get('lesson_before') or {}
+        teacher_ids_for_summary = []
+        if event.get('type') == 'updated':
+            teacher_ids_for_summary = (event.get('lesson_after') or {}).get('teacherIds') \
+                or (event.get('lesson_before') or {}).get('teacherIds') or []
+        else:
+            teacher_ids_for_summary = lesson_for_summary.get('teacherIds', [])
+        change_summary_payload.append({
+            'week': week_label,
+            'day': day_key,
+            'slot': slot_key,
+            'parity': event.get('parity'),
+            'type': event.get('type'),
+            'subject': extract_subject_label(lesson_for_summary),
+            'teacherNames': format_teacher_names(teacher_ids_for_summary, teachers_map),
+            'teacherIds': [
+                int(tid) for tid in event.get('teacher_ids', [])
+                if isinstance(tid, (int, str)) and str(tid).isdigit()
+            ],
+            'dayLabel': format_day_label(day_key),
+            'slotLabel': format_slot_label(slot_key),
+            'parityLabel': format_parity_label(event.get('parity')),
+            'description': build_event_description(event, teachers_map),
+            'typeLabel': type_label_map.get(event.get('type'), 'Изменение'),
+            'changedAt': timezone.now().isoformat(),
+            'cellKey': event.get('cell_key'),
+        })
+
     saved_week_keys = []
+
+    markers_by_week = defaultdict(list)
+    for entry in change_summary_payload:
+        week_key = entry.get('week')
+        if week_key:
+            markers_by_week[week_key].append(entry)
+
+    cutoff_time = timezone.now() - timedelta(days=7)
 
     with transaction.atomic():
         for week_start, data in parsed_weeks.items():
+            week_key_str = week_start.strftime('%Y-%m-%d')
+            if week_key_str in markers_by_week:
+                new_markers = markers_by_week[week_key_str]
+            else:
+                new_markers = []
+            existing_markers = []
+            if week_start in existing_weeks_map:
+                existing_markers = existing_weeks_map[week_start].change_markers or []
+            combined_markers = existing_markers + new_markers
+            change_markers = prune_change_markers(combined_markers, cutoff_time)
             week_obj, created = ScheduleWeek.objects.update_or_create(
                 group=group,
                 week_start=week_start,
@@ -6957,11 +7512,13 @@ def schedule_save_api(request, group_id):
                     'lessons': data['lessons'],
                     'day_buildings': data['day_buildings'],
                     'updated_by': request.user,
+                    'change_markers': change_markers,
                 },
             )
             if created and not week_obj.created_by_id:
                 week_obj.created_by = request.user
                 week_obj.save(update_fields=['created_by'])
+            existing_weeks_map[week_start] = week_obj
 
             saved_week_keys.append(week_obj.week_start.strftime('%Y-%m-%d'))
 
@@ -6991,7 +7548,7 @@ def schedule_save_api(request, group_id):
             ActivityLog.ACTION_UPDATE,
             f'Сохранение расписания для группы {group.code}',
             'bi-calendar-week',
-            {'group_id': group.id, 'weeks': saved_week_keys}
+            {'group_id': group.id, 'weeks': saved_week_keys, 'change_summary': change_summary_payload}
         )
     except Exception:
         pass
@@ -7000,6 +7557,8 @@ def schedule_save_api(request, group_id):
         'success': True,
         'message': 'Расписание сохранено.',
         'savedWeeks': saved_week_keys,
+        'changeSummary': change_summary_payload,
+        'notifications': notification_summary,
     })
 
 

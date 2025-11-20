@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="{% static 'css/forms.css' %}">
 <link rel="stylesheet" href="{% static 'css/groups.css' %}">
 <link rel="stylesheet" href="{% static 'css/schedule.css' %}">
+<link rel="stylesheet" href="{% static 'css/custom_select.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -51,7 +52,7 @@
                     <div class="filter-menu" id="scheduleFilterMenu">
                         <div class="filter-section">
                             <label class="filter-title">Специальность</label>
-                            <div class="custom-select filter-custom-select" id="scheduleFacultySelect" data-auto-submit="true">
+                            <div class="custom-select filter-custom-select" id="scheduleFacultySelect">
                                 <select name="faculty" id="scheduleFacultyFilter">
                                     <option value="" {% if not faculty_filter %}selected{% endif %}>Все специальности</option>
                                     {% for faculty in faculties %}
@@ -89,7 +90,7 @@
 
                         <div class="filter-section">
                             <label class="filter-title">Профессия</label>
-                            <div class="custom-select filter-custom-select" id="scheduleProfessionSelect" data-auto-submit="true">
+                            <div class="custom-select filter-custom-select" id="scheduleProfessionSelect">
                                 <select name="profession" id="scheduleProfessionFilter">
                                     <option value="" {% if not profession_filter %}selected{% endif %}>Все профессии</option>
                                     {% for profession in selected_professions %}
@@ -220,8 +221,6 @@
                                 <div class="groups-table-header">
                                     <div>Группа</div>
                                     <div>Статус расписания</div>
-                                    <div>Предметов</div>
-                                    <div>Без преподавателя</div>
                                     <div>Действия</div>
                                 </div>
                                 {% for course in profession.courses %}
@@ -238,16 +237,6 @@
                                             <span class="status-pill {% if item.status_key == 'ready' %}status-ready{% else %}status-draft{% endif %}">
                                                 {{ item.status_meta.label }}
                                             </span>
-                                        </div>
-                                        <div class="group-cell">
-                                            {{ item.subjects_total }} / {{ item.subjects_with_teachers }}
-                                        </div>
-                                        <div class="group-cell">
-                                            {% if item.subjects_without_teacher %}
-                                                <span class="warning">{{ item.subjects_without_teacher }}</span>
-                                            {% else %}
-                                                <span class="success">0</span>
-                                            {% endif %}
                                         </div>
                                         <div class="group-cell actions-cell">
                                             <div class="actions-menu">

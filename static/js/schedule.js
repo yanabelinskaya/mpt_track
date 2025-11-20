@@ -46,6 +46,7 @@
             semesterSelection: new Set(),
             dirtyWeeks: new Set(),
             isSaving: false,
+            persistedChanges: new Map(),
         };
 
         const elements = {
@@ -106,6 +107,10 @@
             ? Array.from(elements.dayBoard.querySelectorAll('[data-day-slot]'))
             : [];
         const weekDayMap = new Map((config.weekdayOrder || []).map((day) => [day.key, day]));
+        const dayIndexMap = new Map();
+        (config.weekdayOrder || []).forEach((day, index) => {
+            dayIndexMap.set(day.key, index);
+        });
         const timeSlotMap = new Map((config.timeSlots || []).map((slot) => [slot.id, slot]));
         const defaultDayBuildingPreset = createDefaultDayBuildings(config.dayBuildings);
 
@@ -113,6 +118,11 @@
         state.weekEnd = addDays(state.weekStart, 5);
         state.currentWeekKey = formatISODate(state.weekStart);
         state.semesterWeeks = buildAcademicYearWeeks(state.weekStart);
+        if (config.weekChanges && typeof config.weekChanges === 'object') {
+            Object.entries(config.weekChanges).forEach(([weekKey, entries]) => {
+                state.persistedChanges.set(weekKey, Array.isArray(entries) ? entries : []);
+            });
+        }
         Object.keys(savedWeekLessons || {}).forEach((weekKey) => {
             const payload = savedWeekLessons[weekKey];
             state.weekLessons[weekKey] = lessonsMapFromObject(payload);
@@ -143,9 +153,10 @@
         updateBuildingBadges();
         applySubjectFilters();
         renderSemesterTimeline();
-        renderChangeLog();
         updateSaveButtonState();
         updateSemesterButtonState();
+        applyPersistedChangeMarkersForWeek(state.currentWeekKey);
+        seedChangeLogFromPersisted(state.currentWeekKey);
 
         attachDragAndDrop();
         attachCellSelection();
@@ -397,6 +408,7 @@
                     }
                     updateSaveButtonState();
                     showMessage(data.message || 'Расписание сохранено.', 'success');
+                    handleSaveSideEffects(data, savedWeeks);
                 })
                 .catch((error) => {
                     let message = error.message || 'Не удалось сохранить расписание.';
@@ -421,6 +433,40 @@
                     showMessage(message, 'error');
                 })
                 .finally(() => setSavingState(false));
+        }
+
+        function handleSaveSideEffects(payload = {}, savedWeeks = []) {
+            const changeSummary = Array.isArray(payload.changeSummary) ? payload.changeSummary : [];
+            if (changeSummary.length) {
+                const summaryText = changeSummary
+                    .slice(0, 3)
+                    .map((entry) => entry.description
+                        || [
+                            entry.dayLabel || entry.day || '',
+                            entry.slotLabel || entry.slot || '',
+                            entry.parityLabel || entry.parity || '',
+                        ].filter(Boolean).join(' • '))
+                    .filter(Boolean)
+                    .join(' | ');
+                if (summaryText) {
+                    showMessage(`Изменения: ${summaryText}`, 'info');
+                }
+            }
+            const notificationSummary = Array.isArray(payload.notifications) ? payload.notifications : [];
+            if (notificationSummary.length) {
+                const notified = notificationSummary
+                    .filter((item) => !item.error)
+                    .map((item) => item.teacher)
+                    .filter(Boolean);
+                if (notified.length) {
+                    showMessage(`Уведомлены преподаватели: ${notified.join(', ')}`, 'success');
+                }
+                const failed = notificationSummary.filter((item) => item.error);
+                if (failed.length) {
+                    showMessage('Не удалось уведомить часть преподавателей. Проверьте настройки почтового сервера.', 'warning');
+                    console.warn('Schedule notification delivery errors', failed);
+                }
+            }
         }
 
         function setSavingState(isSaving) {
@@ -694,6 +740,10 @@
             if (!dayKey || !slotKey) {
                 return;
             }
+            if (isPastCell(dayKey)) {
+                showPastDateWarning();
+                return;
+            }
             const cellKey = buildCellKey(dayKey, slotKey);
             const entry = getEntry(cellKey);
             const existingLesson = entry ? getLessonForDisplay(entry, state.currentWeekParity) : null;
@@ -785,6 +835,10 @@
         }
 
         function openLessonModal({ cellKey, dayKey, slotKey, subjectId, lesson, forceSubject }) {
+            if (!lesson && isPastCell(dayKey)) {
+                showPastDateWarning();
+                return;
+            }
             if (!elements.lessonModal) {
                 return;
             }
@@ -1027,16 +1081,21 @@
             select.value = selectedValue || '';
         }
 
-        function markCellChange(cell, type) {
+        function markCellChange(cell, type, labelOverride) {
             if (!cell) {
                 return;
             }
             cell.classList.remove('grid-cell--changed-added', 'grid-cell--changed-updated', 'grid-cell--changed-removed');
             if (!type) {
+                const existingBadge = cell.querySelector('.grid-cell__change');
+                if (existingBadge) {
+                    existingBadge.remove();
+                }
                 return;
             }
             cell.classList.add(`grid-cell--changed-${type}`);
-            const badgeText = type === 'removed' ? 'Удалено' : type === 'added' ? 'Добавлено' : 'Изменено';
+            const badgeText = labelOverride
+                || (type === 'removed' ? 'Удалено' : type === 'added' ? 'Добавлено' : 'Изменено');
             let badge = cell.querySelector('.grid-cell__change');
             if (!badge) {
                 badge = document.createElement('span');
@@ -1044,16 +1103,6 @@
                 cell.appendChild(badge);
             }
             badge.textContent = badgeText;
-            if (badge.dataset.timeoutId) {
-                clearTimeout(Number(badge.dataset.timeoutId));
-            }
-            const timeoutId = window.setTimeout(() => {
-                cell.classList.remove(`grid-cell--changed-${type}`);
-                if (badge.parentElement === cell) {
-                    badge.remove();
-                }
-            }, 4000);
-            badge.dataset.timeoutId = String(timeoutId);
         }
 
         function recordChange({ type, dayKey, slotKey, fromLesson, toLesson, parity }) {
@@ -1118,6 +1167,97 @@
                     `;
                 })
                 .join('');
+        }
+
+        function getPersistedEntriesForWeek(weekKey) {
+            if (!weekKey) {
+                return [];
+            }
+            const entries = state.persistedChanges.get(weekKey);
+            return Array.isArray(entries) ? entries : [];
+        }
+
+        function buildChangeLogFromSummary(entries) {
+            return entries.slice(0, 8).map((entry, index) => {
+                const fallbackContext = [
+                    entry.dayLabel || entry.day || '',
+                    entry.slotLabel || entry.slot || '',
+                    entry.parityLabel || entry.parity || '',
+                ].filter(Boolean).join(' • ');
+                return {
+                    id: entry.id || `summary-${entry.week}-${entry.day}-${entry.slot}-${entry.parity}-${index}`,
+                    type: entry.type || 'updated',
+                    context: entry.description || fallbackContext,
+                    from: '',
+                    to: entry.subject || '',
+                    timestamp: entry.changedAt ? new Date(entry.changedAt) : new Date(),
+                };
+            });
+        }
+
+        function seedChangeLogFromPersisted(weekKey) {
+            const entries = getPersistedEntriesForWeek(weekKey);
+            if (!entries.length) {
+                if (state.changeLog.length) {
+                    state.changeLog = [];
+                    renderChangeLog();
+                }
+                return;
+            }
+            state.changeLog = buildChangeLogFromSummary(entries);
+            renderChangeLog();
+        }
+
+        function applyPersistedChangeMarkersForWeek(weekKey, options = {}) {
+            if (!weekKey) {
+                return;
+            }
+            if (options.clearExisting) {
+                droppableCells.forEach((cell) => {
+                    cell.classList.remove('grid-cell--changed-added', 'grid-cell--changed-updated', 'grid-cell--changed-removed');
+                    const badge = cell.querySelector('.grid-cell__change');
+                    if (badge) {
+                        badge.remove();
+                    }
+                });
+            }
+            const entries = getPersistedEntriesForWeek(weekKey);
+            if (!entries.length) {
+                return;
+            }
+            entries.forEach((entry) => {
+                if (!entry.day || !entry.slot) {
+                    return;
+                }
+                const cell = findCellByKey(buildCellKey(entry.day, entry.slot));
+                if (!cell) {
+                    return;
+                }
+                markCellChange(cell, entry.type, entry.typeLabel);
+            });
+        }
+
+        function updatePersistedChanges(summaryEntries) {
+            if (!Array.isArray(summaryEntries) || !summaryEntries.length) {
+                return;
+            }
+            const grouped = summaryEntries.reduce((acc, entry) => {
+                if (!entry.week) {
+                    return acc;
+                }
+                if (!acc[entry.week]) {
+                    acc[entry.week] = [];
+                }
+                acc[entry.week].push(entry);
+                return acc;
+            }, {});
+            Object.entries(grouped).forEach(([weekKey, entries]) => {
+                state.persistedChanges.set(weekKey, entries);
+                if (weekKey === state.currentWeekKey) {
+                    applyPersistedChangeMarkersForWeek(weekKey, { clearExisting: true });
+                    seedChangeLogFromPersisted(weekKey);
+                }
+            });
         }
 
         function applySubjectFilters() {
@@ -1433,6 +1573,8 @@
             renderSemesterTimeline();
             renderDayBuildingControls();
             updateBuildingBadges();
+            applyPersistedChangeMarkersForWeek(state.currentWeekKey);
+            seedChangeLogFromPersisted(state.currentWeekKey);
         }
 
         function updateWeekRange() {
@@ -2098,6 +2240,10 @@
             }, 4000);
         }
 
+        function showPastDateWarning() {
+            showMessage('Нельзя назначать пары на прошедшие даты.', 'warning');
+        }
+
         function escapeHtml(value) {
             return String(value || '')
                 .replace(/&/g, '&amp;')
@@ -2117,6 +2263,31 @@
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
+        }
+
+        function getDateForDay(dayKey) {
+            const index = dayIndexMap.get(dayKey);
+            if (typeof index !== 'number') {
+                return null;
+            }
+            return addDays(state.weekStart, index);
+        }
+
+        function isPastCell(dayKey) {
+            return isPastDate(getDateForDay(dayKey));
+        }
+
+        function isPastDate(date) {
+            if (!date) {
+                return false;
+            }
+            return date < startOfDay(new Date());
+        }
+
+        function startOfDay(date) {
+            const copy = new Date(date);
+            copy.setHours(0, 0, 0, 0);
+            return copy;
         }
 
         function addDays(date, days) {

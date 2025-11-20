@@ -405,18 +405,20 @@
 
             facultySelect.addEventListener('change', () => {
                 populateProfessions(facultySelect.value, '');
-                form.submit();
             });
         }
 
+        // Фильтры применяются только кнопкой "Применить"
         if (professionSelect) {
             professionSelect.addEventListener('change', () => {
-                form.submit();
+                // оставляем значение, но не отправляем форму автоматически
             });
         }
 
         statusRadios.forEach((radio) => {
-            radio.addEventListener('change', () => form.submit());
+            radio.addEventListener('change', () => {
+                // ждём подтверждения пользователем
+            });
         });
 
         courseTabs.forEach((tab) => {

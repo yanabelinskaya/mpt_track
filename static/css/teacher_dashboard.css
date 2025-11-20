@@ -257,6 +257,64 @@ body {
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
     gap: 1rem;
 }
+.schedule-updates__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.schedule-updates__item {
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 0.85rem 1rem;
+    background: var(--muted-bg);
+}
+
+.schedule-updates__item--added {
+    border-color: rgba(34, 197, 94, 0.35);
+}
+
+.schedule-updates__item--removed {
+    border-color: rgba(239, 68, 68, 0.35);
+}
+
+.schedule-updates__meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 4px;
+}
+
+.schedule-updates__badge {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 2px 10px;
+    border-radius: 999px;
+    background: rgba(99,102,241,.08);
+}
+
+.schedule-updates__text {
+    margin: 0 0 6px 0;
+    font-weight: 600;
+    color: var(--bs-body-color, var(--text));
+}
+
+.schedule-updates__footer {
+    display: flex;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.schedule-updates__item--empty {
+    text-align: center;
+    color: var(--text-muted);
+}
 .group-card {
     border-radius: 16px;
     padding: 1rem;
@@ -297,6 +355,9 @@ body {
 @media (max-width: 960px) {
     .calendar-panel.calendar-full .calendar-grid {
         grid-template-columns: repeat(2, 1fr);
+    }
+    .group-card-top{
+        flex-direction: column;
     }
 }
 @media (max-width: 560px) {
