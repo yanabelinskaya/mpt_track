@@ -38,9 +38,9 @@
                 <i class="bi bi-calendar-week"></i>
                 <span>Расписание</span>
             </button>
-            <button class="action-btn" onclick="openGrades()">
-                <i class="bi bi-clipboard-data"></i>
-                <span>Журнал оценок</span>
+            <button class="action-btn" onclick="openBackups()">
+                <i class="bi bi-hdd-stack"></i>
+                <span>Резервные копии</span>
             </button>
             <button class="action-btn" onclick="openReports()">
                 <i class="bi bi-bar-chart"></i>
@@ -315,18 +315,15 @@ function openAddGroup() {
 }
 
 function openSchedule() {
-    addActivityLog('view', 'Просмотр расписания', 'bi-calendar-week');
-    console.log('Расписание (раздел в разработке)');
+    navigateWithLog("{% url 'admin_schedule' %}", 'navigation', 'Переход к расписанию', 'bi-calendar-week');
 }
 
-function openGrades() {
-    addActivityLog('view', 'Переход к журналу оценок', 'bi-clipboard-data');
-    console.log('Журнал оценок (раздел в разработке)');
+function openBackups() {
+    navigateWithLog("{% url 'admin_backups' %}", 'navigation', 'Переход к резервным копиям', 'bi-hdd-stack');
 }
 
 function openReports() {
-    addActivityLog('view', 'Переход к отчетам', 'bi-bar-chart');
-    console.log('Отчеты (раздел в разработке)');
+    navigateWithLog("{% url 'admin_analytics' %}", 'navigation', 'Переход к отчетам', 'bi-bar-chart');
 }
 
 function formatRelativeTime(date) {

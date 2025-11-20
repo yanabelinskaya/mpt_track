@@ -102,7 +102,9 @@
     if (!canvas) {
       return null;
     }
-    const colors = getSeriesColors(data.length);
+    const colors = data.map((item, index) => {
+      return getStatusColor(item.status || item.label, index);
+    });
     return new Chart(canvas, {
       type: 'doughnut',
       data: {
@@ -358,5 +360,20 @@
       return [];
     }
     return Array.from({ length: count }, (_, index) => brandColors[index % brandColors.length]);
+  }
+
+  function getStatusColor(statusKey, index) {
+    const key = (statusKey || '').toLowerCase();
+    const map = {
+      active: brandColors[0],
+      academic_leave: brandColors[1],
+      expelled: '#fecdd3',
+      graduated: brandColors[3],
+      transferred: brandColors[4],
+    };
+    if (map[key]) {
+      return map[key];
+    }
+    return brandColors[index % brandColors.length];
   }
 })();

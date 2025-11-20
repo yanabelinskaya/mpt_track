@@ -694,3 +694,144 @@ html.sidebar-prefers-collapsed body .nav-item {
 .sidebar-nav:not(.fast-scroll) .nav-item {
     opacity: 1;
 }
+
+/* ====================================
+   ГОРЯЧИЕ КЛАВИШИ
+   ==================================== */
+
+.hotkey-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(2px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    padding: 24px;
+}
+
+.hotkey-overlay.show {
+    display: flex;
+}
+
+.hotkey-overlay__card {
+    width: min(640px, 100%);
+    max-height: 90vh;
+    overflow: hidden;
+    border-radius: 18px;
+    background: var(--bs-body-bg);
+    color: var(--bs-body-color);
+    box-shadow: 0 30px 120px rgba(15, 23, 42, 0.45);
+    display: flex;
+    flex-direction: column;
+}
+
+.hotkey-overlay__header {
+    padding: 20px 24px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid var(--sidebar-border);
+}
+
+.hotkey-overlay__title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.hotkey-overlay__body {
+    padding: 12px 24px 24px;
+    overflow-y: auto;
+}
+
+.hotkey-overlay__list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.hotkey-overlay__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.12);
+}
+
+.hotkey-overlay__row:last-child {
+    border-bottom: none;
+}
+
+.hotkey-overlay__label {
+    font-weight: 500;
+}
+
+.hotkey-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.hotkey-badge {
+    min-width: 36px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background-color: rgba(99, 102, 241, 0.12);
+    border: 1px solid rgba(99, 102, 241, 0.25);
+    font-size: 0.8rem;
+    text-align: center;
+    font-weight: 600;
+}
+
+.hotkey-toast {
+    position: fixed;
+    bottom: 32px;
+    right: 32px;
+    padding: 12px 16px;
+    background: rgba(15, 23, 42, 0.85);
+    color: #fff;
+    border-radius: 10px;
+    font-size: 0.9rem;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.35);
+    opacity: 0;
+    transform: translateY(10px);
+    pointer-events: none;
+    transition: opacity 0.2s ease, transform 0.2s ease;
+    z-index: 2050;
+}
+
+.hotkey-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.hotkey-focus-ring {
+    position: relative;
+    outline: 2px solid var(--bs-primary);
+    outline-offset: 2px;
+    transition: outline 0.2s ease;
+}
+
+@media (max-width: 576px) {
+    .hotkey-overlay {
+        padding: 12px;
+    }
+
+    .hotkey-overlay__card {
+        border-radius: 12px;
+    }
+
+    .hotkey-overlay__row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .hotkey-badges {
+        justify-content: flex-start;
+    }
+}

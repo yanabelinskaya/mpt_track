@@ -35,7 +35,7 @@
     
     {% block extra_css %}{% endblock %}
 </head>
-<body>
+<body data-panel="admin" data-hotkeys="true">
     <!-- Sidebar -->
     <nav class="sidebar" id="sidebar">
         <div class="sidebar-header">
@@ -51,7 +51,10 @@
         <div class="sidebar-nav">
             <!-- Главная -->
             <div class="nav-item">
-                <a class="nav-link {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}" href="{% url 'admin_dashboard' %}">
+                <a class="nav-link {% if request.resolver_match.url_name == 'admin_dashboard' %}active{% endif %}"
+                   href="{% url 'admin_dashboard' %}"
+                   data-hotkey="Alt+Digit1"
+                   data-hotkey-description="Открыть панель управления">
                     <i class="bi bi-house-door"></i>
                     <span>Панель управления</span>
                 </a>
@@ -64,14 +67,20 @@
             </div>
             
             <div class="nav-item">
-                <a class="nav-link {% if 'students' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_students' %}">
+                <a class="nav-link {% if 'students' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'admin_students' %}"
+                   data-hotkey="Alt+Digit2"
+                   data-hotkey-description="Перейти к списку студентов">
                     <i class="bi bi-mortarboard"></i>
                     <span>Студенты</span>
                 </a>
             </div>
             
             <div class="nav-item">
-                <a class="nav-link {% if 'teacher' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_teachers' %}">
+                <a class="nav-link {% if 'teacher' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'admin_teachers' %}"
+                   data-hotkey="Alt+Digit3"
+                   data-hotkey-description="Перейти к преподавателям">
                     <i class="bi bi-person-workspace"></i>
                     <span>Преподаватели</span>
                 </a>
@@ -84,35 +93,47 @@
             </div>
             
             <div class="nav-item">
-                <a class="nav-link {% if 'faculties' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_faculties' %}">
+                <a class="nav-link {% if 'faculties' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'admin_faculties' %}"
+                   data-hotkey="Alt+Digit4"
+                   data-hotkey-description="Открыть специальности">
                     <i class="bi bi-building"></i>
                     <span>Специальности</span>
                 </a>
             </div>
             
             <div class="nav-item">
-                <a class="nav-link {% if 'groups' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'groups_main' %}">
+                <a class="nav-link {% if 'groups' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'groups_main' %}"
+                   data-hotkey="Alt+Digit5"
+                   data-hotkey-description="Открыть список групп">
                     <i class="bi bi-collection"></i>
                     <span>Группы</span>
                 </a>
             </div>
             
             <div class="nav-item">
-                <a class="nav-link {% if 'subject' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_subjects' %}">
+                <a class="nav-link {% if 'subject' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'admin_subjects' %}"
+                   data-hotkey="Alt+Digit6"
+                   data-hotkey-description="Перейти к предметам">
                     <i class="bi bi-journals"></i>
                     <span>Предметы</span>
                 </a>
             </div>
             
             <div class="nav-item">
-                <a class="nav-link {% if 'schedule' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_schedule' %}">
+                <a class="nav-link {% if 'schedule' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'admin_schedule' %}"
+                   data-hotkey="Alt+Digit7"
+                   data-hotkey-description="Открыть расписание">
                     <i class="bi bi-calendar-week"></i>
                     <span>Расписание</span>
                 </a>
             </div>
             
             <!-- Журналы и Оценки -->
-            <div class="nav-section-title">
+            <!--<div class="nav-section-title">
                 <i class="bi bi-clipboard-data"></i>
                 Академия
             </div>
@@ -129,7 +150,7 @@
                     <i class="bi bi-check2-circle"></i>
                     <span>Посещаемость</span>
                 </a>
-            </div>
+            </div>-->
             
             <!-- Настройки системы -->
             <div class="nav-section-title">
@@ -151,14 +172,20 @@
             </div>
             
             <div class="nav-item">
-                <a class="nav-link {% if 'statistics' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_statistics' %}">
+                <a class="nav-link {% if 'statistics' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'admin_statistics' %}"
+                   data-hotkey="Alt+Digit8"
+                   data-hotkey-description="Перейти в статистику">
                     <i class="bi bi-bar-chart"></i>
                     <span>Статистика</span>
                 </a>
             </div>
             
             <div class="nav-item">
-                <a class="nav-link {% if 'analytics' in request.resolver_match.url_name %}active{% endif %}" href="{% url 'admin_analytics' %}">
+                <a class="nav-link {% if 'analytics' in request.resolver_match.url_name %}active{% endif %}"
+                   href="{% url 'admin_analytics' %}"
+                   data-hotkey="Alt+Digit9"
+                   data-hotkey-description="Открыть аналитику">
                     <i class="bi bi-pie-chart"></i>
                     <span>Аналитика</span>
                 </a>

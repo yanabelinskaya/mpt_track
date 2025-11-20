@@ -24,7 +24,7 @@
     <link rel="stylesheet" href="{% static 'css/teacher_panel.css' %}">
     {% block extra_css %}{% endblock %}
 </head>
-<body{% if active_nav %} data-nav-active="{{ active_nav }}"{% endif %}>
+<body data-panel="teacher" data-hotkeys="true"{% if active_nav %} data-nav-active="{{ active_nav }}"{% endif %}>
     <nav class="sidebar teacher-sidebar" id="sidebar">
         <div class="sidebar-header">
             <button class="sidebar-toggle" type="button" aria-label="Скрыть боковую панель" data-sidebar-toggle>
@@ -43,7 +43,9 @@
             <div class="nav-item">
                 <a class="nav-link {% if nav_active == 'teacher_dashboard' %}active{% endif %}"
                    data-nav-id="teacher_dashboard"
-                   href="{% url 'teacher_dashboard' %}">
+                   href="{% url 'teacher_dashboard' %}"
+                   data-hotkey="Alt+Digit1"
+                   data-hotkey-description="Открыть преподавательский обзор">
                     <i class="bi bi-speedometer2"></i>
                     <span>Обзор</span>
                 </a>
@@ -56,7 +58,9 @@
             <div class="nav-item">
                 <a class="nav-link {% if nav_active == 'teacher_schedule' %}active{% endif %}"
                    data-nav-id="teacher_schedule"
-                   href="{% url 'teacher_schedule' %}">
+                   href="{% url 'teacher_schedule' %}"
+                   data-hotkey="Alt+Digit2"
+                   data-hotkey-description="Перейти к расписанию">
                     <i class="bi bi-calendar-week"></i>
                     <span>Расписание</span>
                 </a>
@@ -64,7 +68,9 @@
             <div class="nav-item">
                 <a class="nav-link {% if nav_active == 'teacher_groups' %}active{% endif %}"
                    data-nav-id="teacher_groups"
-                   href="{% url 'teacher_groups' %}">
+                   href="{% url 'teacher_groups' %}"
+                   data-hotkey="Alt+Digit3"
+                   data-hotkey-description="Открыть список групп">
                     <i class="bi bi-diagram-3"></i>
                     <span>Мои группы</span>
                 </a>
@@ -72,7 +78,9 @@
             <div class="nav-item">
                 <a class="nav-link {% if nav_active == 'admin_subjects' %}active{% endif %}"
                    data-nav-id="admin_subjects"
-                   href="{% url 'admin_subjects' %}">
+                   href="{% url 'admin_subjects' %}"
+                   data-hotkey="Alt+Digit4"
+                   data-hotkey-description="Перейти к предметам">
                     <i class="bi bi-journals"></i>
                     <span>Предметы</span>
                 </a>
@@ -85,7 +93,9 @@
             <div class="nav-item">
                 <a class="nav-link {% if nav_active == 'teacher_journals' %}active{% endif %}"
                    data-nav-id="teacher_journals"
-                   href="{% url 'teacher_journals' %}">
+                   href="{% url 'teacher_journals' %}"
+                   data-hotkey="Alt+Digit5"
+                   data-hotkey-description="Перейти к журналам">
                     <i class="bi bi-pencil-square"></i>
                     <span>Оценки и посещаемость</span>
                 </a>

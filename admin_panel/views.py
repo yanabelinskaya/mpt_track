@@ -451,6 +451,45 @@ def build_analytics_dataset(start_date, end_date, faculty_id=None):
         'groups_total': groups_total,
     }
 
+    groups_queryset = (
+        Group.objects.filter(faculty_id__in=faculty_ids)
+        .select_related('faculty')
+        .annotate(
+            students_total=Count('students', distinct=True),
+            active_students_total=Count('students', filter=Q(students__study_status='active'), distinct=True),
+        )
+    )
+    course_summary_map = {}
+    group_summary = []
+    for group in groups_queryset:
+        course_num = group.current_course or 1
+        summary_row = course_summary_map.setdefault(course_num, {
+            'course': course_num,
+            'groups_total': 0,
+            'students_total': 0,
+            'active_students_total': 0,
+        })
+        summary_row['groups_total'] += 1
+        summary_row['students_total'] += group.students_total or 0
+        summary_row['active_students_total'] += group.active_students_total or 0
+
+        group_summary.append({
+            'code': group.code,
+            'faculty': group.faculty.name if group.faculty else '',
+            'profession': group.profession,
+            'course': course_num,
+            'students_total': group.students_total or 0,
+            'active_students_total': group.active_students_total or 0,
+            'status': group.status_display,
+        })
+
+    course_summary = sorted(course_summary_map.values(), key=lambda item: item['course'])
+    for row in course_summary:
+        groups_total = row.get('groups_total') or 0
+        students_total = row.get('students_total') or 0
+        row['avg_group_size'] = round(students_total / groups_total, 2) if groups_total else 0
+    group_summary = sorted(group_summary, key=lambda item: (-item['students_total'], item['code']))[:10]
+
     base_result.update({
         'faculty_summary': list(faculty_summary_map.values()),
         'teacher_load': [
@@ -464,6 +503,8 @@ def build_analytics_dataset(start_date, end_date, faculty_id=None):
         ],
         'grade_distribution': grade_distribution,
         'overview': overview,
+        'course_summary': course_summary,
+        'group_summary': group_summary,
     })
     return base_result
 
