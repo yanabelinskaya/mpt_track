@@ -1,0 +1,851 @@
+{% extends 'student/base.html' %}
+{% load static %}
+
+{% block title %}Учебный прогресс — Кабинет студента{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/teacher_week_adminlook.css' %}">
+<link rel="stylesheet" href="{% static 'css/teacher_grades.css' %}">
+<link rel="stylesheet" href="{% static 'css/student_progress.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="student-progress" data-progress-root data-progress-url="{{ request.path }}">
+    <section class="panel student-progress-panel">
+        <div class="panel-header student-progress-header">
+            <div>
+                <h2>Учебный прогресс</h2>
+                <p class="calendar-subtitle">Оценки и посещаемость по всем предметам</p>
+            </div>
+            <div class="student-progress-stats">
+                <article class="student-progress-card">
+                    <p>Всего оценок</p>
+                    <strong>{{ grade_summary.total|default:0 }}</strong>
+                    <span>актуальные записи</span>
+                </article>
+                <article class="student-progress-card student-progress-card--accent">
+                    <p>Средний балл</p>
+                    <strong>{{ grade_summary.average|default:'—' }}</strong>
+                    <span>по всем предметам</span>
+                </article>
+                <article class="student-progress-card">
+                    <p>Записи посещаемости</p>
+                    <strong>{{ attendance_summary.total|default:0 }}</strong>
+                    <span>отмечено уроков</span>
+                </article>
+            </div>
+        </div>
+
+        <div class="student-progress-layout">
+            <div class="progress-top">
+                <div class="progress-tabs" role="tablist" aria-label="Разделы прогресса">
+                    <button type="button"
+                            class="progress-tab-btn is-active"
+                            data-progress-nav="grades"
+                            aria-selected="true">
+                        Оценки
+                    </button>
+                    <button type="button"
+                            class="progress-tab-btn"
+                            data-progress-nav="attendance"
+                            aria-selected="false">
+                        Посещаемость
+                    </button>
+                </div>
+                <div class="progress-headings">
+                    <div class="progress-heading is-active" data-progress-heading="grades">
+                        <h3>Текущие оценки</h3>
+                        <p>Последние результаты по занятиям за выбранную неделю.</p>
+                    </div>
+                    <div class="progress-heading" data-progress-heading="attendance" hidden>
+                        <h3>Посещаемость</h3>
+                        <p>Собрали записи посещаемости по каждому предмету.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="progress-main">
+                <div class="progress-panel is-active" data-progress-panel="grades">
+                    <div class="grades-toolbar">
+                        <div class="grades-toolbar__summary">
+                            <div class="grades-toolbar__value">{{ grade_summary.average|default:'—' }}</div>
+                            <p class="grades-toolbar__meta">Всего: {{ grade_summary.total|default:0 }}</p>
+                            {% if grade_summary.latest %}
+                            <p class="grades-toolbar__latest">
+                                Последняя — {{ grade_summary.latest.value }} по {{ grade_summary.latest.subject }}, {{ grade_summary.latest.date|date:"d.m" }}
+                            </p>
+                            {% endif %}
+                        </div>
+                        <div class="grades-view-toggle" role="tablist" aria-label="Способы отображения оценок">
+                            <button type="button"
+                                    class="grades-view-toggle__btn is-active"
+                                    data-grade-view="dates"
+                                    aria-selected="true">
+                                По датам
+                            </button>
+                            <button type="button"
+                                    class="grades-view-toggle__btn"
+                                    data-grade-view="subjects"
+                                    aria-selected="false">
+                                По предметам
+                            </button>
+                        </div>
+                        <div class="grades-week-picker"
+                             data-grade-week
+                             data-week-visible="dates"
+                             data-week-base-url="{{ request.path }}">
+                            <div class="week-switcher" data-week-range>
+                                <button class="week-switcher__btn"
+                                        type="button"
+                                        data-week-action="prev"
+                                        data-week-target="{{ grade_week_scope.prev_iso }}"
+                                        aria-label="Предыдущая неделя">
+                                    <i class="bi bi-chevron-left"></i>
+                                </button>
+                                <div class="week-switcher__labels">
+                                    <span class="week-switcher__range" data-week-range-label>{{ grade_week_scope.range_label }}</span>
+                                    <span class="week-switcher__parity">{{ grade_week_scope.parity_label }}</span>
+                                </div>
+                                <button class="week-switcher__btn"
+                                        type="button"
+                                        data-week-action="next"
+                                        data-week-target="{{ grade_week_scope.next_iso }}"
+                                        aria-label="Следующая неделя">
+                                    <i class="bi bi-chevron-right"></i>
+                                </button>
+                            </div>
+                            {% if not grade_week_scope.is_current %}
+                            <button class="week-current-btn"
+                                    type="button"
+                                    data-week-action="current">
+                                Текущая неделя
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="grades-content" data-grade-panels>
+                        <div class="grade-view-panel is-active" data-grade-panel="dates">
+                            {% if grade_week_groups %}
+                            <div class="grade-timeline">
+                                {% for group in grade_week_groups %}
+                                <div class="timeline-day">
+                                    <div class="timeline-day__head">
+                                        <div>
+                                            <p class="timeline-day__title">{{ group.relative_label }}</p>
+                                            <span class="timeline-day__meta">{{ group.date_label }}</span>
+                                        </div>
+                                        <span class="timeline-day__count">{{ group.entries|length }}</span>
+                                    </div>
+                                    <div class="timeline-day__list">
+                                        {% for entry in group.entries %}
+                                        <article class="timeline-card"
+                                                 data-grade-detail
+                                                 data-subject="{{ entry.subject_label }}"
+                                                 data-value="{{ entry.value }}"
+                                                 data-date="{{ group.date_label }}"
+                                                 data-slot="{{ entry.slot_label }}"
+                                                 data-time="{{ entry.slot_time_range }}"
+                                                 data-type="{{ entry.type_label }}"
+                                                 data-topic="{{ entry.topic }}"
+                                                 data-teacher="{{ entry.teacher_label|default:'—' }}"
+                                                 data-comment="{{ entry.comment }}">
+                                            <div class="timeline-card__grade">{{ entry.value }}</div>
+                                            <div class="timeline-card__info">
+                                                <p class="timeline-card__subject">{{ entry.subject_label }}</p>
+                                                <div class="timeline-card__meta">
+                                                    <span>{{ entry.type_label }}</span>
+                                                    <span>•</span>
+                                                    <span>{{ entry.slot_label }}</span>
+                                                    {% if entry.slot_time_range %}
+                                                    <span>• {{ entry.slot_time_range }}</span>
+                                                    {% endif %}
+                                                </div>
+                                                {% if entry.topic %}
+                                                <p class="timeline-card__topic">{{ entry.topic }}</p>
+                                                {% endif %}
+                                                <p class="timeline-card__teacher">{{ entry.teacher_label|default:'—' }}</p>
+                                            </div>
+                                        </article>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="empty-placeholder">
+                                <i class="bi bi-stars"></i>
+                                <p>На этой неделе оценок ещё нет — как только преподаватели их выставят, они появятся здесь.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="grade-view-panel" data-grade-panel="subjects" hidden>
+                            {% if grade_subjects %}
+                            <div class="subject-view">
+                                <div class="subject-card-grid">
+                                    {% for subject in grade_subjects %}
+                                    <article class="subject-card">
+                                        <div class="subject-card__main">
+                                            <div class="subject-card__info">
+                                                <p class="subject-card__label">Предмет</p>
+                                                <h4>{{ subject.subject_full }}</h4>
+                                                <p class="subject-card__teacher">{{ subject.teacher_names }}</p>
+                                            </div>
+                                            <div class="subject-card__stats">
+                                                <div class="subject-stat">
+                                                    <span>Средний балл</span>
+                                                    <strong>{{ subject.average|default:'—' }}</strong>
+                                                </div>
+                                                <div class="subject-stat">
+                                                    <span>Оценок</span>
+                                                    <strong>{{ subject.grades_total }}</strong>
+                                                </div>
+                                            </div>
+                                            <div class="subject-card__preview">
+                                                {% if subject.preview_entries %}
+                                                    {% for entry in subject.preview_entries %}
+                                                    <span class="subject-card__grade">{{ entry.value }}</span>
+                                                    {% endfor %}
+                                                {% else %}
+                                                <span class="text-muted">Оценок нет</span>
+                                                {% endif %}
+                                            </div>
+                                            <div class="subject-card__actions">
+                                                {% if subject.subject_id %}
+                                                <a href="{% url 'student_subject_progress' subject.subject_id %}"
+                                                   class="subject-card__link"
+                                                   title="Открыть подробности предмета">
+                                                    Подробнее
+                                                </a>
+                                                {% else %}
+                                                <span class="subject-card__link subject-card__link--disabled"
+                                                      title="Предмет недоступен">
+                                                    Подробнее
+                                                </span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </article>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="empty-placeholder">
+                                <i class="bi bi-stars"></i>
+                                <p>Здесь появятся карточки предметов, как только по ним будут выставлены оценки.</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                </div>
+
+                <div data-progress-panel="attendance" hidden>
+                    
+                    {% if attendance_subjects %}
+                    <div class="attendance-panel">
+                        <div class="attendance-panel__head">
+                            <div>
+                                <p class="section-label">История посещаемости</p>
+                                <h3>Предметы и отметки</h3>
+                                <p class="attendance-panel__subtitle">
+                                    Фиксируем каждую запись с датой, номером пары и статусом — нажатие открывает подробности.
+                                </p>
+                            </div>
+                        </div>
+                        <div class="attendance-filter" data-attendance-filter data-default-filter="present">
+                            <span class="attendance-filter__label">Показать статусы</span>
+                            <div class="attendance-filter__controls" role="group" aria-label="Фильтр статусов посещаемости">
+                                <button type="button"
+                                        class="attendance-filter__btn is-active"
+                                        data-filter-value="present"
+                                        aria-pressed="true">
+                                    Присутствовал
+                                </button>
+                                <button type="button"
+                                        class="attendance-filter__btn"
+                                        data-filter-value="late"
+                                        aria-pressed="false">
+                                    Опоздал
+                                </button>
+                                <button type="button"
+                                        class="attendance-filter__btn"
+                                        data-filter-value="absent"
+                                        aria-pressed="false">
+                                    Отсутствовал
+                                </button>
+                                <button type="button"
+                                        class="attendance-filter__btn"
+                                        data-filter-value="excused"
+                                        aria-pressed="false">
+                                    Уважительная
+                                </button>
+                            </div>
+                        </div>
+                        <div class="attendance-subject-list" data-attendance-list>
+                            {% for subject in attendance_subjects %}
+                            <details class="attendance-subject"
+                                     data-attendance-subject
+                                     data-attendance-data="{{ subject.entries_script_id }}"
+                                     data-subject-name="{{ subject.subject_full }}">
+                                <summary class="attendance-subject__summary">
+                                    <div class="attendance-subject__main">
+                                        <p class="attendance-subject__label">Предмет</p>
+                                        <h4 class="attendance-subject__title">{{ subject.subject_full }}</h4>
+                                        <p class="attendance-subject__teacher">{{ subject.teacher_names }}</p>
+                                    </div>
+                                    <div class="attendance-subject__meta">
+                                        <span class="attendance-count attendance-count--missed">
+                                            <i class="bi bi-exclamation-circle"></i>
+                                            {{ subject.missed_total|default:0 }} пропусков
+                                        </span>
+                                        <div class="attendance-mini-stats">
+                                            <span class="attendance-mini attendance-mini--present" title="Присутствий">
+                                                {{ subject.status_counts.present|default:0 }}
+                                            </span>
+                                            <span class="attendance-mini attendance-mini--late" title="Опозданий">
+                                                {{ subject.status_counts.late|default:0 }}
+                                            </span>
+                                            <span class="attendance-mini attendance-mini--absent" title="Отсутствий">
+                                                {{ subject.status_counts.absent|default:0 }}
+                                            </span>
+                                            <span class="attendance-mini attendance-mini--excused" title="Уважительных">
+                                                {{ subject.status_counts.excused|default:0 }}
+                                            </span>
+                                        </div>
+                                        <span class="attendance-subject__toggle">
+                                            <i class="bi bi-chevron-down"></i>
+                                        </span>
+                                    </div>
+                                </summary>
+                                <div class="attendance-subject__body">
+                                    {% if subject.entries %}
+                                    <ul class="attendance-entry-list" data-attendance-entry-list></ul>
+                                    <div class="attendance-filter-empty" data-attendance-empty hidden>
+                                        <i class="bi bi-info-circle"></i>
+                                        <p>Нет записей для выбранного статуса.</p>
+                                    </div>
+                                    {{ subject.entries|json_script:subject.entries_script_id }}
+                                    {% else %}
+                                    <div class="attendance-card-empty">
+                                        <i class="bi bi-calendar-week"></i>
+                                        <p>По этому предмету ещё нет записей посещаемости.</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </details>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="empty-placeholder">
+                        <i class="bi bi-calendar-week"></i>
+                        <p>По посещаемости ещё нет записей.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<div class="detail-modal" data-progress-detail-modal hidden>
+    <div class="detail-modal__dialog" role="dialog" aria-modal="true">
+        <button type="button" class="detail-modal__close" data-detail-close aria-label="Закрыть">
+            <i class="bi bi-x-lg"></i>
+        </button>
+        <div class="detail-modal__body">
+            <p class="detail-modal__label" data-detail-type>Запись</p>
+            <h3 class="detail-modal__title" data-detail-subject>Предмет</h3>
+            <dl class="detail-modal__list">
+                <div>
+                    <dt>Дата</dt>
+                    <dd data-detail-date>—</dd>
+                </div>
+                <div>
+                    <dt>Пара</dt>
+                    <dd data-detail-slot>—</dd>
+                </div>
+                <div>
+                    <dt>Тип</dt>
+                    <dd data-detail-kind>—</dd>
+                </div>
+                <div>
+                    <dt>Тема занятия</dt>
+                    <dd data-detail-topic>Не указана</dd>
+                </div>
+                <div>
+                    <dt>Значение</dt>
+                    <dd data-detail-value>—</dd>
+                </div>
+                <div>
+                    <dt>Комментарий</dt>
+                    <dd data-detail-comment>Комментариев нет</dd>
+                </div>
+                <div>
+                    <dt>Преподаватель</dt>
+                    <dd data-detail-teacher>—</dd>
+                </div>
+            </dl>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const ROOT_SELECTOR = '[data-progress-root]';
+    let popstateBound = false;
+    let activeRequestId = 0;
+
+    const modalFields = {};
+    let modalNode = null;
+
+    function ready(callback) {
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', callback);
+        } else {
+            callback();
+        }
+    }
+
+    function initStudentProgress() {
+        const root = document.querySelector(ROOT_SELECTOR);
+        if (!root || root.dataset.progressInit === '1') {
+            return;
+        }
+        root.dataset.progressInit = '1';
+
+        setupSectionTabs(root);
+        setupGradeViews(root);
+        setupWeekControls(root);
+        setupDetailModal(root);
+        setupAttendanceFilters(root);
+    }
+
+    function setupSectionTabs(root) {
+        const sectionButtons = root.querySelectorAll('[data-progress-nav]');
+        const sectionPanels = root.querySelectorAll('[data-progress-panel]');
+        const sectionHeadings = root.querySelectorAll('[data-progress-heading]');
+        const showSection = target => {
+            const mode = target === 'attendance' ? 'attendance' : 'grades';
+            sectionButtons.forEach(button => {
+                const isActive = button.dataset.progressNav === mode;
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+            sectionPanels.forEach(panel => {
+                const match = panel.dataset.progressPanel === mode;
+                panel.classList.toggle('is-active', match);
+                panel.hidden = !match;
+            });
+            sectionHeadings.forEach(heading => {
+                const match = heading.dataset.progressHeading === mode;
+                heading.classList.toggle('is-active', match);
+                heading.hidden = !match;
+            });
+        };
+        sectionButtons.forEach(button => {
+            button.addEventListener('click', () => showSection(button.dataset.progressNav));
+        });
+        showSection('grades');
+    }
+
+    function setupGradeViews(root) {
+        const gradeViewButtons = root.querySelectorAll('[data-grade-view]');
+        const gradeViewPanels = root.querySelectorAll('[data-grade-panel]');
+        const weekPicker = root.querySelector('[data-grade-week]');
+        const showGradeView = target => {
+            const mode = target === 'subjects' ? 'subjects' : 'dates';
+            gradeViewButtons.forEach(button => {
+                const isActive = button.dataset.gradeView === mode;
+                button.classList.toggle('is-active', isActive);
+                button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            });
+            gradeViewPanels.forEach(panel => {
+                const match = panel.dataset.gradePanel === mode;
+                panel.classList.toggle('is-active', match);
+                panel.hidden = !match;
+            });
+            if (weekPicker) {
+                const visibleFor = weekPicker.dataset.weekVisible || 'dates';
+                weekPicker.hidden = mode !== visibleFor;
+            }
+        };
+        gradeViewButtons.forEach(button => {
+            button.addEventListener('click', () => showGradeView(button.dataset.gradeView));
+        });
+        showGradeView('dates');
+    }
+
+    function setupWeekControls(root) {
+        const weekControls = root.querySelector('[data-grade-week]');
+        if (!weekControls) {
+            return;
+        }
+        weekControls.querySelectorAll('[data-week-action]').forEach(button => {
+            button.addEventListener('click', () => {
+                const action = button.dataset.weekAction;
+                let weekValue = '';
+                if (action !== 'current') {
+                    const target = button.dataset.weekTarget;
+                    if (!target) {
+                        return;
+                    }
+                    weekValue = target;
+                }
+                loadWeek(root, weekValue, { updateHistory: true });
+            });
+        });
+    }
+
+    function setupAttendanceFilters(root) {
+        const filterRoot = root.querySelector('[data-attendance-filter]');
+        const subjects = root.querySelectorAll('[data-attendance-subject]');
+        if (!filterRoot || !subjects.length) {
+            return;
+        }
+        const buttons = filterRoot.querySelectorAll('[data-filter-value]');
+        if (!buttons.length) {
+            return;
+        }
+        const defaultFilter = filterRoot.dataset.defaultFilter || 'present';
+        const subjectState = new WeakMap();
+
+        const parseSubjectEntries = subject => {
+            const scriptId = subject.dataset.attendanceData;
+            if (!scriptId) {
+                return [];
+            }
+            const script = document.getElementById(scriptId);
+            if (!script) {
+                return [];
+            }
+            try {
+                const parsed = JSON.parse(script.textContent || '[]');
+                script.remove();
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+                console.error('Failed to parse attendance data', error);
+                return [];
+            }
+        };
+
+        const getSubjectState = subject => {
+            let state = subjectState.get(subject);
+            if (!state) {
+                state = { entries: null, renderedStatus: null };
+                subjectState.set(subject, state);
+            }
+            if (state.entries === null) {
+                state.entries = parseSubjectEntries(subject);
+            }
+            return state;
+        };
+
+        const clearSubjectEntries = subject => {
+            const listNode = subject.querySelector('[data-attendance-entry-list]');
+            if (listNode) {
+                listNode.innerHTML = '';
+            }
+            const emptyNode = subject.querySelector('[data-attendance-empty]');
+            if (emptyNode) {
+                emptyNode.hidden = true;
+            }
+            const state = subjectState.get(subject);
+            if (state) {
+                state.renderedStatus = null;
+            }
+        };
+
+        const buildEntryNode = (entry, subjectName) => {
+            const listItem = document.createElement('li');
+            listItem.dataset.attendanceEntry = '1';
+            listItem.dataset.statusKey = entry.status_key || '';
+
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = `attendance-entry attendance-entry--${entry.status_key || 'present'}`;
+            button.dataset.attendanceDetail = '1';
+            button.dataset.subject = subjectName || '';
+            button.dataset.status = entry.status_label || '';
+            button.dataset.date = entry.date_full || entry.date_display || '';
+            button.dataset.slot = entry.slot_label || '';
+            button.dataset.time = entry.slot_time_range || '';
+            button.dataset.teacher = entry.teacher_label || '—';
+            button.dataset.comment = entry.comment || '';
+
+            const statusBlock = document.createElement('div');
+            statusBlock.className = 'attendance-entry__status';
+            const statusText = document.createElement('span');
+            statusText.textContent = entry.status_label || '';
+            statusBlock.appendChild(statusText);
+
+            const body = document.createElement('div');
+            body.className = 'attendance-entry__body';
+
+            const dateParts = [];
+            if (entry.date_full) dateParts.push(entry.date_full);
+            if (entry.day_short) dateParts.push(entry.day_short);
+            const dateRow = document.createElement('p');
+            dateRow.className = 'attendance-entry__date';
+            dateRow.textContent = dateParts.join(' • ');
+            body.appendChild(dateRow);
+
+            const slotParts = [];
+            if (entry.slot_label) slotParts.push(entry.slot_label);
+            if (entry.slot_time_range) slotParts.push(entry.slot_time_range);
+            const slotRow = document.createElement('p');
+            slotRow.className = 'attendance-entry__slot';
+            slotRow.textContent = slotParts.join(' • ');
+            body.appendChild(slotRow);
+
+            const teacherRow = document.createElement('p');
+            teacherRow.className = 'attendance-entry__teacher';
+            teacherRow.textContent = `Преподаватель: ${entry.teacher_label || '—'}`;
+            body.appendChild(teacherRow);
+
+            if (entry.comment) {
+                const commentRow = document.createElement('p');
+                commentRow.className = 'attendance-entry__comment';
+                commentRow.textContent = entry.comment;
+                body.appendChild(commentRow);
+            }
+
+            button.appendChild(statusBlock);
+            button.appendChild(body);
+            listItem.appendChild(button);
+            return listItem;
+        };
+
+        const renderSubjectEntries = (subject, statusKey) => {
+            const listNode = subject.querySelector('[data-attendance-entry-list]');
+            if (!listNode) {
+                return;
+            }
+            if (!subject.open) {
+                clearSubjectEntries(subject);
+                return;
+            }
+            const state = getSubjectState(subject);
+            if (state.renderedStatus === statusKey) {
+                return;
+            }
+            const subjectName = subject.dataset.subjectName || '';
+            const fragment = document.createDocumentFragment();
+            let visibleCount = 0;
+            (state.entries || []).forEach(entry => {
+                if (statusKey && entry.status_key !== statusKey) {
+                    return;
+                }
+                visibleCount += 1;
+                fragment.appendChild(buildEntryNode(entry, subjectName));
+            });
+            listNode.innerHTML = '';
+            listNode.appendChild(fragment);
+            state.renderedStatus = statusKey;
+            const emptyNode = subject.querySelector('[data-attendance-empty]');
+            if (emptyNode) {
+                emptyNode.hidden = visibleCount > 0;
+            }
+        };
+
+        const applyFilter = value => {
+            const target = value || defaultFilter;
+            filterRoot.dataset.currentFilter = target;
+            buttons.forEach(button => {
+                const match = button.dataset.filterValue === target;
+                button.classList.toggle('is-active', match);
+                button.setAttribute('aria-pressed', match ? 'true' : 'false');
+            });
+            subjects.forEach(subject => {
+                if (subject.open) {
+                    renderSubjectEntries(subject, target);
+                } else {
+                    clearSubjectEntries(subject);
+                }
+            });
+        };
+        buttons.forEach(button => {
+            button.addEventListener('click', () => {
+                applyFilter(button.dataset.filterValue);
+            });
+        });
+        subjects.forEach(subject => {
+            subject.addEventListener('toggle', () => {
+                if (subject.open) {
+                    renderSubjectEntries(subject, filterRoot.dataset.currentFilter || defaultFilter);
+                } else {
+                    clearSubjectEntries(subject);
+                }
+            });
+        });
+        applyFilter(defaultFilter);
+    }
+
+    function loadWeek(root, weekValue, options) {
+        if (!root) {
+            return;
+        }
+        const opts = Object.assign({ updateHistory: true }, options);
+        const baseUrl = root.dataset.progressUrl || window.location.pathname;
+        const url = weekValue ? `${baseUrl}?week=${encodeURIComponent(weekValue)}` : baseUrl;
+        const requestId = ++activeRequestId;
+
+        root.classList.add('is-loading');
+
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network error');
+                }
+                return response.text();
+            })
+            .then(html => {
+                if (requestId !== activeRequestId) {
+                    return;
+                }
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const freshRoot = doc.querySelector(ROOT_SELECTOR);
+                if (!freshRoot) {
+                    throw new Error('Content missing');
+                }
+                root.classList.remove('is-loading');
+                root.replaceWith(freshRoot);
+                if (opts.updateHistory) {
+                    const currentUrl = window.location.pathname + window.location.search;
+                    if (currentUrl !== url) {
+                        history.pushState({}, '', url);
+                    }
+                }
+                initStudentProgress();
+            })
+            .catch(() => {
+                if (requestId !== activeRequestId) {
+                    return;
+                }
+                root.classList.remove('is-loading');
+                window.location.href = url;
+            });
+    }
+
+    function ensureModal() {
+        if (modalNode) {
+            return modalNode;
+        }
+        modalNode = document.querySelector('[data-progress-detail-modal]');
+        if (!modalNode) {
+            return null;
+        }
+        modalFields.type = modalNode.querySelector('[data-detail-type]');
+        modalFields.subject = modalNode.querySelector('[data-detail-subject]');
+        modalFields.date = modalNode.querySelector('[data-detail-date]');
+        modalFields.slot = modalNode.querySelector('[data-detail-slot]');
+        modalFields.kind = modalNode.querySelector('[data-detail-kind]');
+        modalFields.topic = modalNode.querySelector('[data-detail-topic]');
+        modalFields.value = modalNode.querySelector('[data-detail-value]');
+        modalFields.comment = modalNode.querySelector('[data-detail-comment]');
+        modalFields.teacher = modalNode.querySelector('[data-detail-teacher]');
+        const closeModal = () => {
+            modalNode.hidden = true;
+        };
+        modalNode.querySelector('[data-detail-close]')?.addEventListener('click', closeModal);
+        modalNode.addEventListener('click', event => {
+            if (event.target === modalNode) {
+                closeModal();
+            }
+        });
+        return modalNode;
+    }
+
+    function openDetailModal(data) {
+        const modal = ensureModal();
+        if (!modal) {
+            return;
+        }
+        modalFields.type.textContent = data.type || 'Запись';
+        modalFields.subject.textContent = data.subject || '—';
+        modalFields.date.textContent = data.date || '—';
+        const slotParts = [];
+        if (data.slot) slotParts.push(data.slot);
+        if (data.time) slotParts.push(data.time);
+        modalFields.slot.textContent = slotParts.join(' • ') || '—';
+        modalFields.kind.textContent = data.kind || '—';
+        modalFields.topic.textContent = data.topic || 'Не указана';
+        modalFields.value.textContent = data.value || '—';
+        modalFields.comment.textContent = data.comment || 'Комментариев нет';
+        modalFields.teacher.textContent = data.teacher || '—';
+        modal.hidden = false;
+    }
+
+    function setupDetailModal(root) {
+        const modal = ensureModal();
+        if (!modal || root.dataset.detailListener === '1') {
+            return;
+        }
+        const handleDetailClick = event => {
+            const trigger = event.target.closest('[data-grade-detail],[data-attendance-detail]');
+            if (!trigger || !root.contains(trigger)) {
+                return;
+            }
+            if (trigger.hasAttribute('data-grade-detail')) {
+                openDetailModal({
+                    type: 'Оценка',
+                    subject: trigger.dataset.subject,
+                    date: trigger.dataset.date,
+                    slot: trigger.dataset.slot,
+                    time: trigger.dataset.time,
+                    kind: trigger.dataset.type,
+                    topic: trigger.dataset.topic,
+                    value: trigger.dataset.value,
+                    comment: trigger.dataset.comment,
+                    teacher: trigger.dataset.teacher,
+                });
+                return;
+            }
+            if (trigger.hasAttribute('data-attendance-detail')) {
+                openDetailModal({
+                    type: 'Посещаемость',
+                    subject: trigger.dataset.subject,
+                    date: trigger.dataset.date,
+                    slot: trigger.dataset.slot,
+                    time: trigger.dataset.time,
+                    kind: trigger.dataset.status,
+                    topic: '',
+                    value: trigger.dataset.status,
+                    comment: trigger.dataset.comment,
+                    teacher: trigger.dataset.teacher,
+                });
+            }
+        };
+        root.addEventListener('click', handleDetailClick);
+        root.dataset.detailListener = '1';
+    }
+
+    function bindPopstate() {
+        if (popstateBound) {
+            return;
+        }
+        window.addEventListener('popstate', () => {
+            const root = document.querySelector(ROOT_SELECTOR);
+            if (!root) {
+                return;
+            }
+            const params = new URL(window.location.href).searchParams;
+            const weekParam = params.get('week') || '';
+            loadWeek(root, weekParam, { updateHistory: false });
+        });
+        popstateBound = true;
+    }
+
+    ready(() => {
+        initStudentProgress();
+        bindPopstate();
+    });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,131 @@
+{% extends 'teacher/base.html' %}
+{% load static %}
+
+{% block title %}Группа {{ group.code }} — Преподаватель{% endblock %}
+{% block page_title %}Группа {{ group.code }}{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/teacher_week_adminlook.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="teacher-dashboard">
+  <div class="journal-back-link">
+    <a href="{% url 'teacher_groups' %}" class="action-link">
+      <i class="bi bi-arrow-left-short"></i>
+      К списку групп
+    </a>
+  </div>
+
+  <section class="panel teacher-calendar-panel calendar-full adminlook teacher-group-detail-page">
+    <div class="panel-header">
+      <div>
+        <h2>Группа {{ group.code }}</h2>
+        <p class="calendar-subtitle">
+          {% if group.profession %}{{ group.profession }}{% endif %}
+          {% if group.profession and group.faculty %} • {% endif %}
+          {% if group.faculty %}{{ group.faculty.name }}{% endif %}
+        </p>
+      </div>
+      <div class="teacher-group-detail__actions">
+        <a href="{% url 'teacher_group_detail' group.id %}">
+          <i class="bi bi-person-vcard"></i>
+          Состав и профиль
+        </a>
+        <a href="{% url 'teacher_journal_detail' group.id %}">
+          <i class="bi bi-journal-check"></i>
+          Журнал оценок
+        </a>
+        <a href="{% url 'teacher_attendance_detail' group.id %}">
+          <i class="bi bi-clipboard-check"></i>
+          Посещаемость
+        </a>
+      </div>
+    </div>
+
+    <div class="teacher-group-overview-summary">
+      <div class="teacher-groups-stat">
+        <span class="teacher-groups-stat__label">Студентов</span>
+        <strong>{{ students|length }}</strong>
+      </div>
+      <div class="teacher-groups-stat">
+        <span class="teacher-groups-stat__label">Активных</span>
+        <strong>{{ active_students }}</strong>
+      </div>
+      <div class="teacher-groups-stat">
+        <span class="teacher-groups-stat__label">На паузе</span>
+        <strong>{{ inactive_students }}</strong>
+      </div>
+      <div class="teacher-groups-stat">
+        <span class="teacher-groups-stat__label">Курс</span>
+        <strong>{% if group.current_course %}{{ group.current_course }}{% else %}—{% endif %}</strong>
+      </div>
+    </div>
+
+    <div class="teacher-group-detail teacher-group-detail--overview">
+      <div class="teacher-group-detail__body">
+        <div class="teacher-group-overview-info">
+          <div class="group-info-card">
+            <span class="group-info-card__label">Специальность</span>
+            <strong class="group-info-card__value">
+              {% if group.faculty %}{{ group.faculty.name }}{% else %}—{% endif %}
+            </strong>
+          </div>
+          <div class="group-info-card">
+            <span class="group-info-card__label">Профессия</span>
+            <strong class="group-info-card__value">
+              {% if group.profession %}{{ group.profession }}{% else %}—{% endif %}
+            </strong>
+          </div>
+          <div class="group-info-card">
+            <span class="group-info-card__label">Дата поступления</span>
+            <strong class="group-info-card__value">{{ group.enrollment_date|date:"d.m.Y"|default:"—" }}</strong>
+          </div>
+          <div class="group-info-card">
+            <span class="group-info-card__label">Дата выпуска</span>
+            <strong class="group-info-card__value">{{ group.graduation_date|date:"d.m.Y"|default:"—" }}</strong>
+          </div>
+          <div class="group-info-card">
+            <span class="group-info-card__label">Статус обучения</span>
+            <strong class="group-info-card__value">{{ group.status_display }}</strong>
+          </div>
+        </div>
+
+        <div class="teacher-group-detail__students">
+          <div class="teacher-group-detail__header">
+            <div>
+              <h3>Состав группы</h3>
+              <p class="calendar-subtitle">Алфавитный список</p>
+            </div>
+          </div>
+          <ul class="teacher-group-detail__students-list">
+            {% for student in students %}
+            <li class="teacher-student-item">
+              <div>
+                <p class="teacher-student-item__name">{{ student.get_full_name }}</p>
+                {% if student.study_status != 'active' %}
+                <p class="teacher-student-item__meta">{{ student.get_study_status_display }}</p>
+                {% else %}
+                <p class="teacher-student-item__meta">Обучается</p>
+                {% endif %}
+              </div>
+              {% if student.study_status != 'active' %}
+              <span class="group-student-status group-student-status--warning">
+                {{ student.get_study_status_display }}
+              </span>
+              {% else %}
+              <span class="group-student-status group-student-status--success">Активен</span>
+              {% endif %}
+            </li>
+            {% empty %}
+            <li class="teacher-student-item teacher-student-item--empty">
+              <p>Студенты ещё не добавлены.</p>
+            </li>
+            {% endfor %}
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+{% endblock %}

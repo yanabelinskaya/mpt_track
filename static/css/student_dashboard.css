@@ -1,0 +1,500 @@
+body[data-panel="student"] {
+    font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    color: var(--text);
+    background: var(--surface);
+}
+
+.student-dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin: 0 auto;
+}
+
+.panel {
+    border-radius: 22px;
+    background: var(--surface);
+    border: 1px solid var(--border-color);
+    padding: 1.5rem;
+    box-shadow: var(--shadow);
+}
+
+.student-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.08), rgba(14, 165, 233, 0.08));
+}
+
+.student-hero__content h1 {
+    margin: 0.2rem 0 0.4rem;
+    font-size: clamp(1.8rem, 2.4vw, 2.4rem);
+}
+
+.student-hero__label {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+}
+
+.student-hero__subtitle {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.student-hero__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.hero-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    background: rgba(20, 184, 166, 0.15);
+    color: var(--text);
+}
+
+.student-hero__meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+}
+
+.hero-stat {
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    background: var(--muted-bg2);
+}
+
+.hero-stat p {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.hero-stat strong {
+    display: block;
+    margin-top: 0.35rem;
+    font-size: 1.1rem;
+}
+
+.section-label {
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-bottom: 0.4rem;
+}
+
+.section-subtitle {
+    margin: 0;
+    color: var(--text-muted);
+}
+
+.attendance-panel {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+}
+
+.attendance-ring-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+}
+
+.attendance-ring {
+    --progress-value: 0%;
+    width: 220px;
+    height: 220px;
+    border-radius: 50%;
+    position: relative;
+    background:
+        radial-gradient(circle at center, var(--surface) 55%, transparent 56%),
+        conic-gradient(#6366f1 var(--progress-value), rgba(148, 163, 184, 0.25) 0);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    transition: background 1s ease;
+    will-change: background;
+}
+
+.attendance-ring::after {
+    content: '';
+    position: absolute;
+    width: 130px;
+    height: 130px;
+    background: var(--surface);
+    border-radius: 50%;
+}
+
+.attendance-ring__value {
+    position: relative;
+    text-align: center;
+    z-index: 1;
+}
+
+.attendance-ring__value .value {
+    font-size: 2.4rem;
+    font-weight: 600;
+}
+
+.attendance-ring__value .caption {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.attendance-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+}
+
+.legend-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.legend-item--good .legend-dot {
+    background: #6366f1;
+}
+
+.legend-item--bad .legend-dot {
+    background: #f43f5e;
+}
+
+.legend-item p {
+    margin: 0;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.legend-item strong {
+    font-size: 1.3rem;
+}
+
+.attendance-panel__details {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.attendance-scale {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.scale-item {
+    display: flex;
+    gap: 1rem;
+    padding: 0.85rem 1rem;
+    border: 1px dashed rgba(148, 163, 184, 0.5);
+    border-radius: 16px;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.scale-item.is-active {
+    border-color: #22d3ee;
+    background: rgba(34, 211, 238, 0.08);
+}
+
+.scale-range {
+    font-weight: 600;
+    min-width: 70px;
+}
+
+.scale-body span {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.attendance-breakdown {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.75rem;
+}
+
+.attendance-breakdown div {
+    border-radius: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    padding: 0.75rem 1rem;
+}
+
+.attendance-breakdown p {
+    margin: 0;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.attendance-breakdown strong {
+    font-size: 1.3rem;
+}
+
+.schedule-panel header,
+.grades-panel header {
+    margin-bottom: 1.25rem;
+}
+
+.schedule-updates__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.schedule-updates__hint {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.schedule-updates__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.schedule-update {
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 1rem 1.2rem;
+    background: var(--muted-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.schedule-update__meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    flex-wrap: wrap;
+}
+
+.schedule-update__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: rgba(99, 102, 241, 0.15);
+    color: #6366f1;
+    margin-right: 0.5rem;
+}
+
+.schedule-update--removed .schedule-update__badge {
+    background: rgba(244, 63, 94, 0.15);
+    color: #f43f5e;
+}
+
+.schedule-update--added .schedule-update__badge {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.schedule-update__text {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.schedule-update__details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.schedule-update__details span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.schedule-update__empty {
+    text-align: center;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.schedule-update__empty i {
+    font-size: 1.6rem;
+    color: #22c55e;
+}
+
+.schedule-side {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.schedule-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 18px;
+    border: 1px solid var(--border-color);
+    background: var(--muted-bg);
+    min-height: 120px;
+}
+
+.schedule-card i {
+    font-size: 1.5rem;
+    color: var(--bs-primary);
+}
+
+.schedule-card p {
+    margin: 0.25rem 0 0;
+    color: var(--text-muted);
+}
+
+.schedule-card kbd {
+    background: rgba(15, 23, 42, 0.08);
+    padding: 0.1rem 0.4rem;
+    border-radius: 6px;
+    font-size: 0.85rem;
+}
+
+.grades-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.grade-card {
+    padding: 1rem;
+    border-radius: 18px;
+    border: 1px solid var(--border-color);
+    background: var(--muted-bg);
+}
+
+.grade-card--accent {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(14, 165, 233, 0.2));
+}
+
+.grade-card p {
+    margin: 0;
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+}
+
+.grade-card strong {
+    display: block;
+    font-size: 2rem;
+    margin: 0.35rem 0;
+}
+
+.grade-card span {
+    color: var(--text-muted);
+}
+
+.student-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem;
+}
+
+.info-card {
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 1rem 1.25rem;
+    background: var(--muted-bg);
+}
+
+.info-card h3 {
+    margin: 0 0 0.75rem;
+}
+
+.info-card ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.info-card li {
+    display: flex;
+    gap: 1rem;
+    font-size: 0.95rem;
+}
+
+.info-card span {
+    color: var(--text-muted);
+}
+
+.info-card strong {
+    font-weight: 600;
+}
+
+.attendance-panel__chart{
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+@media (max-width: 768px) {
+    .schedule-content {
+        grid-template-columns: 1fr;
+    }
+    .attendance-ring-wrapper {
+        flex-direction: column;
+    }
+    .attendance-ring {
+        width: 180px;
+        height: 180px;
+    }
+    .attendance-ring::after {
+        width: 100px;
+        height: 100px;
+    }
+}

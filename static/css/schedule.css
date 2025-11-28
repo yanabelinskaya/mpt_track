@@ -2088,6 +2088,11 @@ body.schedule-modal-open {
     color: var(--schedule-muted);
 }
 
+.lesson-line--room {
+    color: var(--bs-body-color);
+    font-weight: 600;
+}
+
 .schedule-lesson__tags {
     display: flex;
     flex-wrap: wrap;

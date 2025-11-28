@@ -1,0 +1,550 @@
+.student-schedule {
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.student-schedule.is-loading {
+    opacity: 0.55;
+    pointer-events: none;
+}
+
+.student-schedule .panel-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin-bottom: 1.25rem;
+}
+
+.schedule-hero {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    background: linear-gradient(135deg, rgba(20, 184, 166, 0.12), rgba(14, 165, 233, 0.09)) !important;
+}
+
+.schedule-hero__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+}
+
+.schedule-hero__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.85rem;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.08);
+    font-size: 0.85rem;
+}
+
+.hero-badge i {
+    font-size: 1rem;
+}
+
+.hero-badge--muted {
+    background: rgba(148, 163, 184, 0.2);
+    color: var(--text-muted);
+}
+
+.schedule-week {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    border: 1px solid var(--border-color);
+    border-radius: 26px;
+    padding: 0.55rem 1rem;
+    background: var(--surface);
+    box-shadow: 0 16px 30px rgba(15, 23, 42, 0.08);
+}
+
+.week-switcher__btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    background: var(--muted-bg);
+    color: var(--text);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.week-switcher__btn:hover {
+    transform: translateY(-1px);
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.5);
+}
+
+.schedule-week__range {
+    font-weight: 600;
+    line-height: 1.2;
+    min-width: 170px;
+    text-align: center;
+}
+
+.schedule-week__parity {
+    font-size: 0.8rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.15);
+}
+
+.week-panel__toolbar {
+    margin-top: 0.9rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.95rem;
+    align-items: center;
+}
+
+.week-current-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 1.1rem;
+    border-radius: 18px;
+    border: 1px dashed rgba(99, 102, 241, 0.5);
+    background: transparent;
+    color: var(--text);
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.week-current-btn:hover {
+    border-color: rgba(99, 102, 241, 0.9);
+    color: var(--bs-primary);
+}
+
+
+.schedule-hero__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem;
+}
+
+.hero-stat {
+    padding: 1rem;
+    border-radius: 18px;
+    border: 1px solid var(--border-color);
+    background: var(--surface);
+}
+
+.hero-stat p {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+}
+
+.hero-stat strong {
+    display: block;
+    margin-top: 0.4rem;
+    font-size: 1.3rem;
+}
+
+.schedule-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    gap: 1.5rem;
+}
+
+@media (max-width: 992px) {
+    .schedule-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.day-timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.updates-panel {
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.02), transparent);
+}
+
+.timeline-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 20px;
+    border: 1px solid var(--border-color);
+    background: var(--muted-bg);
+    position: relative;
+    align-items: center;
+}
+
+.timeline-item.is-empty {
+    opacity: 0.8;
+}
+
+.timeline-time {
+    min-width: 120px;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.timeline-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.timeline-title {
+    font-weight: 600;
+    font-size: 1.05rem;
+}
+
+.timeline-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.8rem;
+    font-size: 0.9rem;
+    color: var(--text-muted);
+}
+
+.timeline-meta .lesson-room,
+.schedule-lesson__meta .lesson-room {
+    font-weight: 600;
+    color: var(--text);
+}
+
+.timeline-tags {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+
+.timeline-empty {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--text-muted);
+}
+
+.timeline-change {
+    align-self: flex-start;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(250, 204, 21, 0.25);
+    font-size: 0.8rem;
+    color: #b45309;
+}
+
+.schedule-tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.7rem;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.12);
+    font-size: 0.8rem;
+    color: #4338ca;
+    text-transform: none;
+}
+
+.schedule-tag--muted {
+    background: rgba(148, 163, 184, 0.2);
+    color: var(--text-muted);
+}
+
+.schedule-updates__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.schedule-update {
+    border: 1px solid var(--border-color);
+    border-radius: 18px;
+    padding: 1rem 1.2rem;
+    background: var(--muted-bg);
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.schedule-update__meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.schedule-update__badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.6rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    background: rgba(99, 102, 241, 0.15);
+    color: #6366f1;
+    margin-right: 0.5rem;
+}
+
+.schedule-update--removed .schedule-update__badge {
+    background: rgba(244, 63, 94, 0.15);
+    color: #f43f5e;
+}
+
+.schedule-update--added .schedule-update__badge {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+}
+
+.schedule-update__details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem 1rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.schedule-update__text {
+    margin: 0;
+    font-size: 0.95rem;
+}
+
+.schedule-update__details span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.schedule-update__empty {
+    text-align: center;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.student-week-grid {
+    border: 1px solid var(--border-color);
+    border-radius: 22px;
+    overflow: hidden;
+    margin-top: 0.75rem;
+}
+
+.student-week-grid__head,
+.student-week-grid__body .grid-row {
+    display: grid;
+    grid-template-columns: 125px repeat(6, minmax(0, 1fr));
+}
+
+.grid-cell {
+    border-bottom: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    padding: 0.9rem;
+    min-height: 120px;
+}
+
+.grid-cell--time {
+    background: var(--muted-bg);
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.student-week-grid__head .grid-cell--day {
+    background: var(--muted-bg);
+    text-align: center;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.student-week-grid__head .day-name {
+    display: block;
+    font-size: 0.95rem;
+}
+
+.student-week-grid__head .day-date {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+}
+
+.student-week-grid__head .day-building {
+    display: block;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.student-week-grid__body .grid-cell:last-child,
+.student-week-grid__head .grid-cell:last-child {
+    border-right: none;
+}
+
+.student-week-grid__body .grid-row:last-child .grid-cell {
+    border-bottom: none;
+}
+
+.grid-cell.has-lesson {
+    background: var(--surface);
+}
+
+.schedule-lesson {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.schedule-lesson__title {
+    font-weight: 600;
+}
+
+.schedule-lesson__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem 0.8rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.schedule-lesson__tags {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+}
+
+.grid-cell__placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    text-align: center;
+    width: 100%;
+    min-height: 100%;
+    height: 100%;
+}
+
+.grid-cell__change {
+    position: absolute;
+    top: 0rem;
+    right: 0rem;
+    font-size: 0.75rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(250, 204, 21, 0.25);
+}
+
+.grid-cell.grid-cell--day {
+    position: relative;
+}
+
+.grid-cell--changed-removed {
+    box-shadow: inset 0 0 0 2px rgba(244, 63, 94, 0.25);
+}
+
+.grid-cell--changed-added {
+    box-shadow: inset 0 0 0 2px rgba(34, 197, 94, 0.25);
+}
+
+.grid-cell--changed-updated {
+    box-shadow: inset 0 0 0 2px rgba(250, 204, 21, 0.25);
+}
+
+.grid-cell--changed-removed .grid-cell__change {
+    background: rgba(244, 63, 94, 0.2);
+    color: #9f1239;
+}
+
+.grid-cell--changed-added .grid-cell__change {
+    background: rgba(34, 197, 94, 0.2);
+    color: #15803d;
+}
+
+.week-empty {
+    padding: 2rem;
+    border: 1px dashed var(--border-color);
+    border-radius: 22px;
+    text-align: center;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.week-empty i {
+    font-size: 2rem;
+    color: var(--bs-primary);
+}
+
+@media (max-width: 768px) {
+    .student-week-grid__head,
+    .student-week-grid__body .grid-row {
+        grid-template-columns: 90px repeat(6, minmax(0, 1fr));
+    }
+
+    .timeline-item {
+        flex-direction: column;
+    }
+
+    .timeline-time {
+        flex-direction: row;
+        justify-content: space-between;
+    }
+
+    .schedule-week {
+        width: 100%;
+        flex-wrap: wrap;
+        justify-content: center;
+        text-align: center;
+    }
+
+    .schedule-week__range {
+        flex: 1 1 100%;
+    }
+}
+
+@media (max-width: 576px) {
+    .week-panel__toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .week-panel__toolbar .schedule-week {
+        width: 100%;
+        justify-content: space-between;
+        flex-wrap: wrap;
+    }
+}

@@ -1,0 +1,310 @@
+{% extends 'student/base.html' %}
+{% load static %}
+
+{% block title %}Расписание — Кабинет студента{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/student_schedule.css' %}">
+<link rel="stylesheet" href="{% static 'css/student_dashboard.css' %}">
+
+{% endblock %}
+
+{% block content %}
+<div class="student-schedule" data-student-schedule data-schedule-url="{% url 'student_schedule' %}">
+    <section class="panel schedule-hero">
+        <div class="schedule-hero__header">
+            <div>
+                <p class="section-label">Расписание</p>
+                <h1>Группа {{ group.code|default:'без группы' }}</h1>
+                <p class="section-subtitle">
+                    {% if schedule_available %}
+                        Учебная неделя {{ week_range_label }} — {{ week_parity_label|lower }}.
+                    {% elif schedule_state.has_group %}
+                        Расписание на выбранную неделю появится сразу после публикации преподавателями.
+                    {% else %}
+                        Вас ещё не прикрепили к учебной группе — сообщите куратору, чтобы увидеть занятия.
+                    {% endif %}
+                </p>
+                {% if schedule_state.has_group %}
+                <div class="schedule-hero__badges">
+                    <span class="hero-badge"><i class="bi bi-calendar-week"></i>{{ week_range_label }}</span>
+                    <span class="hero-badge"><i class="bi bi-shuffle"></i>{{ week_parity_label }}</span>
+                    {% if week_summary.last_updated %}
+                    <span class="hero-badge hero-badge--muted"><i class="bi bi-arrow-repeat"></i>Обновлено {{ week_summary.last_updated }}</span>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="schedule-hero__stats">
+            <div class="hero-stat">
+                <p>Пар на неделе</p>
+                <strong>{{ week_summary.lessons_total }}</strong>
+            </div>
+            <div class="hero-stat">
+                <p>Дней с занятиями</p>
+                <strong>{{ week_summary.days_active }}</strong>
+            </div>
+            <div class="hero-stat">
+                <p>Преподавателей</p>
+                <strong>{{ week_summary.teachers_total }}</strong>
+            </div>
+            <div class="hero-stat">
+                <p>Аудиторий</p>
+                <strong>{{ week_summary.rooms_total }}</strong>
+            </div>
+        </div>
+    </section>
+
+    <div class="schedule-layout">
+        <section class="panel day-panel">
+            <header class="panel-header">
+                <div>
+                    <p class="section-label">Ближайшие пары</p>
+                    <h2>{{ today_label }}</h2>
+                    <p class="section-subtitle">Корпус: {{ today_building_label }}</p>
+                </div>
+            </header>
+            <div class="day-timeline">
+                {% for slot in today_slots %}
+                <article class="timeline-item{% if slot.lesson %} has-lesson{% else %} is-empty{% endif %}">
+                    <div class="timeline-time">
+                        <span class="timeline-order">{{ slot.slot.order }} пара</span>
+                        <span class="timeline-range">{{ slot.slot.start }} – {{ slot.slot.end }}</span>
+                    </div>
+                    <div class="timeline-body">
+                        {% if slot.lesson %}
+                        <div class="timeline-title">{{ slot.lesson.subject }}</div>
+                        <div class="timeline-meta">
+                            {% if slot.lesson.teacher_names %}<span>{{ slot.lesson.teacher_names }}</span>{% endif %}
+                            <span>{{ slot.lesson.lesson_type }}</span>
+                            {% if slot.lesson.room_label %}<span class="lesson-room">Ауд. {{ slot.lesson.room_label }}</span>{% endif %}
+                        </div>
+                        {% else %}
+                        <div class="timeline-empty">
+                            <i class="bi bi-dash-lg"></i>
+                            <span>Свободно</span>
+                        </div>
+                        {% endif %}
+                        {% if slot.change %}<span class="timeline-change">{{ slot.change.label }}</span>{% endif %}
+                    </div>
+                </article>
+                {% endfor %}
+            </div>
+        </section>
+
+        <section class="panel updates-panel">
+            <header class="panel-header">
+                <div>
+                    <p class="section-label">Обновления</p>
+                    <h2>Изменения расписания</h2>
+                    <p class="section-subtitle">Последние 7 дней</p>
+                </div>
+            </header>
+            <ul class="schedule-updates__list">
+                {% for update in schedule_updates %}
+                <li class="schedule-update schedule-update--{{ update.type|default:'updated' }}">
+                    <div class="schedule-update__meta">
+                        <div>
+                            <span class="schedule-update__badge">{{ update.type_label }}</span>
+                            <span class="schedule-update__slot">
+                                {{ update.day_label|default:'День неизвестен' }}{% if update.slot_label %} • {{ update.slot_label }}{% endif %}
+                            </span>
+                        </div>
+                        <time>{{ update.timestamp_display }}</time>
+                    </div>
+                    <p class="schedule-update__text">{{ update.description|default:'Изменение в расписании группы.' }}</p>
+                    <div class="schedule-update__details">
+                        {% if update.lesson_date_display %}<span><i class="bi bi-calendar-event"></i>{{ update.lesson_date_display }}</span>{% endif %}
+                        {% if update.subject %}<span><i class="bi bi-journal-bookmark"></i>{{ update.subject }}</span>{% endif %}
+                        {% if update.teacher_names %}<span><i class="bi bi-person"></i>{{ update.teacher_names }}</span>{% endif %}
+                    </div>
+                </li>
+                {% empty %}
+                <li class="schedule-update schedule-update--empty">
+                    <div class="schedule-update__empty">
+                        <i class="bi bi-check2-circle"></i>
+                        <p>Изменений не было — расписание стабильно.</p>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </section>
+    </div>
+
+    <section class="panel week-panel">
+        <header class="panel-header">
+            <div>
+                <p class="section-label">Сетка недели</p>
+                <h2>Расписание пар</h2>
+                <p class="section-subtitle">Все занятия показаны с учётом выбранного типа недели</p>
+                <div class="week-panel__toolbar" data-week-controls>
+                    <div class="schedule-week" data-week-range data-week-start="{{ week_start_iso }}" data-week-end="{{ week_end_iso }}">
+                        <button class="week-switcher__btn" type="button" data-week-action="prev" data-week-target="{{ week_prev_iso }}" title="Предыдущая неделя">
+                            <i class="bi bi-arrow-left"></i>
+                        </button>
+                        <span class="schedule-week__range" data-week-range-label>{{ week_range_label }}</span>
+                        <span class="schedule-week__parity" data-week-parity-label>{{ week_parity_label }}</span>
+                        <button class="week-switcher__btn" type="button" data-week-action="next" data-week-target="{{ week_next_iso }}" title="Следующая неделя">
+                            <i class="bi bi-arrow-right"></i>
+                        </button>
+                    </div>
+                    {% if not is_current_week %}
+                    <button class="week-current-btn" type="button" data-week-action="current" data-week-target="">
+                        <i class="bi bi-clock-history"></i>
+                        Текущая неделя
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </header>
+        {% if schedule_state.has_group %}
+            {% if schedule_available %}
+            <div class="student-week-grid">
+                <div class="student-week-grid__head">
+                    <div class="grid-cell grid-cell--time">Время</div>
+                    {% for day in weekday_order %}
+                    <div class="grid-cell grid-cell--day" data-day="{{ day.key }}">
+                        <span class="day-name">{{ day.short }}</span>
+                        <span class="day-date">{{ day.date_label }}</span>
+                        <span class="day-building">{{ day.building_label }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="student-week-grid__body">
+                    {% for row in week_grid_rows %}
+                    <div class="grid-row">
+                        <div class="grid-cell grid-cell--time">
+                            <span class="slot-order">{{ row.slot.order }} пара</span>
+                            <span class="slot-range">{{ row.slot.start }} – {{ row.slot.end }}</span>
+                        </div>
+                        {% for cell in row.cells %}
+                        <div class="grid-cell grid-cell--day{% if cell.lesson %} has-lesson{% else %} is-empty{% endif %}{% if cell.change %} grid-cell--changed-{{ cell.change.type }}{% endif %}">
+                            {% if cell.lesson %}
+                            <div class="schedule-lesson">
+                                <div class="schedule-lesson__title">{{ cell.lesson.subject }}</div>
+                                <div class="schedule-lesson__meta">
+                                    {% if cell.lesson.teacher_names %}<span>{{ cell.lesson.teacher_names }}</span>{% endif %}
+                                    <span>{{ cell.lesson.lesson_type }}</span>
+                                    {% if cell.lesson.room_label %}<span class="lesson-room">Ауд. {{ cell.lesson.room_label }}</span>{% endif %}
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="grid-cell__placeholder">
+                                <i class="bi bi-dash-lg"></i>
+                                <span>Нет пары</span>
+                            </div>
+                            {% endif %}
+                            {% if cell.change %}<span class="grid-cell__change">{{ cell.change.label }}</span>{% endif %}
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% else %}
+            <div class="week-empty">
+                <i class="bi bi-moon-stars"></i>
+                {% if not schedule_state.has_week %}
+                <p>Расписание на эту неделю ещё не опубликовано.</p>
+                {% else %}
+                <p>В выбранную неделю пары не запланированы.</p>
+                {% endif %}
+            </div>
+            {% endif %}
+        {% else %}
+        <div class="week-empty">
+            <i class="bi bi-exclamation-circle"></i>
+            <p>Вы пока не привязаны к учебной группе. После назначения группы здесь появится расписание.</p>
+        </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+    const scheduleSelector = '[data-student-schedule]';
+    let popstateBound = false;
+    let activeRequestId = 0;
+
+    function initStudentSchedule() {
+        const container = document.querySelector(scheduleSelector);
+        if (!container) {
+            return;
+        }
+
+        const baseUrl = container.dataset.scheduleUrl || window.location.pathname;
+
+        container.querySelectorAll('[data-week-action]').forEach(button => {
+            button.addEventListener('click', function(event) {
+                event.preventDefault();
+                const targetWeek = this.dataset.weekTarget || '';
+                loadWeek(targetWeek, container, baseUrl, { updateHistory: true });
+            });
+        });
+
+        if (!popstateBound) {
+            window.addEventListener('popstate', () => {
+                const scope = document.querySelector(scheduleSelector);
+                if (!scope) {
+                    return;
+                }
+                const scopeBaseUrl = scope.dataset.scheduleUrl || scope.getAttribute('data-schedule-url') || window.location.pathname;
+                const params = new URL(window.location.href).searchParams;
+                const weekParam = params.get('week') || '';
+                loadWeek(weekParam, scope, scopeBaseUrl, { updateHistory: false });
+            });
+            popstateBound = true;
+        }
+    }
+
+    function loadWeek(weekValue, container, baseUrl, options) {
+        if (!container) {
+            return;
+        }
+        const opts = Object.assign({ updateHistory: true }, options);
+        const requestId = ++activeRequestId;
+        const url = weekValue ? `${baseUrl}?week=${weekValue}` : baseUrl;
+        container.classList.add('is-loading');
+        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network error');
+                }
+                return response.text();
+            })
+            .then(html => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const fresh = doc.querySelector(scheduleSelector);
+                if (!fresh) {
+                    throw new Error('Content missing');
+                }
+                if (requestId !== activeRequestId) {
+                    return;
+                }
+                container.classList.remove('is-loading');
+                container.replaceWith(fresh);
+                if (opts.updateHistory) {
+                    const currentUrl = window.location.pathname + window.location.search;
+                    if (currentUrl !== url) {
+                        history.pushState({}, '', url);
+                    }
+                }
+                initStudentSchedule();
+            })
+            .catch(() => {
+                if (requestId !== activeRequestId) {
+                    return;
+                }
+                container.classList.remove('is-loading');
+                window.location.href = url;
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', initStudentSchedule);
+})();
+</script>
+{% endblock %}

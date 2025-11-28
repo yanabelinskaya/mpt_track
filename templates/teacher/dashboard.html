@@ -35,9 +35,9 @@
     </header>
     <div class="quick-links">
       <a href="{% url 'teacher_schedule' %}"><i class="bi bi-calendar-week"></i> Расписание</a>
-      <a href="{% url 'admin_students' %}"><i class="bi bi-people"></i> Студенты</a>
-      <a href="{% url 'admin_teachers' %}"><i class="bi bi-person-badge"></i> Профиль</a>
-      <a href="{% url 'groups_main' %}"><i class="bi bi-collection"></i> Группы</a>
+      <!---<a href="{% url 'teacher_groups' %}"><i class="bi bi-diagram-3"></i> Мои группы</a>
+      <a href="{% url 'admin_subjects' %}"><i class="bi bi-journals"></i> Предметы</a>-->
+      <a href="{% url 'teacher_journals' %}"><i class="bi bi-clipboard2-data"></i> Оценки и посещаемость</a>
     </div>
   </section>
 
@@ -106,6 +106,7 @@
         {% for day in weekday_order %}
         <div class="grid-cell grid-cell--day" data-day="{{ day.key }}">
           <span class="day-name">{{ day.short }}</span>
+          <span class="day-date">{{ day.date_label }}</span>
           <span class="day-building-badge">{{ day.building_label }}</span>
         </div>
         {% endfor %}
@@ -124,15 +125,18 @@
                data-day="{{ cell.day_key }}"
                data-slot="{{ cell.slot_id }}">
             {% if cell.lesson %}
-              <div class="schedule-lesson">
-                <div class="schedule-lesson__title">
-                  {{ cell.lesson.subject }}
+                <div class="schedule-lesson">
+                  <div class="schedule-lesson__title">
+                    {{ cell.lesson.subject }}
+                  </div>
+                  <div class="schedule-lesson__meta">
+                    <span class="lesson-line">{{ cell.lesson.group_code }}</span>
+                    <span class="lesson-line">{{ cell.lesson.lesson_type }}</span>
+                    {% if cell.lesson.room_label %}
+                    <span class="lesson-line lesson-line--room">Ауд. {{ cell.lesson.room_label }}</span>
+                    {% endif %}
+                  </div>
                 </div>
-                <div class="schedule-lesson__meta">
-                  <span class="lesson-line">{{ cell.lesson.group_code }}</span>
-                  <span class="lesson-line">{{ cell.lesson.lesson_type }}</span>
-                </div>
-              </div>
               {% if cell.change %}
               <span class="grid-cell__change">{{ cell.change.label }}</span>
               {% endif %}

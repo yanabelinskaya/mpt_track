@@ -1,0 +1,125 @@
+{% extends 'student/base.html' %}
+{% load static %}
+
+{% block title %}{{ subject_meta.name }} — Детали предмета{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/student_progress.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="subject-detail-page">
+    <div class="subject-detail-toolbar">
+        <a href="{% url 'student_progress' %}" class="subject-detail-toolbar__action subject-detail-toolbar__action--back">
+            <span class="subject-detail-toolbar__icon">
+                <i class="bi bi-arrow-left"></i>
+            </span>
+            <span>К списку оценок</span>
+        </a>
+    </div>
+
+    <section class="subject-detail-hero">
+        <div class="subject-detail-hero__primary">
+            <p class="section-label">Предмет</p>
+            <h1 class="subject-detail-hero__title">{{ subject_meta.name }}</h1>
+            <p class="subject-detail-hero__meta">
+                Преподаватель: {{ subject_meta.teacher|default:'—' }}
+            </p>
+            <div class="subject-detail-pill-list">
+                <span class="subject-detail-pill">
+                    <i class="bi bi-people"></i>
+                    Группа {{ subject_meta.group|default:'—' }}
+                </span>
+                <span class="subject-detail-pill">
+                    <i class="bi bi-journal-check"></i>
+                    {{ subject_meta.total|default:0 }} оценок
+                </span>
+            </div>
+        </div>
+        <div class="subject-detail-hero__stats">
+            <div class="subject-detail-hero__stat">
+                <span>Средний балл</span>
+                <strong>{{ subject_meta.average|default:'—' }}</strong>
+                <small>по предмету</small>
+            </div>
+            <div class="subject-detail-hero__stat">
+                <span>Оценок</span>
+                <strong>{{ subject_meta.total|default:0 }}</strong>
+                <small>зафиксировано</small>
+            </div>
+            <div class="subject-detail-hero__stat">
+                <span>Лучший результат</span>
+                <strong>{{ subject_meta.best|default:'—' }}</strong>
+                <small>максимальная оценка</small>
+            </div>
+            <div class="subject-detail-hero__stat">
+                <span>Последняя</span>
+                {% if subject_meta.latest %}
+                <strong>{{ subject_meta.latest.value }}</strong>
+                <small>{{ subject_meta.latest.type }} • {{ subject_meta.latest.date }}</small>
+                {% else %}
+                <strong>—</strong>
+                <small>Нет записей</small>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+
+    <div class="subject-detail-layout">
+        <section class="subject-detail-history">
+            <div class="subject-detail-history__head">
+                <div>
+                    <p class="section-label">История предмета</p>
+                    <h4 class="subject-detail-history__title">Лента оценок</h4>
+                </div>
+                <span class="subject-detail-history__count">
+                    <i class="bi bi-list-check"></i>
+                    {{ subject_meta.total|default:0 }} записей
+                </span>
+            </div>
+            {% if entry_groups %}
+                {% for group in entry_groups %}
+                <div class="subject-detail-group">
+                    <div class="subject-detail-group__head">
+                        <h5 class="subject-detail-group__title">{{ group.label }}</h5>
+                        <span class="subject-detail-group__count">{{ group.items|length }} записей</span>
+                    </div>
+                    <div class="subject-detail-group__list">
+                        {% for entry in group.items %}
+                        <article class="subject-detail-entry">
+                            <div class="subject-detail-entry__value">{{ entry.value }}</div>
+                            <div class="subject-detail-entry__info">
+                                <div class="subject-detail-entry__header">
+                                    <p class="subject-detail-entry__type">{{ entry.type }}</p>
+                                    {% if entry.meta_parts %}
+                                    <span class="subject-detail-entry__date">{{ entry.meta_parts.0 }}</span>
+                                    {% endif %}
+                                </div>
+                                {% if entry.topic %}
+                                <p class="subject-detail-entry__topic">{{ entry.topic }}</p>
+                                {% endif %}
+                                <div class="subject-detail-entry__meta">
+                                    {% for part in entry.meta_parts|slice:"1:" %}
+                                    <span>{{ part }}</span>{% if not forloop.last %}<span class="subject-detail-entry__dot">•</span>{% endif %}
+                                    {% endfor %}
+                                </div>
+                                {% if entry.comment %}
+                                <p class="subject-detail-entry__comment">{{ entry.comment }}</p>
+                                {% endif %}
+                                <p class="subject-detail-entry__teacher">{{ entry.teacher }}</p>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+            <div class="subject-detail-empty-state">
+                <i class="bi bi-stars"></i>
+                <p>По этому предмету ещё нет оценок. Возвращайтесь позже — как только появятся записи, они отобразятся здесь.</p>
+            </div>
+            {% endif %}
+        </section>
+    </div>
+</div>
+{% endblock %}

@@ -34,7 +34,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.http import require_POST
 from django.contrib.sessions.models import Session
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,41 @@ ATTENDANCE_STATUS_META = {
         },
     },
 }
+
+STUDENT_ATTENDANCE_BANDS = [
+    {
+        'id': 'critical',
+        'label': '0-30%',
+        'title': 'Плохо',
+        'description': 'Много пропусков, нужен контакт с куратором.',
+        'min': 0,
+        'max': 30,
+    },
+    {
+        'id': 'warning',
+        'label': '30-60%',
+        'title': 'Ниже нормы',
+        'description': 'Пора подтянуть посещаемость.',
+        'min': 30,
+        'max': 60,
+    },
+    {
+        'id': 'good',
+        'label': '60-85%',
+        'title': 'Стабильно',
+        'description': 'Держишься молодцом, продолжай.',
+        'min': 60,
+        'max': 85,
+    },
+    {
+        'id': 'excellent',
+        'label': '85-100%',
+        'title': 'Отлично',
+        'description': 'Пример дисциплины.',
+        'min': 85,
+        'max': 100,
+    },
+]
 
 
 SCHEDULE_WEEKDAY_LABELS = {
@@ -183,6 +218,139 @@ def get_teacher_schedule_updates(teacher, limit=10):
             })
     updates.sort(key=lambda entry: entry['timestamp'], reverse=True)
     return updates[:limit]
+
+
+def get_student_schedule_updates(student, limit=8):
+    """Последние изменения расписания по группе студента."""
+    if not MODELS_AVAILABLE or not student or not student.group:
+        return []
+
+    def clean_change_description(raw_text, parity_label=None):
+        if not raw_text:
+            return ''
+        cleaned = raw_text
+        if parity_label:
+            cleaned = re.sub(
+                rf'\s*{re.escape(parity_label)}\s*:\s*\[[^\]]+\]',
+                '',
+                cleaned
+            )
+        cleaned = re.sub(r'\s*(?:Всегда|Числитель|Знаменатель)\s*:\s*\[[^\]]+\]', '', cleaned)
+        cleaned = re.sub(r'\s{2,}', ' ', cleaned)
+        return cleaned.strip()
+
+    cutoff = timezone.now() - timedelta(days=7)
+    weekday_offsets = {
+        'monday': 0,
+        'tuesday': 1,
+        'wednesday': 2,
+        'thursday': 3,
+        'friday': 4,
+        'saturday': 5,
+        'sunday': 6,
+    }
+    weeks = (
+        ScheduleWeek.objects.filter(group=student.group)
+        .exclude(change_markers=[])
+        .select_related('group')
+        .order_by('-updated_at')[:max(limit * 3, 15)]
+    )
+    updates = []
+    for week in weeks:
+        for marker in week.change_markers or []:
+            marker_time = parse_marker_timestamp(marker.get('changedAt')) or week.updated_at
+            if marker_time and marker_time < cutoff:
+                continue
+            change_type = (marker.get('type') or 'updated').lower()
+            parity_label = marker.get('parityLabel') or ''
+            marker_week = marker.get('week')
+            day_key = (marker.get('day') or '').lower()
+            lesson_date = None
+            if marker_week and day_key in weekday_offsets:
+                try:
+                    week_start = datetime.strptime(marker_week, '%Y-%m-%d').date()
+                    lesson_date = week_start + timedelta(days=weekday_offsets[day_key])
+                except (ValueError, TypeError):
+                    lesson_date = None
+            updates.append({
+                'type': change_type,
+                'type_label': marker.get('typeLabel') or 'Изменение',
+                'description': clean_change_description(marker.get('description') or '', parity_label),
+                'day_label': marker.get('dayLabel') or '',
+                'slot_label': marker.get('slotLabel') or '',
+                'parity_label': parity_label,
+                'subject': marker.get('subject') or '',
+                'teacher_names': marker.get('teacherNames') or '',
+                'timestamp': marker_time,
+                'timestamp_display': timezone.localtime(marker_time).strftime('%d.%m %H:%M') if marker_time else '',
+                'lesson_date_display': lesson_date.strftime('%d.%m.%Y') if lesson_date else '',
+            })
+    updates.sort(key=lambda entry: entry['timestamp'], reverse=True)
+    return updates[:limit]
+
+
+def get_teacher_room_for_slot(week, day_key, slot_id, parity_key, teacher_id, cache=None):
+    """Извлекает аудиторию преподавателя из сохранённой недели расписания."""
+    if not week or not day_key or not slot_id or not teacher_id:
+        return ''
+
+    lessons_blob = None
+    week_id = getattr(week, 'id', None)
+    if cache is not None and week_id:
+        lessons_blob = cache.get(week_id)
+    if lessons_blob is None:
+        lessons_blob = week.lessons if isinstance(getattr(week, 'lessons', None), dict) else {}
+        if cache is not None and week_id:
+            cache[week_id] = lessons_blob
+
+    if not lessons_blob:
+        return ''
+
+    normalized_day = (day_key or '').lower()
+    normalized_slot = (slot_id or '').lower()
+    candidate_keys = []
+    if normalized_day and normalized_slot:
+        candidate_keys.append(f"{normalized_day}__{normalized_slot}")
+    if normalized_day and slot_id:
+        key = f"{normalized_day}__{slot_id}"
+        if key not in candidate_keys:
+            candidate_keys.append(key)
+    if day_key and slot_id:
+        key = f"{day_key}__{slot_id}"
+        if key not in candidate_keys:
+            candidate_keys.append(key)
+
+    entry = None
+    for candidate in candidate_keys:
+        cell_entry = lessons_blob.get(candidate)
+        if isinstance(cell_entry, dict):
+            entry = cell_entry
+            break
+    if not entry:
+        return ''
+
+    parity_candidates = []
+    if parity_key:
+        parity_candidates.append(parity_key)
+    if 'both' not in parity_candidates:
+        parity_candidates.append('both')
+
+    for parity_candidate in parity_candidates:
+        parity_entry = entry.get(parity_candidate)
+        if not isinstance(parity_entry, dict):
+            continue
+        teacher_rooms = parity_entry.get('teacherRooms')
+        if not isinstance(teacher_rooms, dict):
+            continue
+        room_value = teacher_rooms.get(str(teacher_id))
+        if room_value is None:
+            room_value = teacher_rooms.get(teacher_id)
+        if room_value is None:
+            continue
+        room_str = str(room_value).strip()
+        if room_str:
+            return room_str
+    return ''
 
 
 def dispatch_schedule_notifications(notification_jobs, from_email):
@@ -3553,6 +3721,23 @@ def student_redirect_view(request, student_id):
     messages.info(request, 'Функция просмотра/редактирования студентов в разработке')
     return redirect('admin_students')
 
+
+def get_student_attendance_band(rate_value):
+    """Подбираем отрезок шкалы посещаемости для текущего процента."""
+    try:
+        numeric_value = float(rate_value or 0)
+    except (TypeError, ValueError):
+        numeric_value = 0
+
+    for band in STUDENT_ATTENDANCE_BANDS:
+        min_value = band.get('min', 0)
+        max_value = band.get('max', 100)
+        if numeric_value < min_value:
+            continue
+        if numeric_value <= max_value:
+            return band
+    return STUDENT_ATTENDANCE_BANDS[-1]
+
 # Добавьте в admin_panel/views.py
 
 @login_required
@@ -3567,13 +3752,699 @@ def student_dashboard_view(request):
         return redirect('login')
     
     # Получаем информацию о студенте
+    attendance_qs = AttendanceRecord.objects.filter(student=student)
+    attendance_values = attendance_qs.aggregate(
+        total=Count('id'),
+        present=Count('id', filter=Q(status=AttendanceRecord.STATUS_PRESENT)),
+        absent=Count('id', filter=Q(status=AttendanceRecord.STATUS_ABSENT)),
+        late=Count('id', filter=Q(status=AttendanceRecord.STATUS_LATE)),
+        excused=Count('id', filter=Q(status=AttendanceRecord.STATUS_EXCUSED)),
+    )
+
+    attendance_total = attendance_values.get('total') or 0
+    attendance_present = attendance_values.get('present') or 0
+    attendance_absent = attendance_values.get('absent') or 0
+    attendance_late = attendance_values.get('late') or 0
+    attendance_excused = attendance_values.get('excused') or 0
+
+    attendance_rate = round(attendance_present / attendance_total * 100, 1) if attendance_total else 0
+    attendance_missed = max(attendance_total - attendance_present, 0)
+
+    attendance_chart = {
+        'rate': attendance_rate,
+        'missed_rate': max(100 - attendance_rate, 0),
+        'segments': [
+            {
+                'label': 'Посещено',
+                'value': attendance_present,
+                'percent': round(attendance_present / attendance_total * 100, 1) if attendance_total else 0,
+            },
+            {
+                'label': 'Пропущено',
+                'value': attendance_missed,
+                'percent': round(attendance_missed / attendance_total * 100, 1) if attendance_total else 0,
+            },
+        ],
+    }
+
+    attendance_band = get_student_attendance_band(attendance_rate)
+
+    schedule_updates = get_student_schedule_updates(student)
+
+    grade_qs = GradeRecord.objects.filter(student=student)
+    grade_values = grade_qs.aggregate(
+        total=Count('id'),
+        average=Avg('value'),
+    )
+    grade_total = grade_values.get('total') or 0
+    grade_average = grade_values.get('average')
+    avg_value = round(float(grade_average), 1) if grade_average else None
+    last_grade = grade_qs.select_related('subject').order_by('-lesson_date', '-updated_at').first()
+    latest_grade_entry = None
+    if last_grade:
+        latest_grade_entry = {
+            'value': last_grade.value,
+            'subject': (last_grade.subject.short_name or last_grade.subject.name) if last_grade.subject else 'Без предмета',
+            'date': last_grade.lesson_date,
+            'comment': last_grade.comment,
+        }
+
     context = {
         'student': student,
         'group': student.group,
         'faculty': student.group.faculty if student.group else None,
+        'attendance_summary': {
+            'total': attendance_total,
+            'present': attendance_present,
+            'absent': attendance_absent,
+            'late': attendance_late,
+            'excused': attendance_excused,
+            'rate': attendance_rate,
+        },
+        'attendance_chart': attendance_chart,
+        'attendance_band': attendance_band,
+        'attendance_bands': STUDENT_ATTENDANCE_BANDS,
+        'grades_summary': {
+            'total': grade_total,
+            'average': avg_value,
+            'latest': latest_grade_entry,
+        },
+        'schedule_updates': schedule_updates,
+        'active_nav': 'student_dashboard',
     }
-    
+
     return render(request, 'student/dashboard.html', context)
+
+
+@login_required
+def student_schedule_view(request):
+    """Вкладка расписания для студента."""
+    try:
+        student = request.user.student_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к личному кабинету студента')
+        return redirect('login')
+
+    group = getattr(student, 'group', None)
+    today = timezone.localdate()
+    selected_week_param = request.GET.get('week')
+    current_week_start = start_of_week(today) or today
+    week_start = current_week_start
+    if selected_week_param:
+        try:
+            parsed_week = datetime.strptime(selected_week_param, '%Y-%m-%d').date()
+            normalized_week = start_of_week(parsed_week)
+            if normalized_week:
+                week_start = normalized_week
+        except (ValueError, TypeError):
+            pass
+
+    week_end = week_start + timedelta(days=5)
+    week_prev = week_start - timedelta(days=7)
+    week_next = week_start + timedelta(days=7)
+    week_range_label = f"{week_start.strftime('%d.%m')} – {week_end.strftime('%d.%m')}"
+    week_parity_key = calculate_week_parity(week_start)
+    week_parity_label = SCHEDULE_PARITY_LABELS.get(week_parity_key, 'Всегда')
+
+    weekday_order = [
+        {'key': 'monday', 'label': 'Понедельник', 'short': 'Пн'},
+        {'key': 'tuesday', 'label': 'Вторник', 'short': 'Вт'},
+        {'key': 'wednesday', 'label': 'Среда', 'short': 'Ср'},
+        {'key': 'thursday', 'label': 'Четверг', 'short': 'Чт'},
+        {'key': 'friday', 'label': 'Пятница', 'short': 'Пт'},
+        {'key': 'saturday', 'label': 'Суббота', 'short': 'Сб'},
+    ]
+    weekday_keys = [day['key'] for day in weekday_order]
+
+    time_slots = [
+        {
+            'id': slot_id,
+            'order': meta['order'],
+            'start': meta['start'],
+            'end': meta['end'],
+            'label': f"{meta['order']} пара"
+        }
+        for slot_id, meta in sorted(SCHEDULE_TIME_SLOTS.items(), key=lambda item: item[1]['order'])
+    ]
+
+    lessons_blob = {}
+    day_buildings_map = {key: 'nakhimovsky' for key in weekday_keys}
+    change_cells_map = {}
+    teacher_lookup = {}
+
+    schedule_week = None
+    if MODELS_AVAILABLE and group:
+        schedule_week = ScheduleWeek.objects.filter(group=group, week_start=week_start).first()
+        if schedule_week and isinstance(schedule_week.day_buildings, dict):
+            for raw_day, building_key in schedule_week.day_buildings.items():
+                normalized_day = (raw_day or '').lower()
+                normalized_building = (building_key or '').lower()
+                if normalized_day in day_buildings_map and normalized_building in BUILDING_DISPLAY:
+                    day_buildings_map[normalized_day] = normalized_building
+        if schedule_week and isinstance(schedule_week.lessons, dict):
+            lessons_blob = schedule_week.lessons
+
+        change_cutoff = timezone.now() - timedelta(days=7)
+        if schedule_week and schedule_week.change_markers:
+            for marker in schedule_week.change_markers or []:
+                marker_time = parse_marker_timestamp(marker.get('changedAt'))
+                if marker_time and marker_time < change_cutoff:
+                    continue
+                cell_key = marker.get('cellKey')
+                if not cell_key:
+                    continue
+                change_type = (marker.get('type') or 'updated').lower()
+                prev = change_cells_map.get(cell_key)
+                prev_priority = CHANGE_TYPE_PRIORITY.get(prev['type'], 0) if prev else 0
+                current_priority = CHANGE_TYPE_PRIORITY.get(change_type, 0)
+                if not prev or current_priority >= prev_priority:
+                    change_cells_map[cell_key] = {
+                        'type': change_type,
+                        'label': marker.get('typeLabel') or 'Изменение',
+                    }
+
+    def collect_teacher_ids(blob):
+        teacher_ids = set()
+        if not isinstance(blob, dict):
+            return teacher_ids
+        for entry in blob.values():
+            if not isinstance(entry, dict):
+                continue
+            for parity_key in ('both', 'numerator', 'denominator'):
+                lesson = entry.get(parity_key)
+                if not isinstance(lesson, dict):
+                    continue
+                for raw_id in lesson.get('teacherIds') or lesson.get('teacher_ids') or []:
+                    try:
+                        teacher_ids.add(int(raw_id))
+                    except (TypeError, ValueError):
+                        continue
+        return teacher_ids
+
+    teacher_ids = collect_teacher_ids(lessons_blob)
+    if teacher_ids:
+        teacher_lookup = {
+            teacher.id: teacher
+            for teacher in Teacher.objects.filter(id__in=teacher_ids)
+        }
+
+    def extract_lesson(entry, parity_key):
+        if not isinstance(entry, dict):
+            return (None, None)
+        if parity_key and entry.get(parity_key):
+            return entry.get(parity_key), parity_key
+        if entry.get('both'):
+            return entry.get('both'), 'both'
+        for fallback in ('numerator', 'denominator'):
+            if entry.get(fallback):
+                return entry.get(fallback), fallback
+        return (None, None)
+
+    def format_teacher_names(ids):
+        names = []
+        for teacher_id in ids:
+            teacher = teacher_lookup.get(teacher_id)
+            if not teacher:
+                continue
+            names.append(teacher.get_short_name() or teacher.get_full_name())
+        return ', '.join(names)
+
+    def build_room_label(lesson):
+        rooms = []
+        teacher_rooms = lesson.get('teacherRooms') or lesson.get('teacher_rooms') or {}
+        if isinstance(teacher_rooms, dict):
+            for value in teacher_rooms.values():
+                value_str = str(value).strip()
+                if value_str and value_str not in rooms:
+                    rooms.append(value_str)
+        return ', '.join(rooms)
+
+    def build_lesson_payload(lesson, parity_source):
+        subject_label = (
+            lesson.get('subjectShort')
+            or lesson.get('subject_short')
+            or lesson.get('subjectName')
+            or lesson.get('subject_name')
+            or 'Занятие'
+        )
+        subject_label = subject_label.strip() if isinstance(subject_label, str) else 'Занятие'
+        teacher_ids_list = []
+        for raw_id in lesson.get('teacherIds') or lesson.get('teacher_ids') or []:
+            try:
+                teacher_ids_list.append(int(raw_id))
+            except (TypeError, ValueError):
+                continue
+        lesson_type_key = (lesson.get('type') or '').strip().lower()
+        lesson_type_label = LESSON_TYPE_LABELS.get(lesson_type_key, lesson.get('type') or 'Занятие')
+        parity_label = SCHEDULE_PARITY_LABELS.get(parity_source, SCHEDULE_PARITY_LABELS['both'])
+        return {
+            'subject': subject_label or 'Занятие',
+            'subject_full': lesson.get('subjectName') or subject_label,
+            'teacher_ids': teacher_ids_list,
+            'teacher_names': format_teacher_names(teacher_ids_list),
+            'lesson_type': lesson_type_label,
+            'room_label': build_room_label(lesson),
+            'parity_label': parity_label,
+            'parity_key': parity_source or 'both',
+            'is_always': (parity_source or 'both') == 'both',
+        }
+
+    lessons_by_day_slot = {key: {} for key in weekday_keys}
+    total_lessons = 0
+    unique_rooms = set()
+    if isinstance(lessons_blob, dict):
+        for cell_key, entry in lessons_blob.items():
+            if not isinstance(cell_key, str) or '__' not in cell_key or not isinstance(entry, dict):
+                continue
+            day_key, slot_id = cell_key.split('__', 1)
+            normalized_day = (day_key or '').lower()
+            normalized_slot = (slot_id or '').lower()
+            if normalized_day not in lessons_by_day_slot or normalized_slot not in SCHEDULE_TIME_SLOTS:
+                continue
+            lesson_entry, parity_source = extract_lesson(entry, week_parity_key)
+            if not lesson_entry:
+                continue
+            lesson_payload = build_lesson_payload(lesson_entry, parity_source)
+            room_label = lesson_payload.get('room_label')
+            if room_label:
+                for part in room_label.split(','):
+                    stripped = part.strip()
+                    if stripped:
+                        unique_rooms.add(stripped)
+            lesson_payload.update({
+                'slot_id': normalized_slot,
+                'day_key': normalized_day,
+                'building_label': BUILDING_DISPLAY.get(day_buildings_map.get(normalized_day), BUILDING_DISPLAY['nakhimovsky']),
+            })
+            lessons_by_day_slot[normalized_day][normalized_slot] = lesson_payload
+            total_lessons += 1
+
+    day_buildings_display = {
+        key: BUILDING_DISPLAY.get(day_buildings_map.get(key), BUILDING_DISPLAY['nakhimovsky'])
+        for key in weekday_keys
+    }
+
+    days_with_dates = []
+    for index, day in enumerate(weekday_order):
+        day_date = week_start + timedelta(days=index)
+        days_with_dates.append({
+            **day,
+            'date_label': day_date.strftime('%d.%m'),
+            'building_label': day_buildings_display.get(day['key'], BUILDING_DISPLAY['nakhimovsky']),
+        })
+
+    def build_day_slots(day_key):
+        slots = []
+        for slot in time_slots:
+            cell_key = f"{day_key}__{slot['id']}"
+            slots.append({
+                'slot': slot,
+                'lesson': lessons_by_day_slot.get(day_key, {}).get(slot['id']),
+                'change': change_cells_map.get(cell_key),
+            })
+        return slots
+
+    focus_date = today if week_start == current_week_start else week_start
+    focus_index = max(0, min((focus_date - week_start).days, len(weekday_order) - 1))
+    focus_day_meta = weekday_order[focus_index]
+    focus_day_key = focus_day_meta['key']
+    focus_day_date = week_start + timedelta(days=focus_index)
+    today_label = f"{focus_day_meta['label']}, {focus_day_date.strftime('%d.%m')}"
+    today_building_label = day_buildings_display.get(focus_day_key, BUILDING_DISPLAY['nakhimovsky'])
+    today_slots = build_day_slots(focus_day_key)
+
+    week_grid_rows = []
+    for slot in time_slots:
+        cells = []
+        for day in weekday_order:
+            cell_key = f"{day['key']}__{slot['id']}"
+            cells.append({
+                'day_key': day['key'],
+                'slot_id': slot['id'],
+                'lesson': lessons_by_day_slot.get(day['key'], {}).get(slot['id']),
+                'change': change_cells_map.get(cell_key),
+            })
+        week_grid_rows.append({'slot': slot, 'cells': cells})
+
+    week_summary = {
+        'lessons_total': total_lessons,
+        'days_active': sum(1 for slots in lessons_by_day_slot.values() if slots),
+        'rooms_total': len(unique_rooms),
+        'teachers_total': len(teacher_lookup),
+        'last_updated': timezone.localtime(schedule_week.updated_at).strftime('%d.%m %H:%M') if schedule_week else '',
+    }
+
+    schedule_updates = get_student_schedule_updates(student)
+    schedule_available = total_lessons > 0
+    schedule_state = {
+        'has_group': bool(group),
+        'has_week': bool(schedule_week),
+        'has_lessons': schedule_available,
+    }
+
+    context = {
+        'student': student,
+        'group': group,
+        'weekday_order': days_with_dates,
+        'time_slots': time_slots,
+        'week_grid_rows': week_grid_rows,
+        'today_slots': today_slots,
+        'today_label': today_label,
+        'today_building_label': today_building_label,
+        'week_range_label': week_range_label,
+        'week_parity_label': week_parity_label,
+        'week_parity_key': week_parity_key,
+        'week_start_iso': week_start.strftime('%Y-%m-%d'),
+        'week_end_iso': week_end.strftime('%Y-%m-%d'),
+        'week_prev_iso': week_prev.strftime('%Y-%m-%d'),
+        'week_next_iso': week_next.strftime('%Y-%m-%d'),
+        'is_current_week': week_start == current_week_start,
+        'day_buildings': day_buildings_display,
+        'week_summary': week_summary,
+        'schedule_updates': schedule_updates,
+        'schedule_state': schedule_state,
+        'schedule_available': schedule_available,
+        'active_nav': 'student_schedule',
+    }
+
+    return render(request, 'student/schedule.html', context)
+
+
+@login_required
+def student_progress_view(request):
+    """Оценки и посещаемость студента."""
+    try:
+        student = request.user.student_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к личному кабинету студента')
+        return redirect('login')
+
+    today = timezone.localdate()
+    current_week_start = start_of_week(today)
+    week_param = request.GET.get('week')
+    week_reference = today
+    if week_param:
+        try:
+            week_reference = date.fromisoformat(week_param)
+        except ValueError:
+            week_reference = today
+    week_start = start_of_week(week_reference) or current_week_start or today
+    week_end = week_start + timedelta(days=6)
+    week_parity_key = calculate_week_parity(week_start)
+    grade_week_scope = {
+        'start_iso': week_start.isoformat(),
+        'end_iso': week_end.isoformat(),
+        'range_label': f"{week_start.strftime('%d.%m')} — {week_end.strftime('%d.%m')}",
+        'parity_label': SCHEDULE_PARITY_LABELS.get(week_parity_key, 'Всегда'),
+        'prev_iso': (week_start - timedelta(days=7)).isoformat(),
+        'next_iso': (week_start + timedelta(days=7)).isoformat(),
+        'is_current': week_start == current_week_start,
+    }
+
+    grade_records = (
+        GradeRecord.objects.filter(student=student)
+        .select_related('subject', 'teacher')
+        .order_by('subject__name', 'lesson_date', 'slot_id')
+    )
+    grade_subject_map = OrderedDict()
+    grade_values_all = []
+    latest_grade_entry = None
+    grade_entries_flat = []
+    for record in grade_records:
+        subject_key = record.subject_id or 0
+        subject_label = grade_format_subject_label(record.subject)
+        subject_entry = grade_subject_map.get(subject_key)
+        if not subject_entry:
+            subject_entry = {
+                'subject_id': record.subject_id,
+                'subject_key': f"subject-{record.subject_id or 0}",
+                'subject_label': subject_label,
+                'subject_full': record.subject.name if record.subject else subject_label,
+                'teacher_names': set(),
+                'entries': [],
+                'values': [],
+            }
+            grade_subject_map[subject_key] = subject_entry
+        teacher_label = ''
+        if record.teacher:
+            teacher_label = record.teacher.get_short_name() or record.teacher.get_full_name()
+            subject_entry['teacher_names'].add(teacher_label)
+        slot_meta = grade_compute_slot_meta(record.slot_id)
+        entry_payload = {
+            'value': record.value,
+            'comment': (record.comment or '').strip(),
+            'date_display': record.lesson_date.strftime('%d.%m.%Y'),
+            'date_full': record.lesson_date.strftime('%d.%m.%Y'),
+            'date_iso': record.lesson_date.isoformat(),
+            'day_short': GRADE_DAY_SHORT_LABELS.get(grade_get_day_key(record.lesson_date), record.lesson_date.strftime('%d.%m')),
+            'slot_label': slot_meta['label'],
+            'slot_time_range': slot_meta['time_range'],
+            'slot_order': slot_meta['order'],
+            'type_label': record.get_grade_type_display() or 'Занятие',
+            'type_key': record.grade_type or '',
+            'teacher_label': teacher_label,
+            'topic': (record.lesson_topic or '').strip(),
+            'is_today': record.lesson_date == today,
+            'is_future': record.lesson_date > today,
+        }
+        subject_entry['entries'].append(entry_payload)
+        subject_entry['values'].append(record.value)
+        grade_values_all.append(record.value)
+        grade_entries_flat.append({
+            **entry_payload,
+            'subject_label': subject_entry['subject_full'],
+            'subject_short': subject_label,
+            'date_obj': record.lesson_date,
+        })
+        if latest_grade_entry is None or record.lesson_date > latest_grade_entry['date']:
+            latest_grade_entry = {
+                'subject': subject_label,
+                'value': record.value,
+                'date': record.lesson_date,
+            }
+
+    grade_subjects = []
+    for subject_entry in grade_subject_map.values():
+        values = subject_entry.pop('values', [])
+        subject_entry['average'] = round(sum(values) / len(values), 2) if values else None
+        subject_entry['teacher_names'] = ', '.join(sorted(subject_entry['teacher_names'])) or '—'
+        subject_entry['entries'].sort(key=lambda item: (item['date_iso'], item['slot_order']), reverse=True)
+        subject_entry['preview_entries'] = subject_entry['entries'][:3]
+        subject_entry['grades_total'] = len(subject_entry['entries'])
+        grade_subjects.append(subject_entry)
+    grade_subjects.sort(key=lambda item: item['subject_label'])
+
+    grade_average = round(sum(grade_values_all) / len(grade_values_all), 2) if grade_values_all else None
+
+    grade_week_groups = []
+    grade_week_entries = [
+        entry for entry in grade_entries_flat
+        if week_start <= entry['date_obj'] <= week_end
+    ]
+    if grade_week_entries:
+        grouped = OrderedDict()
+        for entry in grade_week_entries:
+            date_key = entry['date_obj'].isoformat()
+            day_key = grade_get_day_key(entry['date_obj'])
+            if date_key not in grouped:
+                grouped[date_key] = {
+                    'date': entry['date_obj'],
+                    'relative_label': grade_format_relative_day(entry['date_obj'], today),
+                    'weekday_label': GRADE_DAY_LABELS.get(day_key, ''),
+                    'date_label': entry['date_obj'].strftime('%d.%m.%Y'),
+                    'entries': [],
+                }
+            entry_copy = entry.copy()
+            entry_copy.pop('date_obj', None)
+            grouped[date_key]['entries'].append(entry_copy)
+        grade_week_groups = sorted(grouped.values(), key=lambda item: item['date'], reverse=True)
+        for group in grade_week_groups:
+            group['entries'].sort(key=lambda item: item['slot_order'])
+
+    attendance_records = (
+        AttendanceRecord.objects.filter(student=student)
+        .select_related('subject', 'teacher')
+        .order_by('subject__name', 'lesson_date', 'slot_id')
+    )
+    attendance_subject_map = OrderedDict()
+    attendance_summary = {
+        'total': 0,
+        'present': 0,
+        'absent': 0,
+        'late': 0,
+        'excused': 0,
+    }
+    status_key_map = {
+        AttendanceRecord.STATUS_PRESENT: 'present',
+        AttendanceRecord.STATUS_ABSENT: 'absent',
+        AttendanceRecord.STATUS_LATE: 'late',
+        AttendanceRecord.STATUS_EXCUSED: 'excused',
+    }
+    for record in attendance_records:
+        status_key = status_key_map.get(record.status, 'present')
+        attendance_summary['total'] += 1
+        attendance_summary[status_key] += 1
+        subject_key = record.subject_id or 0
+        subject_label = grade_format_subject_label(record.subject)
+        subject_entry = attendance_subject_map.get(subject_key)
+        if not subject_entry:
+            subject_entry = {
+                'subject_id': record.subject_id,
+                'subject_label': subject_label,
+                'subject_full': record.subject.name if record.subject else subject_label,
+                'teacher_names': set(),
+                'entries': [],
+                'status_counts': {
+                    'present': 0,
+                    'absent': 0,
+                    'late': 0,
+                    'excused': 0,
+                },
+            }
+            attendance_subject_map[subject_key] = subject_entry
+        teacher_label = ''
+        if record.teacher:
+            teacher_label = record.teacher.get_short_name() or record.teacher.get_full_name()
+            subject_entry['teacher_names'].add(teacher_label)
+        slot_meta = grade_compute_slot_meta(record.slot_id)
+        entry_payload = {
+            'status_key': status_key,
+            'status_label': record.get_status_display() or 'Присутствовал',
+            'comment': (record.comment or '').strip(),
+            'date_display': record.lesson_date.strftime('%d.%m.%Y'),
+            'date_full': record.lesson_date.strftime('%d.%m.%Y'),
+            'date_iso': record.lesson_date.isoformat(),
+            'day_short': GRADE_DAY_SHORT_LABELS.get(grade_get_day_key(record.lesson_date), record.lesson_date.strftime('%d.%m')),
+            'slot_label': slot_meta['label'],
+            'slot_time_range': slot_meta['time_range'],
+            'slot_order': slot_meta['order'],
+            'teacher_label': teacher_label,
+            'is_today': record.lesson_date == today,
+            'is_future': record.lesson_date > today,
+        }
+        subject_entry['entries'].append(entry_payload)
+        subject_entry['status_counts'][status_key] += 1
+
+    attendance_subjects = []
+    for index, subject_entry in enumerate(attendance_subject_map.values(), start=1):
+        subject_entry['teacher_names'] = ', '.join(sorted(subject_entry['teacher_names'])) or '—'
+        subject_entry['entries'].sort(key=lambda item: (item['date_iso'], item['slot_order']), reverse=True)
+        total_entries = sum(subject_entry['status_counts'].values())
+        subject_entry['total_entries'] = total_entries
+        subject_entry['missed_total'] = subject_entry['status_counts']['absent']
+        script_suffix = subject_entry.get('subject_id') or f'subject-{index}'
+        subject_entry['entries_script_id'] = f'attendance-data-{script_suffix}'
+        attendance_subjects.append(subject_entry)
+    attendance_subjects.sort(key=lambda item: item['subject_label'])
+
+    context = {
+        'student': student,
+        'group': student.group,
+        'grade_subjects': grade_subjects,
+        'grade_week_scope': grade_week_scope,
+        'grade_week_groups': grade_week_groups,
+        'attendance_subjects': attendance_subjects,
+        'grade_summary': {
+            'total': len(grade_values_all),
+            'average': grade_average,
+            'latest': latest_grade_entry,
+        },
+        'attendance_summary': attendance_summary,
+        'active_nav': 'student_progress',
+    }
+    return render(request, 'student/progress.html', context)
+
+
+def student_subject_detail_view(request, subject_id):
+    """Детализация оценок по отдельному предмету для студента."""
+    try:
+        student = request.user.student_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к личному кабинету студента')
+        return redirect('login')
+
+    grade_records = list(
+        GradeRecord.objects.filter(student=student, subject_id=subject_id)
+        .select_related('subject', 'teacher')
+        .order_by('-lesson_date', '-slot_id')
+    )
+    subject_obj = Subject.objects.filter(pk=subject_id).first()
+    if not grade_records and not subject_obj:
+        messages.error(request, 'Предмет не найден или по нему нет оценок')
+        return redirect('student_progress')
+
+    subject_label = grade_format_subject_label(subject_obj)
+    entries = []
+    teacher_names = set()
+    type_counts = OrderedDict()
+    value_pool = []
+    grouped_entries = OrderedDict()
+
+    for record in grade_records:
+        teacher_label = ''
+        if record.teacher:
+            teacher_label = record.teacher.get_short_name() or record.teacher.get_full_name()
+            teacher_names.add(teacher_label)
+        slot_meta = grade_compute_slot_meta(record.slot_id)
+        meta_parts = [
+            record.lesson_date.strftime('%d.%m.%Y'),
+            slot_meta['label'],
+            slot_meta['time_range'],
+        ]
+        entry_payload = {
+            'value': record.value,
+            'type': record.get_grade_type_display() or 'Занятие',
+            'topic': (record.lesson_topic or '').strip(),
+            'comment': (record.comment or '').strip(),
+            'teacher': teacher_label or '—',
+            'meta_parts': [part for part in meta_parts if part],
+            'date_obj': record.lesson_date,
+        }
+        entries.append(entry_payload)
+        value_pool.append(record.value)
+        type_label = entry_payload['type']
+        type_counts[type_label] = type_counts.get(type_label, 0) + 1
+
+        month_key = record.lesson_date.strftime('%Y-%m')
+        if month_key not in grouped_entries:
+            grouped_entries[month_key] = {
+                'label': format_month_label(record.lesson_date),
+                'items': [],
+            }
+        grouped_entries[month_key]['items'].append(entry_payload)
+
+    for entry in entries:
+        entry.pop('date_obj', None)
+
+    entry_groups = list(grouped_entries.values())
+    average_value = round(sum(value_pool) / len(value_pool), 2) if value_pool else None
+    latest_entry = entries[0] if entries else None
+    subject_meta = {
+        'name': subject_obj.name if subject_obj and subject_obj.name else subject_label,
+        'teacher': ', '.join(sorted(teacher_names)) or '—',
+        'group': student.group.code if getattr(student, 'group', None) else '—',
+        'total': len(entries),
+        'average': average_value,
+        'best': max(value_pool) if value_pool else None,
+        'latest': None,
+    }
+    if latest_entry:
+        subject_meta['latest'] = {
+            'value': latest_entry['value'],
+            'date': latest_entry['meta_parts'][0] if latest_entry['meta_parts'] else '—',
+            'type': latest_entry['type'],
+        }
+
+    type_tags = [{'label': label, 'count': count} for label, count in type_counts.items()]
+
+    context = {
+        'student': student,
+        'subject_meta': subject_meta,
+        'type_tags': type_tags,
+        'entry_groups': entry_groups,
+        'active_nav': 'student_progress',
+    }
+    return render(request, 'student/subject_progress_detail.html', context)
 
 
 def start_of_week(value):
@@ -3689,6 +4560,48 @@ GRADE_SLOT_CONFIG = {
     'slot4': {'order': 4, 'label': '4-я пара', 'time_range': '13:50 – 15:20'},
     'slot5': {'order': 5, 'label': '5-я пара', 'time_range': '15:30 – 17:00'},
 }
+
+GRADE_WEEKDAY_KEYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
+
+
+def grade_format_subject_label(subject):
+    if not subject:
+        return 'Без предмета'
+    return (subject.short_name or subject.name or 'Предмет').strip()
+
+
+def grade_get_day_key(date_value):
+    try:
+        return GRADE_WEEKDAY_KEYS[date_value.weekday()]
+    except Exception:
+        return 'monday'
+
+
+def grade_compute_slot_meta(slot_key):
+    normalized = (slot_key or '').lower()
+    slot_meta = GRADE_SLOT_CONFIG.get(normalized)
+    if not slot_meta:
+        return {
+            'label': slot_key or 'Пара',
+            'time_range': '',
+            'order': 99,
+        }
+    return {
+        'label': slot_meta.get('label') or f"{slot_meta.get('order', '')}-я пара",
+        'time_range': slot_meta.get('time_range') or '',
+        'order': slot_meta.get('order', 99),
+    }
+
+
+def grade_format_relative_day(date_value, today):
+    if not date_value:
+        return ''
+    if date_value == today:
+        return 'Сегодня'
+    if date_value == today - timedelta(days=1):
+        return 'Вчера'
+    day_key = grade_get_day_key(date_value)
+    return GRADE_DAY_LABELS.get(day_key, date_value.strftime('%d.%m'))
 
 
 
@@ -3809,12 +4722,21 @@ def teacher_dashboard_view(request):
             parity=week_parity
         ).select_related('group', 'subject', 'week')
     )
+    week_lessons_cache = {}
 
     lessons_by_day_slot = {}
     for slot in week_slots:
         day_key = (slot.day_key or '').lower()
         if day_key not in day_buildings_map:
             continue
+        room_label = get_teacher_room_for_slot(
+            slot.week,
+            slot.day_key,
+            slot.slot_id,
+            slot.parity,
+            teacher.id,
+            cache=week_lessons_cache,
+        )
         subject_label = ''
         if slot.subject:
             subject_label = slot.subject.short_name or slot.subject.name
@@ -3827,6 +4749,7 @@ def teacher_dashboard_view(request):
             'lesson_type': lesson_type_label or 'Занятие',
             'building_label': day_buildings_display.get(day_key, BUILDING_DISPLAY['nakhimovsky']),
             'parity_label': slot.get_parity_display(),
+            'room_label': room_label,
         }
     week_grid_rows = []
     for slot in time_slots:
@@ -3935,6 +4858,7 @@ def teacher_schedule_view(request):
     )
 
     lessons = list(lessons_qs)
+    week_lessons_cache = {}
     weekday_keys = [day['key'] for day in base_weekday_order]
     weekday_key_set = set(weekday_keys)
     lessons_map = defaultdict(lambda: defaultdict(list))
@@ -3995,6 +4919,14 @@ def teacher_schedule_view(request):
             subject_label = lesson.subject.short_name or lesson.subject.name
         subject_label = subject_label or lesson.subject_short or lesson.subject_name or 'Пара'
 
+        room_label = get_teacher_room_for_slot(
+            lesson.week,
+            lesson.day_key,
+            lesson.slot_id,
+            lesson.parity,
+            teacher.id,
+            cache=week_lessons_cache,
+        )
         lessons_map[day_key][slot_id].append({
             'subject': subject_label,
             'group_code': group_code,
@@ -4002,6 +4934,7 @@ def teacher_schedule_view(request):
             'building_label': building_label,
             'parity_label': lesson.get_parity_display(),
             'parity_key': lesson.parity,
+            'room_label': room_label,
         })
 
     parity_order = {'numerator': 0, 'denominator': 1, None: 2}
@@ -4135,6 +5068,33 @@ def teacher_group_detail_view(request, group_id):
         'detail_view_mode': 'groups',
     })
     return render(request, 'teacher/group_detail.html', context)
+
+
+@login_required
+def teacher_group_overview_view(request, group_id):
+    try:
+        teacher = request.user.teacher_profile
+    except AttributeError:
+        messages.error(request, 'У вас нет доступа к кабинету преподавателя')
+        return redirect('login')
+
+    group = get_object_or_404(Group, id=group_id)
+    if not teacher.groups.filter(id=group.id).exists():
+        messages.error(request, 'У вас нет доступа к этой группе')
+        return redirect('teacher_groups')
+
+    students = list(Student.objects.filter(group=group).order_by('last_name', 'first_name'))
+    active_students = sum(1 for student in students if student.study_status == 'active')
+    inactive_students = max(len(students) - active_students, 0)
+
+    context = {
+        'teacher': teacher,
+        'group': group,
+        'students': students,
+        'active_students': active_students,
+        'inactive_students': inactive_students,
+    }
+    return render(request, 'teacher/group_overview.html', context)
 
 
 def _build_teacher_group_cards_context(teacher):

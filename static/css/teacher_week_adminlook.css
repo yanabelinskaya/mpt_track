@@ -167,6 +167,78 @@
     gap: 1.2rem;
 }
 
+.teacher-group-overview-summary {
+    margin-top: 1.25rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+}
+
+.teacher-group-detail--overview {
+    margin-top: 1.25rem;
+}
+
+.teacher-group-detail--overview .teacher-group-detail__body {
+    display: grid;
+    grid-template-columns: minmax(0, 0.65fr) minmax(0, 1fr);
+    gap: 1.5rem;
+}
+
+.teacher-group-overview-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 0.9rem;
+}
+
+.group-info-card {
+    border: 1px solid var(--border);
+    border-radius: 0.9rem;
+    padding: 0.95rem;
+    background: var(--schedule-surface-subtle);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.group-info-card__label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--schedule-muted);
+}
+
+.group-info-card__value {
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--bs-body-color);
+}
+
+.group-student-status {
+    padding: 0.3rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+}
+
+.group-student-status--success {
+    background: rgba(34, 197, 94, 0.15);
+    color: rgb(22, 163, 74);
+    border-color: rgba(34, 197, 94, 0.2);
+}
+
+.group-student-status--warning {
+    background: rgba(251, 191, 36, 0.18);
+    color: rgb(180, 83, 9);
+    border-color: rgba(251, 191, 36, 0.25);
+}
+
+@media (max-width: 992px) {
+    .teacher-group-detail--overview .teacher-group-detail__body {
+        grid-template-columns: 1fr;
+    }
+}
+
 .teacher-group-card {
     border-radius: 1.2rem;
     border: 1px solid rgba(99, 102, 241, 0.6);
@@ -256,6 +328,163 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+}
+
+.teacher-group-detail {
+    border-radius: 1rem;
+    border: 1px solid var(--border);
+    background: var(--schedule-surface-subtle);
+    padding: 1.25rem;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.teacher-group-detail__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.teacher-group-detail__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.teacher-group-detail__subtitle {
+    margin: 0.25rem 0 0;
+    color: var(--schedule-muted);
+    font-size: 0.9rem;
+}
+
+.teacher-group-detail__close {
+    border: none;
+    background: transparent;
+    color: var(--schedule-muted);
+    cursor: pointer;
+    padding: 0.2rem;
+    border-radius: 0.5rem;
+}
+
+.teacher-group-detail__close:hover,
+.teacher-group-detail__close:focus-visible {
+    background: rgba(99, 102, 241, 0.1);
+    color: var(--schedule-accent);
+    outline: none;
+}
+
+.teacher-group-detail__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(0, 1fr);
+    gap: 1.5rem;
+}
+
+@media (max-width: 992px) {
+    .teacher-group-detail__body {
+        grid-template-columns: 1fr;
+    }
+}
+
+.teacher-group-detail__students ul {
+    list-style: none;
+    padding: 0;
+    margin: 0.75rem 0 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.teacher-group-detail__students h4 {
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--schedule-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.teacher-group-detail__students li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.35rem 0.4rem;
+    border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+    font-size: 0.95rem;
+}
+
+.teacher-group-detail__student-name {
+    font-weight: 500;
+    color: var(--bs-body-color);
+}
+
+.teacher-group-detail__student-status {
+    font-size: 0.8rem;
+    color: var(--schedule-accent);
+    font-weight: 600;
+}
+
+.teacher-group-detail__placeholder {
+    color: var(--schedule-muted);
+    font-style: italic;
+}
+
+.teacher-group-detail__meta dl {
+    margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.75rem;
+}
+
+.teacher-group-detail__meta dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    color: var(--schedule-muted);
+    letter-spacing: 0.05em;
+}
+
+.teacher-group-detail__meta dd {
+    margin: 0.25rem 0 0;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.teacher-group-detail__info {
+    margin-top: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    color: var(--schedule-muted);
+    font-size: 0.95rem;
+}
+
+.teacher-group-detail__info p {
+    margin: 0;
+}
+
+.teacher-group-detail__actions {
+    margin-top: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.teacher-group-detail__actions a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.65rem 0.85rem;
+    border-radius: 0.9rem;
+    background: var(--schedule-surface);
+    border: 1px solid transparent;
+    color: var(--bs-body-color);
+    font-weight: 500;
+    text-decoration: none;
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.teacher-group-detail__actions a:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    transform: translateY(-1px);
 }
 
 .teacher-groups-layout__header {

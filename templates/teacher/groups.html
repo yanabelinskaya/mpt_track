@@ -46,7 +46,7 @@
       <div class="teacher-groups-panel">
         {% if teacher_groups %}
           {% for group in teacher_groups %}
-          <a class="teacher-group-card" href="{% url 'teacher_group_detail' group.id %}">
+          <a class="teacher-group-card" href="{% url 'teacher_group_overview' group.id %}">
             <header class="teacher-group-card__head">
               <div>
                 <p class="teacher-group-card__code">{{ group.code }}</p>
@@ -59,6 +59,7 @@
                   {% if group.profession %} • {{ group.profession }}{% endif %}
                 </p>
               </div>
+              <span class="teacher-group-card__status">Подробнее</span>
             </header>
             <div class="teacher-group-card__details">
               <div class="teacher-group-card__stat">

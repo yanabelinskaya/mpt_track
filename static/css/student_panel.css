@@ -1,0 +1,79 @@
+/* Панель студента повторяет стили преподавателя, но с более ярким акцентом */
+:root {
+    --primary-color: #14b8a6;
+    --secondary-color: #0ea5e9;
+    --primary: #14b8a6;
+    --secondary: #0ea5e9;
+    --sidebar-width: 280px;
+    --header-height: 72px;
+    --surface: #f8fafc;
+    --muted: #eef2ff;
+    --muted-bg: #f8fafc;
+    --muted-bg2: #f8fafc;
+    --text: #0f172a;
+    --text-muted: #475569;
+    --border: #e2e8f0;
+    --border-color: var(--border);
+    --radius: 16px;
+    --shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+}
+
+[data-bs-theme="light"] {
+    --bs-primary: #6366f1;
+    --bs-secondary: #64748b;
+    --sidebar-bg: #ffffff;
+    --sidebar-border: #e2e8f0;
+    --nav-link-color: #64748b;
+    --nav-link-hover: #f1f5f9;
+    --nav-link-active: #6366f1;
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --bs-body-bg: #f8fafc;
+    --bs-body-color: #0f172a;
+    --surface: #f8fafc;
+    --text: #0f172a;
+    --text-muted: #64748b;
+    --muted-bg: #f8fafc;
+    --muted-bg2: #f8fafc;
+    --border: #e2e8f0;
+    --border-color: var(--border);
+    --shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+}
+
+[data-bs-theme="dark"] {
+    --bs-primary: #818cf8;
+    --bs-secondary: #94a3b8;
+    --sidebar-bg: #0f172a;
+    --sidebar-border: #1e293b;
+    --nav-link-color: #94a3b8;
+    --nav-link-hover: #1e293b;
+    --nav-link-active: #818cf8;
+    --card-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.3), 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+    --bs-body-bg: #0f172a;
+    --bs-body-color: #f1f5f9;
+    --surface: #0f172a;
+    --text: #f1f5f9;
+    --text-muted: #94a3b8;
+    --muted-bg: #1e2937;
+    --muted-bg2: #303665;
+    --border: #1e293b;
+    --border-color: var(--border);
+    --shadow: 0 25px 60px rgba(2, 6, 23, 0.5);
+}
+
+.sidebar-footer {
+    border-top: 1px solid var(--border-color);
+    margin-top: auto;
+}
+
+.main-content {
+    background: var(--surface);
+}
+
+.sidebar-nav {
+    padding-top: 0.7rem;
+    row-gap: 0;
+}
+
+.nav-item {
+    margin: 4px 0px;
+}

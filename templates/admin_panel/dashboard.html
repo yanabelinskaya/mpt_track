@@ -79,34 +79,6 @@
             {% endfor %}
         </div>
     </div>
-
-    <div class="schedule-updates">
-        <div class="schedule-updates__header">
-            <h3>Изменения расписания</h3>
-            <p>последние добавления, замены и удаления</p>
-        </div>
-        <ul class="schedule-updates__list">
-            {% for change in schedule_changes %}
-            <li class="schedule-updates__item schedule-updates__item--{{ change.type }}">
-                <div class="schedule-updates__meta">
-                    <span class="schedule-updates__badge">{{ change.type_label }}</span>
-                    <time>{{ change.timestamp_display }}</time>
-                </div>
-                <p class="schedule-updates__text">{{ change.description|default:'Изменение расписания' }}</p>
-                <div class="schedule-updates__footer">
-                    <span class="schedule-updates__group">{{ change.group_code }}</span>
-                    {% if change.faculty %}
-                    <span class="schedule-updates__faculty">{{ change.faculty }}</span>
-                    {% endif %}
-                </div>
-            </li>
-            {% empty %}
-            <li class="schedule-updates__item schedule-updates__item--empty">
-                <p>Изменений ещё не было.</p>
-            </li>
-            {% endfor %}
-        </ul>
-    </div>
 </div>
 {% endblock %}
 

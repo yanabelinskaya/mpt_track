@@ -39,6 +39,9 @@
                   <div class="schedule-lesson__meta">
                     <span class="lesson-line">{{ detail.group_code }}</span>
                     <span class="lesson-line">{{ detail.lesson_type }}</span>
+                    {% if detail.room_label %}
+                    <span class="lesson-line lesson-line--room">Ауд. {{ detail.room_label }}</span>
+                    {% endif %}
                   </div>
                   <div class="schedule-lesson__tags">
                     <span class="schedule-tag">{{ detail.building_label }}</span>
@@ -103,6 +106,7 @@
           {% for day in weekday_order %}
           <div class="grid-cell grid-cell--day" data-day="{{ day.key }}">
             <span class="day-name">{{ day.short }}</span>
+            <span class="day-date">{{ day.date_label }}</span>
         </div>
         {% endfor %}
       </div>
@@ -126,6 +130,9 @@
                 <div class="schedule-lesson__meta">
                   <span class="lesson-line">{{ detail.group_code }}</span>
                   <span class="lesson-line">{{ detail.lesson_type }}</span>
+                  {% if detail.room_label %}
+                  <span class="lesson-line lesson-line--room">Ауд. {{ detail.room_label }}</span>
+                  {% endif %}
                 </div>
               </div>
               {% endfor %}

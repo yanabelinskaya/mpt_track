@@ -11,6 +11,9 @@ urlpatterns = [
     path('analytics/', views.analytics_view, name='admin_analytics'),
     path('analytics/export/', views.analytics_export_view, name='admin_analytics_export'),
     path('student-cabinet/', views.student_dashboard_view, name='student_dashboard'),  # Кабинет студента
+    path('student-cabinet/schedule/', views.student_schedule_view, name='student_schedule'),
+    path('student-cabinet/progress/', views.student_progress_view, name='student_progress'),
+    path('student-cabinet/progress/subjects/<int:subject_id>/', views.student_subject_detail_view, name='student_subject_progress'),
     path('teacher-cabinet/', views.teacher_dashboard_view, name='teacher_dashboard'),  # Кабинет преподавателя
     path('accounts/', include('django.contrib.auth.urls')),
     path('activity-logs/add/', views.activity_log_add_view, name='activity_log_add'),
@@ -95,6 +98,7 @@ urlpatterns = [
     path('teacher-journals/<int:group_id>/', views.teacher_journal_detail_view, name='teacher_journal_detail'),
     path('teacher-journals/<int:group_id>/save/', views.teacher_journal_save_api, name='teacher_journal_save_api'),
     path('teacher-groups/', views.teacher_groups_view, name='teacher_groups'),
+    path('teacher-groups/<int:group_id>/overview/', views.teacher_group_overview_view, name='teacher_group_overview'),
     path('teacher-groups/<int:group_id>/', views.teacher_group_detail_view, name='teacher_group_detail'),
     path('teacher-attendance/', views.teacher_attendance_view, name='teacher_attendance'),
     path('teacher-attendance/<int:group_id>/', views.teacher_attendance_detail_view, name='teacher_attendance_detail'),
